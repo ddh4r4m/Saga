@@ -12,4 +12,21 @@
 | 08 | [Reference repo review](08-reference-repo-review.md) | mattpocock/skills and unlazy in depth: mechanisms, evidence, token cost, gaps |
 | 09 | [Proposal and roadmap](09-proposal-and-roadmap.md) | Evidence-backed architecture, per-model and per-harness gap maps, milestones, open questions |
 
-Architecture decision records live in [adr/](adr/); layer specifications in [specs/](specs/). Vendored reference repositories live in `../research/vendor/` (git-ignored, see MANIFEST.md there).
+## Layer specifications
+
+| Spec | Milestone | Status |
+|---|---|---|
+| [bench](specs/bench-spec.md) | M0 | v0.1, Fable |
+| [trace](specs/trace-spec.md) | M0 | v0.1, Fable |
+| [gate](specs/gate-spec.md) ([review log](specs/gate-spec-review.md)) | M1 | v0.2, Opus draft, Fable-reviewed |
+| [guard](specs/guard-spec.md) | M1 | v0.1, Fable |
+| [index](specs/index-spec.md) | M2 | v0.1, Fable |
+| [mem](specs/mem-spec.md) | M1 (state block), M3 | v0.1, Fable |
+| shape | M4 | in progress |
+| route | M5 | in progress |
+
+## Architecture decision records
+
+See [adr/](adr/): 0001 measurement first, 0002 mechanisms over prompts, 0003 harness-agnostic surface, 0004 no LLM narrative memory, 0005 index shape, 0006 guard command validation, 0007 cost ledger and canary.
+
+Vendored reference repositories live in `../research/vendor/` (git-ignored, see MANIFEST.md there).
