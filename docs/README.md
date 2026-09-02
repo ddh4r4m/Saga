@@ -23,7 +23,7 @@
 | [index](specs/index-spec.md) | M2 | v0.1, Fable |
 | [mem](specs/mem-spec.md) | M1 (state block), M3 | v0.1, Fable |
 | shape | M4 | in progress |
-| route | M5 | in progress |
+| [route](specs/route-spec.md) | M5 | v0.1, Fable |
 
 ## Architecture decision records
 
