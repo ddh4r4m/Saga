@@ -1,0 +1,5 @@
+# vendored reference repos are re-cloned via research/vendor/MANIFEST.md
+research/vendor/*/
+node_modules/
+.DS_Store
+*.log
