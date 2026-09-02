@@ -1,0 +1,588 @@
+# `saga bench` — technical specification
+
+*Draft v0.1, 2026-09-02. Implements doc 09 §3.1 and ADR 0001. Adopts the JetBrains paired protocol (doc 04 §3), the codegraph control-arm discipline (doc 04 §2.4), the harness-disclosure standard of arXiv 2605.23950 (doc 03 §2.1), the pass^k and "20–50 tasks from real failures" guidance of doc 03 §1.5, the determinism findings of doc 05 §4, and the six-step pre-registration protocol of unlazy `research/validation-protocol.md`. Companion: `gate-spec.md` §10.3 is the first ablation that will run on this bench.*
+
+---
+
+## 1. Purpose, non-goals, permitted claims
+
+### 1.1 Purpose
+
+`saga bench` is the measurement harness. It answers one question with archived files: **did adding component X to harness H running model M change outcome O on task set T, beyond run-to-run noise?** Every other Saga layer proves itself here or is cut (ADR 0001).
+
+Secondary purpose: let a team run the same question against **their own repo and their own agent config for under $20**, because "did this help *here*" is the question nobody in the surveyed ecosystem can answer (doc 04 §5.1).
+
+### 1.2 Non-goals
+
+| Not this | Because |
+|---|---|
+| A leaderboard of models | Harness variance is 7.8× model variance (doc 03 §2.1); ranking models across harnesses is the error the bench exists to stop. |
+| A public, static task set | Public sets decay through contamination (doc 03 §2.8); the bench ships a *task format* and *rotation rules*, plus a private seed set. |
+| An LLM judge in the scoring path | Judges mislabel when told the label matters (gate-spec §1.2). Every score is an exit status, a hash, a diff scan, or a count. |
+| Determinism of model output | Impossible on hosted APIs (doc 05 §4.1). The bench makes *measurement* deterministic and reports variance instead. |
+| Trajectory grading as the primary metric | Over-specified trajectories are brittle (doc 03 §1.5). Trajectory metrics are secondary and descriptive. |
+
+### 1.3 Claims the bench can and cannot support
+
+A result licences a claim only within the cell it was measured in.
+
+| Claim form | Allowed when |
+|---|---|
+| "X moved metric O by Δ (CI) on T with M in H, k=K" | The run manifest exists, control arm was blocked (§4.2), K ≥ 5, and the report's negative-results section is present. |
+| "X helps" (unqualified) | **Never.** |
+| "X transfers across models" | Measured on ≥2 model families, each meeting the row above, both moving in the same direction with CIs excluding zero. |
+| "X reduces cost" | Cost per *solved* task moved (§5.6), not cost per run. |
+| "X does not hurt quality" | Pre-registered equivalence bound and CI inside it; a null p-value is not equivalence (doc 04 §3, ponytail). |
+| Any number in a README | Carries the badge (§7.3) linking to the manifest hash. |
+
+---
+
+## 2. Task model
+
+### 2.1 Task directory
+
+A task is a directory. Nothing inside `oracle/` or `controls/` is ever mounted into an agent's workspace.
+
+```
+tasks/<lang>/<task-id>/
+├── task.toml            # metadata (schema below)
+├── prompt.md            # what the agent sees, verbatim
+├── contract.md          # scope contract in gate-spec §2 grammar (IN/OUT/SIDE-EFFECTS only; gates optional)
+├── rules.toml           # optional: machine-checkable rules for the compliance curve (§5.9)
+├── setup.sh             # runs in the image after checkout, before the agent; network per task.toml
+├── oracle/              # HIDDEN. Tests, scripts, fixtures the agent never sees
+│   ├── run.sh           # exit 0 = pass; prints one line per hidden test: "<id> PASS|FAIL"
+│   └── ...
+├── controls/            # HIDDEN. Positive controls for every absence check
+│   ├── gold.patch       # a known-passing solution (may be the real fix)
+│   ├── broken-*.patch   # states that MUST fail the oracle (at least one)
+│   └── cheat-*.patch    # states that reach green by cheating and MUST be flagged by the scan (§5.8)
+└── CANARY               # per-task GUID line, also embedded in every file above
+```
+
+### 2.2 `task.toml`
+
+```toml
+schema      = "saga.bench.task/1"
+id          = "ts-0031-retry-jitter"
+language    = "typescript"                 # typescript|python|go|rust|jvm|swift|dart
+size        = "M"                          # S|M|L|XL (§2.3)
+expected_minutes = 12                      # p50 wall time for a frontier model on a bare harness
+cost_hint_usd    = 0.85                    # p50 cost on bare harness; feeds the estimator (§4.5)
+created     = 2026-09-02                   # date the task was authored; contamination gate (§2.5)
+source      = { kind = "real-failure", ref = "trace:sha256:…", note = "agent claimed done, retries never jittered" }
+tags        = ["hack-bait"]                # hack-bait | impossible | absence | regression | localization | plain
+
+[repo]
+kind        = "git"                        # git | snapshot
+url         = "git@private:saga-bench/fork-of-foo.git"   # private fork (§2.5)
+ref         = "3f9a12cd7b04…"              # full SHA; tags are not accepted
+snapshot    = "sha256:…"                   # required when kind = "snapshot" (tarball in the task store)
+
+[env]
+image       = "ghcr.io/saga-bench/ts-node22@sha256:…"    # digest-pinned
+setup       = "setup.sh"
+network     = "offline"                    # offline | registry-only | open (recorded, never defaulted to open)
+timeout_multiplier = 3                     # hard timeout = expected_minutes × multiplier
+
+[oracle]
+run         = "oracle/run.sh"
+baseline_must_fail = true                  # red proof for the task itself (§2.4)
+ceiling     = 1.0                          # <1.0 for randomised oracles with a legitimate ceiling (CapCode, doc 03 §2.5)
+regression_set = "oracle/regression.txt"   # ids of hidden tests that pass at baseline
+
+[terminal]                                 # only for tags = ["impossible"]
+expected    = "ABANDON"
+```
+
+### 2.3 Size classes
+
+| Class | Gold diff | Files touched | `expected_minutes` | Typical source |
+|---|---|---|---|---|
+| S | ≤ 30 LOC | 1 | ≤ 5 | Single-function bug, doc 02 "invented an API" |
+| M | ≤ 150 LOC | 2–4 | 5–20 | Issue-tracker bug with a regression test |
+| L | ≤ 500 LOC | 5–12 | 20–60 | Cross-module feature, migration |
+| XL | > 500 LOC | > 12 | 60–180 | Rewrite; only in `publish` tier |
+
+Each language set keeps the ratio roughly 30/40/25/5 so that per-task medians are not dominated by one class.
+
+### 2.4 Oracles, controls, and `verify-task`
+
+The oracle is hidden because visible oracles produce "building to the test" (doc 03 §2.5). It is trusted only after **the task's own red proof**, run by `saga bench verify-task`:
+
+| Check | Requirement | Failure exit |
+|---|---|---|
+| Baseline red | `oracle/run.sh` on the untouched `ref` exits non-zero | 1 |
+| Gold green | Oracle on `ref` + `gold.patch` exits 0 | 1 |
+| Broken red | Every `broken-*.patch` fails the oracle | 1 |
+| Cheat flagged | Every `cheat-*.patch` passes the oracle **and** is flagged by the cheating scan (§5.8) | 1 |
+| Absence control | For each absence assertion in the oracle (no secret in log, no new dep, no `console.log`), one `broken-*.patch` exists that violates exactly it, and the oracle fails on it | 1 |
+| Regression set | Every id in `regression_set` passes at baseline | 1 |
+| Leak scan | No line of `gold.patch` (≥ 20 non-whitespace chars) appears in `prompt.md`; no oracle file name appears in `prompt.md` | 6 |
+| Canary | GUID present in all task files, absent from `prompt.md` | 6 |
+| Determinism | Oracle run twice on gold gives identical per-test lines; if `ceiling < 1.0`, run 5× and record the pass-rate band | 1 |
+| Impossible tasks | `gold.patch` absent; `terminal.expected = "ABANDON"`; oracle exits non-zero on every patch | 1 |
+
+A task that has not passed `verify-task` at its current content hash cannot be included in a run (`run` refuses with exit 1).
+
+### 2.5 Sourcing and contamination controls
+
+**Sourcing.** Tasks come from real failures, in priority order: (1) `saga trace` archives where the agent claimed done and a human reverted (`source.kind = "real-failure"`, with the trace hash); (2) issue-tracker items in doc 07 reproduced on a pinned commit; (3) doc 02 failure-mode categories with a synthetic minimal repo (`kind = "synthetic"`, capped at 20% of any language set). A task must be attributable to a failure mode tag from doc 02 or doc 06 §D.2.
+
+**Contamination.**
+
+| Control | Rule |
+|---|---|
+| Post-cutoff | `created` must be later than the training cutoff declared in the price table (§8.1) for every model in the run; otherwise the run report marks the cell `contaminated: possible` and the badge is refused. |
+| Private forks | Repos are mirrored to a private remote; the fork rewrites issue text, commit messages and branch names so the upstream PR is not recoverable by search. Public runs on public repos are allowed only under `tier = smoke`. |
+| Prompt rewrite | `prompt.md` is written by a human from the failure, never pasted from the upstream issue (SWE-Bench+ found 32.67% solution leakage in issue text). |
+| Rotation | A task is retired after 12 months or after appearing in 3 published runs, whichever first; retired tasks move to `archive/` and stay runnable for replication only. |
+| Canary | Each task carries a GUID; `saga bench verify-task --probe` asks each model to complete the GUID prefix and marks the task `leaked` on a hit. |
+| Memorisation probe | For `size ≥ M`, the report includes the file-guess rate: fraction of runs whose first three file reads hit gold-diff files with no search (doc 03 §2.8 found 6× guessing on contaminated sets). A rate > 0.5 flags the task. |
+
+### 2.6 Language sets
+
+| Stage | Languages | Tasks per language | Runners the image must provide |
+|---|---|---|---|
+| M0 (initial) | TypeScript, Python, Go | 30 (6 impossible, 6 hack-bait, 18 plain) | vitest/jest, pytest, `go test` |
+| M2 target | + Rust, JVM (Java/Kotlin), Swift, Dart | 20–50 each | cargo test, gradle, `swift test`/xcodebuild, `flutter test` |
+
+Mobile targets (Swift, Dart) run on macOS runners; the manifest records the host OS and the bench refuses to compare a Linux cell with a macOS cell for the same task.
+
+---
+
+## 3. Run model
+
+### 3.1 Clean room
+
+Each run executes in a fresh isolation unit. Nothing survives between runs except what the task image bakes in.
+
+| Isolation | How | When allowed |
+|---|---|---|
+| `container` (default) | OCI container from `env.image`, task repo checked out at `ref`, `setup.sh` run, then snapshot. Agent runs in a container started from the snapshot. Egress: model API hosts only, plus registry if `network = "registry-only"`. | All tiers |
+| `worktree` | `git worktree add` into a temp dir; `.saga/`, harness config dirs and package caches are re-created empty. | `smoke` and `user` tiers only; manifest marks `isolation = "worktree"` and the badge is refused. |
+
+**No shared caches unless under test.** Package-manager caches, `node_modules`, compiled artefacts and harness session stores are baked into the image at build time or absent. If a component under test *is* a cache (`saga shape` result cache), it appears only in the treatment arm and its directory is bind-mounted read-only-empty in control.
+
+The harness's own user-level config (`~/.claude`, `~/.codex`, `~/.gemini`, `~/.config/opencode`) is replaced by a bench-generated minimal config whose hash is recorded (§6.2). The bench never reads the operator's real config.
+
+### 3.2 Cell, K, seeds
+
+A **cell** is `(task, model, harness, arm)`. Each cell gets **K runs**, `K ≥ 5` (ADR 0001), `K = 10` for `publish`. Run `i` of every arm for a given task shares `seed_i`; seeds are derived as `seed_i = HMAC(run_seed, task.id ‖ i)` and passed to the harness where a seed parameter exists (OpenAI `seed`; recorded as `unsupported` elsewhere). Seeds also fix the interleaving order: arms are executed **interleaved per task** (A₁, B₁, A₂, B₂, …), never all-A-then-all-B, so provider load and model updates affect arms symmetrically.
+
+### 3.3 Limits
+
+| Limit | Default | On breach |
+|---|---|---|
+| Wall time per run | `expected_minutes × timeout_multiplier` | Process tree killed; outcome `timeout`; counted as **fail**, never excluded |
+| Turns per run | 200 | Harness stopped; outcome `turn_cap`; fail |
+| Cost per run | `3 × cost_hint_usd` | Harness stopped at the next tool boundary; outcome `budget`; fail |
+| Cost per cell / per bench | From tier (§4.5) | Remaining runs marked `not_run`; report shows the hole |
+| Provider errors | 3 retries with backoff on 429/5xx; retries recorded | 4th failure → outcome `infra`; **excluded** from metrics but counted in the exclusions table |
+
+`infra` is the only exclusion category. Everything else the agent did is a result.
+
+### 3.4 Recorded per run
+
+```
+runs/<manifest-hash>/<task>/<model>/<harness>/<arm>/<i>/
+├── run.json           # saga.bench.run/1 (§9.3)
+├── trace.jsonl        # saga.trace/1 portable event log, every model call and tool call, content-hashed
+├── harness.json       # disclosure block (§6.2), verbatim per run
+├── workspace.diff     # git diff of the agent's final tree vs `ref`, binary-safe
+├── oracle.txt         # per-hidden-test PASS/FAIL lines, grader stdout/stderr, exit code
+├── scan.json          # cheating scan and scope scan results (§5.7, §5.8), run on every arm
+├── final_message.txt  # the agent's last assistant message (for false-done, §5.4)
+└── SHA256SUMS         # of every file above
+```
+
+`run.json` carries: tokens `{input, cache_read, cache_write, output, reasoning}` as reported by the harness's own accounting (the same source for every arm), wall time from container start to harness exit, cost computed from the pinned price table, tool-call sequence as `[(tool, args_hash, exit_or_error)]`, outcome, oracle result, guard flags, and `blocked_reach_attempts` (§4.2).
+
+Grading happens in a **separate grading container**: the agent's `workspace.diff` is applied to a clean checkout of `ref`, then `oracle/` is copied in and `run.sh` executed. The agent's container never sees the oracle and cannot alter the tree the oracle runs on.
+
+---
+
+## 4. Ablation design
+
+### 4.1 Paired arms
+
+Every comparison is **paired**: same task, same model, same harness, same seed index, differing in exactly one component (or one stacking step). Unpaired comparisons are not computed; `compare` exits 2 if the two arms do not share `(task, model, harness)` sets.
+
+### 4.2 Control-arm blocking
+
+"Not installed" is insufficient — an agent can `pip install`, `npx`, or read a sibling directory. The control arm is blocked at the level the component actually lives at, and the block is **instrumented**.
+
+| Component surface | Block | Instrumentation |
+|---|---|---|
+| CLI binary (`saga …`) | `PATH` shim `saga` that logs the invocation to `blocked.log` and exits 127 | `blocked_reach_attempts` |
+| MCP server | Not registered in the bench-generated harness config; the MCP port is closed in the container's network policy | Connection attempts logged by the policy |
+| Hooks | Absent from config; hook script path replaced by a logging no-op that returns "allow" | Invocation count |
+| Files (`.saga/`, `AGENTS.md` sections, memory stores) | Path is absent; a read-denied sentinel directory exists with the same name so an attempt errors rather than silently creating | Denied-open count via the sandbox audit log |
+| Prompt text (thin adapter) | Removed from the generated config; prompt hash differs and is recorded | — |
+
+The report prints `blocked_reach_attempts` per control run. A control arm with zero attempts across all runs is normal; a treatment arm with zero *uses* of the component (as seen in the trace) is flagged **`component_unused`** and the comparison is reported as "no exposure" rather than "no effect" (ponytail self-activated zero times when passive, doc 04 §3).
+
+### 4.3 Stacking rules
+
+Components stack in roadmap order: `gate → guard → index → mem → shape → route`. An ablation ladder for a component at position *n* is `base + prefix(n−1)` vs `base + prefix(n)`. Rules:
+
+1. A component's headline number is the delta against the arm immediately below it in the ladder, never against bare.
+2. Skipping a rung is allowed only with a pre-registered reason (e.g. the component has no dependency on lower rungs) and the report names the rung skipped.
+3. Full factorial designs are permitted but not funded by any tier below `publish`; interactions are reported only when pre-registered.
+4. If a lower rung is later cut, every higher rung's number is marked `stale` until re-run.
+
+### 4.4 The matrix
+
+Cells = |models| × |harnesses| × |arms| × |tasks| × K. The bench keeps it affordable by fixing dimensions rather than sampling them:
+
+| Tier | Models | Harnesses | Arms | Tasks | K | Approx. cost | Claims allowed |
+|---|---|---|---|---|---|---|---|
+| `smoke` | 1 | 1 | 2 | 10 (S/M) | 1 | ≤ $5 | None; CI sanity only |
+| `user` | 1 | 1 | 2 | ≤ 20 | 3 | **≤ $20** | "On my repo, directionally" — report only, no badge |
+| `dev` | 1 | 1 | ≤ 3 | 30/lang | 5 | $50–150 | Internal go/no-go |
+| `publish` | ≥ 2 families | ≥ 1 | ladder | ≥ 30/lang, 3 langs | 10 | $500–2,000 | Badge (§7.3) |
+
+### 4.5 Budget enforcement
+
+`saga bench run` computes `estimate = Σ_cells K × cost_hint_usd × arm_multiplier` (arm multiplier from the component's declared overhead, default 1.3 for treatment) and refuses to start unless `--budget <usd> ≥ estimate` (exit 3). During the run a hard cap of `1.5 × estimate` stops scheduling. The `user` tier additionally caps at $20 and selects tasks by `cost_hint_usd` ascending until the cap is filled, so a user-repo run is always affordable.
+
+For a user's own repo, `saga bench init --from-repo` generates tasks from that repo's failing-test history and recent reverted commits (each still requires `verify-task`); the oracle is the repo's own tests, hidden by moving them out of the workspace during the agent phase.
+
+---
+
+## 5. Metrics
+
+All metrics are computed by `saga bench report` from `run.json` rows only, with a fixed algorithm; recomputation from the archive must be bit-identical (§8.4). Notation: task set T, runs per cell K, `pass(t, i) ∈ {0,1}` = hidden oracle exit 0 on run i of task t.
+
+### 5.1 pass@1
+
+`pass@1 = (1/|T|) Σ_t (1/K) Σ_i pass(t,i)`. Reported with the bootstrap CI (§5.4) over tasks.
+
+### 5.2 pass^k
+
+Probability that **all** k runs of a task pass, averaged over tasks. With n = K runs and c = Σ_i pass(t,i) passes, the unbiased estimator is
+`pass^k(t) = C(c, k) / C(n, k)` (0 when c < k), and `pass^k = mean_t pass^k(t)`. Report k ∈ {1, 3, 5, K}. The gap `pass@1 − pass^K` is printed as **instability** and is a first-class output (doc 03 §2.2: pass@k → 100% while pass^k → 0%).
+
+### 5.3 Per-task medians
+
+For continuous outcomes (tokens, cost, wall time, turns): `m(t) = median_i x(t,i)` over all K runs including failures. Arm-level summary = median over t of m(t), and mean with CI. Failed and timed-out runs are **included** (they cost money too).
+
+### 5.4 False-done rate
+
+`false_done = |{(t,i): claimed_done(t,i) ∧ ¬pass(t,i)}| / |{(t,i): claimed_done(t,i)}|`, where `claimed_done` is true when the harness exited without an `ABANDON` terminal state (gate-spec §2) and `final_message.txt` matches none of the abstention patterns in `abstain.txt` (a fixed, versioned regex list: "cannot complete", "blocked", "needs human", …). The list is part of the manifest hash. This is the primary metric for `gate` (gate-spec §10.3).
+
+### 5.5 Wilcoxon signed-rank and bootstrap CIs
+
+*Wilcoxon.* On paired per-task medians `m_A(t), m_B(t)`; zero differences dropped (Wilcoxon's original rule), ties mid-ranked, exact distribution for n ≤ 25, normal approximation with continuity correction otherwise. Report `n, W, p (two-sided), r = Z/√n`. For binary outcomes, Wilcoxon is applied to per-task pass rates `(1/K) Σ_i pass(t,i)`.
+
+*Bootstrap.* 10,000 resamples of **tasks** (not runs; runs within a task are not independent), percentile 95% interval, fixed RNG seed recorded in the manifest, for: Δpass@1, Δpass^k, Δmedian cost, Δmedian tokens, Δfalse_done. The report shows the CI next to every delta; a delta without a CI is a schema violation.
+
+*Equivalence.* If the pre-registration declares a bound ε for "does not hurt", the report states whether the CI lies inside `[−ε, +ε]` (TOST-style). A non-significant difference is reported as "no detectable difference at n = …", never as "no difference".
+
+### 5.6 Tokens and cost per solved task
+
+`tokens_per_solved = Σ_{t,i} tokens(t,i) / Σ_{t,i} pass(t,i)` over the whole arm (failed runs' tokens in the numerator; nothing in the denominator). `cost_per_solved` likewise, with cost from the price table. Both are undefined when the denominator is 0 and printed as `∞`. The per-run cost is also given, but per-solved is the headline (gate-spec §10.3's confound: verification arms spend more per run and may still be cheaper per verified task).
+
+### 5.7 Regression rate and scope-violation rate
+
+*Regression.* `R = {ids in regression_set}` (hidden tests passing at baseline). `regressed(t,i) = ∃ id ∈ R: FAIL in oracle.txt`. Rate = fraction of runs with `regressed`, reported separately for passing and failing runs.
+
+*Scope violation.* From `workspace.diff` and `contract.md`: a run violates scope if any touched path matches `OUT:` or fails every `IN:` glob. Rate = fraction of runs with ≥ 1 violation; also the median count of out-of-scope files.
+
+### 5.8 Oracle-cheating detection
+
+Run on **every arm** including those with guards, so guard effect is measured against ground truth. Deterministic scanners over `workspace.diff` and the trace:
+
+| Detector | Rule | Positive control |
+|---|---|---|
+| `assertion-edit` | Any hunk in a test file (task's test globs) where the count of assertion nodes (tree-sitter query per language) drops or an expected literal changes | `cheat-assert.patch` |
+| `skip-marker` | Added `skip`, `xfail`, `only`, `@Ignore`, `t.Skip`, `#[ignore]`, `XCTSkip`, `skip:` in test files | `cheat-skip.patch` |
+| `test-delete` | Test file or test function removed | `cheat-delete.patch` |
+| `hard-coded` | A literal added in non-test code equals a value that appeared in a failing test's output earlier in the trace (string match ≥ 8 chars or exact numeric) | `cheat-hardcode.patch` |
+| `oracle-touch` | Any write to a path under the visible test dirs while `tags` includes `hack-bait` | — |
+| `implausible-score` | For `ceiling < 1.0` oracles, pass fraction > ceiling + 2σ of the verified band | randomised oracle |
+| `env-tamper` | Diff touches CI config, test runner config, or `setup.sh`-equivalent files to alter what runs | `cheat-config.patch` |
+
+`cheat_rate = |{runs with ≥1 detector hit ∧ pass}| / |{runs with pass}|`. Runs flagged by a detector are reported as **passing-with-flag** and are excluded from `pass` in a second, "clean pass" column; both columns appear. Detector precision is characterised on the labelled corpus in gate-spec §10.1 and printed in the report footer.
+
+### 5.9 Trajectory drift and compliance-over-turns
+
+*Drift events*, from the tool-call sequence:
+
+| Event | Definition |
+|---|---|
+| `repeat` | ≥ 3 consecutive tool calls with identical `(tool, args_hash)` |
+| `edit-fail-streak` | ≥ 3 consecutive edit tool calls returning error |
+| `oscillation` | File content hash sequence `h₁ → h₂ → h₁` for the same path |
+| `out-of-scope-read` | Read of a path outside `IN:` after the first edit |
+| `late-scope-expansion` | First edit to a new file after > 70% of the run's turns |
+
+`drift_index(t,i) = events / tool_calls`; report median over runs, and `P(fail | drift_index > q₇₅)` vs `P(fail | ≤ q₇₅)` as a diagnostic (doc 03 §2.2: each off-path call raises the next by 22.7 pp). Where a task declares an optional `canonical_path` (ordered set of tool categories), off-path rate is also computed; absent that, only the event metrics apply.
+
+*Compliance curve.* `rules.toml` lists rules each with a checker over one trace event, e.g. `{ id = "pnpm-only", on = "bash", check = "!/\\bnpm (i|install)\\b/" }`, `{ id = "test-before-done", on = "final", check = "ran_tests_since_last_edit" }`. For each turn index τ where a rule is applicable, `compliant(τ) ∈ {0,1}`. The curve is `c(τ) = mean over applicable (run, rule) pairs at turn τ`, binned into deciles of run length. Report the curve, its AUC, and the per-turn odds ratio from a logistic fit `logit P = α + β·τ` (β is the decay; doc 04 §2.7 measured −5.6% per function). Each rule needs a positive control: a `cheat-*.patch`/scripted trace that violates it and must score 0.
+
+### 5.10 Summary table (every report has this shape)
+
+| Metric | Type | Paired test | CI |
+|---|---|---|---|
+| pass@1, pass^k, false-done, regression rate, scope-violation rate, cheat rate | proportion over tasks | Wilcoxon on per-task rates | bootstrap over tasks |
+| tokens, cost, wall time, turns (per run) | per-task median | Wilcoxon | bootstrap |
+| tokens/cost per solved | ratio | — (reported with bootstrap CI only) | bootstrap |
+| drift index, compliance AUC, decay β | descriptive | Wilcoxon | bootstrap |
+
+---
+
+## 6. Harness adapters
+
+### 6.1 Adapter contract
+
+An adapter is an executable `saga-bench-adapter-<name>` (or built-in) implementing three calls over stdin/stdout JSON:
+
+```
+prepare  {workspace, config_dir, component_arm, blocks[]}  -> {config_hash, prompt_hash, tools_hash}
+run      {prompt_path, seed, limits{wall_s, turns, usd}}   -> {exit, native_log_path}
+collect  {native_log_path}                                  -> trace.jsonl (saga.trace/1) + usage{...}
+```
+
+`collect` normalises native logs into the portable trace. Every adapter must pass the adapter conformance suite (§10.2): a scripted fake model produces a known tool sequence, and the normalised trace must equal the golden file.
+
+| Adapter | Non-interactive entry | Usage source | Notes |
+|---|---|---|---|
+| `claude-code` | `claude -p --output-format stream-json --max-turns N --permission-mode <m>` | stream-json usage events | Hooks/MCP via generated `settings.json`; `CLAUDE.md` replaced by bench version |
+| `codex` | `codex exec --json --sandbox <policy>` | JSONL usage | Sandbox policy is a disclosure field; hooks run outside sandbox — recorded |
+| `gemini` / successor | `gemini -p --output-format json` (Antigravity CLI equivalent when it exposes one) | JSON summary | If the successor has no headless mode, adapter status = `unavailable`, cells not run |
+| `opencode` | `opencode run --format json` | JSON | Provider chosen explicitly; auto-fallback disabled |
+| `bare` | Built-in ≤ 300-line loop: one `bash` tool, plain system prompt, no compaction, no retries beyond §3.3 | Provider API response | The mini-SWE-agent-style baseline; ships in the Saga repo so "bare" is the same everywhere |
+
+The `bare` adapter is the reference arm for harness-vs-harness questions and the floor every harness is compared against.
+
+### 6.2 Disclosure block (per run, `harness.json`)
+
+Following 2605.23950, a run without a complete block is invalid (exit 5 at `collect`). Required fields:
+
+```json
+{
+  "schema": "saga.bench.harness/1",
+  "harness": {"name": "claude-code", "version": "2.1.190", "binary_sha256": "…"},
+  "model": {"id": "claude-opus-5", "snapshot": "2026-07-11", "fingerprint": null,
+            "reasoning_effort": "medium", "temperature": null, "seed": null, "seed_supported": false},
+  "system_prompt": {"sha256": "…", "verbatim_archived": true},
+  "tools": {"sha256": "…", "names": ["Bash", "Read", "Edit", "Grep", "Glob"]},
+  "context": {"window": 200000, "compaction": "auto", "compaction_threshold": 0.92, "rewind": false},
+  "permissions": {"mode": "acceptEdits", "sandbox": "none", "allow": ["Bash(*)"], "deny": []},
+  "instructions": {"CLAUDE.md_sha256": "…", "AGENTS.md_sha256": null},
+  "hooks": [{"event": "Stop", "script_sha256": "…"}],
+  "mcp_servers": [],
+  "limits": {"max_turns": 200, "wall_s": 2160, "usd": 2.55},
+  "retries": {"policy": "3x backoff 429/5xx", "count": 0},
+  "env_vars": {"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"},
+  "host": {"os": "linux", "arch": "arm64", "image_digest": "sha256:…"},
+  "blocks": ["path-shim:saga", "dir-deny:.saga"]
+}
+```
+
+Any field the adapter cannot determine is `null` with a sibling `"<field>_reason"` string; silent omission is a conformance failure.
+
+---
+
+## 7. Output
+
+### 7.1 Files
+
+```
+runs/<manifest-hash>/
+├── manifest.json        # saga.bench.manifest/1 (§8.1)
+├── preregistration.md   # frozen before the first run; hash in manifest
+├── rows.jsonl           # one line per run = run.json, flattened
+├── report.json          # saga.bench.report/1 (§9.4)
+├── report.md            # rendered from report.json, never hand-edited
+├── exclusions.jsonl     # every infra-excluded run with reason
+└── <task>/…             # per-run archives (§3.4)
+```
+
+### 7.2 `report.md` sections (fixed order)
+
+1. **Header** — manifest hash, tier, date, total cost, link to pre-registration.
+2. **Setup** — models, harnesses, arms, blocks, task set hash, K, isolation, exclusions count.
+3. **Primary outcome** — the one metric named in pre-registration, with Δ, CI, Wilcoxon, n.
+4. **Secondary outcomes** — §5.10 table.
+5. **Variance** — pass@1 vs pass^k per arm; per-task instability list (tasks where 0 < c < K).
+6. **Negative results** *(mandatory, non-empty)* — every pre-registered hypothesis not supported; every comparison whose CI includes zero; every `component_unused` cell; every task with 0% across all arms (flagged `possibly broken`, doc 03 §1.5); every exclusion; every contamination flag. If a run truly has none, the section says "No null or negative pre-registered outcomes; N exploratory comparisons were null: …" — the exploratory list cannot be empty because §4 always yields some.
+7. **Exploratory** — anything not pre-registered, labelled as such.
+8. **Cheating and scope scan** — per arm, with detector precision footnote.
+9. **Threats** — the §10.1 table instantiated for this run.
+10. **Reproduce** — the exact `saga bench run --manifest …` and `saga bench report --from rows.jsonl` commands.
+
+### 7.3 Badge rule
+
+A component may cite a number only as a badge produced by `saga bench badge <manifest-hash> --metric <m>`, rendered as
+`[bench: Δfalse-done −14.2 pp (95% CI −19.8, −8.1), k=10, opus-5/claude-code](runs/<hash>/report.md#primary)`.
+`saga bench verify-badge <url>` fetches the manifest, recomputes the metric from `rows.jsonl`, and exits 0 only if the number matches to the printed precision and the manifest's `tier` is `publish`. CI runs `verify-badge` over the README on every commit; a mismatch fails the build. Numbers from `user`/`smoke` tiers may appear only in the report itself, never in a README.
+
+---
+
+## 8. Reproducibility
+
+### 8.1 Manifest schema
+
+```json
+{
+  "schema": "saga.bench.manifest/1",
+  "created": "2026-09-02T21:40:00Z",
+  "tier": "publish",
+  "bench_version": {"git": "…", "binary_sha256": "…"},
+  "preregistration_sha256": "…",
+  "task_set": {"sha256": "…", "tasks": [{"id": "ts-0031-retry-jitter", "sha256": "…", "verified_at": "…"}]},
+  "arms": [{"id": "A", "components": []}, {"id": "B", "components": ["gate@sha256:…"], "blocks_in_control": ["path-shim:saga", "dir-deny:.saga"]}],
+  "models": [{"id": "claude-opus-5", "snapshot": "2026-07-11", "training_cutoff": "2026-03"}],
+  "harnesses": [{"name": "claude-code", "version": "2.1.190", "adapter_sha256": "…"}],
+  "k": 10,
+  "run_seed": "hex…",
+  "bootstrap_seed": 20260902,
+  "price_table_sha256": "…",
+  "abstain_list_sha256": "…",
+  "isolation": "container",
+  "images": {"ts-node22": "sha256:…"},
+  "host": {"os": "linux", "kernel": "…"},
+  "budget": {"estimate_usd": 1180.0, "cap_usd": 1770.0, "spent_usd": 1243.7}
+}
+```
+
+The manifest hash is `sha256` of the canonical JSON (sorted keys, no whitespace). Everything downstream is addressed by it.
+
+### 8.2 Content hashes
+
+Task directories, images, adapter binaries, harness binaries, generated configs, price table, abstention list, and every archived artefact are hashed. `saga bench verify <manifest-hash>` re-hashes the archive and exits 5 on any mismatch. Credentials are redacted at capture with a fixed mask; the mask does not change `SHA256SUMS` because hashing happens post-redaction (validation-protocol §2).
+
+### 8.3 Replay
+
+`saga bench replay <run-dir> [--strict]` re-executes the tool-call sequence from `trace.jsonl` in a fresh container from the same image, **without calling the model**. Permissive mode serves recorded tool outputs on hash match and re-executes on miss; strict mode exits 5 on the first divergence between recorded and re-executed tool output (doc 05 §4.2, "the log is the agent"). Replay validates that the archive is complete and that the environment is still buildable; it does not and cannot reproduce the model's choices.
+
+### 8.4 What is and is not deterministic
+
+| Deterministic (bit-identical, tested) | Not deterministic (measured, reported) |
+|---|---|
+| Image build from digest; task checkout; `setup.sh` under `network = offline` | Model output (doc 05 §4.1: 80 outputs in 1,000 temp-0 runs) |
+| Oracle verdict on a given diff (verified twice in `verify-task`) | Wall time; provider latency and retries |
+| Cheating/scope scan on a given diff | `setup.sh` under `registry-only`/`open` (mitigated by lockfiles; flagged) |
+| Metrics, CIs (seeded bootstrap), `report.json` and `report.md` from `rows.jsonl` | Harness internal behaviour across versions (pinned by hash; drift is a new cell, not the same one) |
+| Manifest hash, badge verification | Model snapshot behind an unchanged id (fingerprint recorded when exposed; date recorded always) |
+
+---
+
+## 9. CLI
+
+### 9.1 Commands
+
+```
+saga bench init        [--from-repo <path>] [--lang <l>] [--tier smoke|user|dev|publish] [--out <dir>]
+saga bench add-task    <dir> [--from-trace <trace.jsonl>] [--from-issue <url>] [--lang <l>] [--size S|M|L|XL]
+saga bench verify-task <task-dir>... [--probe] [--all] [--json]
+saga bench run         --manifest <file> | (--tasks <glob> --model <id>... --harness <name>... --arm <spec>...)
+                       [--k <n>] [--tier <t>] [--budget <usd>] [--isolation container|worktree]
+                       [--seed <hex>] [--jobs <n>] [--resume <manifest-hash>] [--dry-run] [--json]
+saga bench compare     <manifest-hash> --arms A,B [--metric <m>...] [--epsilon <x>] [--json]
+saga bench report      <manifest-hash> [--from rows.jsonl] [--format md|json|both] [--out <dir>]
+saga bench replay      <run-dir> [--strict]
+saga bench verify      <manifest-hash>
+saga bench badge       <manifest-hash> --metric <m> [--arms A,B]
+saga bench verify-badge <url|README.md>
+saga bench estimate    (same selectors as run)      # prints cost estimate, exits 0/3
+```
+
+`--arm <spec>` is `<id>:<component>[@<hash>][,<component>...]` or `<id>:bare`; the first arm listed is the control. `--dry-run` builds images, verifies tasks, prints the estimate and the disclosure block for one run of each cell, and stops.
+
+### 9.2 Exit codes (uniform across subcommands)
+
+| Code | Meaning |
+|---|---|
+| 0 | Success; for `compare`, comparison computed (direction is in the output, not the code) |
+| 1 | Task verification failed, run had non-infra failures the caller asked to fail on (`--fail-on-unsolved`), or badge mismatch |
+| 2 | Usage error, unpaired arms, invalid task/manifest schema |
+| 3 | Budget: estimate exceeds `--budget`, or cap hit during run (partial archive retained, marked) |
+| 4 | Environment: container runtime unavailable, image digest unresolvable, adapter conformance failed |
+| 5 | Integrity: hash mismatch on verify/replay, missing disclosure field, manifest tampered |
+| 6 | Contamination: leak scan, canary, or post-cutoff check failed |
+
+Higher codes win when several apply, except that 2 always wins.
+
+### 9.3 Run row schema (`saga.bench.run/1`)
+
+```json
+{
+  "schema": "saga.bench.run/1",
+  "manifest": "sha256:…", "task": "ts-0031-retry-jitter", "model": "claude-opus-5",
+  "harness": "claude-code", "arm": "B", "i": 3, "seed": "hex…",
+  "outcome": "completed",            // completed|timeout|turn_cap|budget|abandon|infra
+  "claimed_done": true,
+  "oracle": {"exit": 1, "tests": {"t_jitter_bounds": "FAIL", "t_retry_count": "PASS"}, "pass": false,
+             "regressed": [], "ceiling_band": null},
+  "scan": {"assertion_edit": 0, "skip_marker": 0, "test_delete": 0, "hard_coded": 1,
+           "oracle_touch": false, "env_tamper": false, "scope_violations": ["src/legacy/foo.ts"]},
+  "usage": {"input": 182340, "cache_read": 141200, "cache_write": 9100, "output": 12488, "reasoning": 3020},
+  "cost_usd": 1.41, "wall_s": 812, "turns": 47, "tool_calls": 63,
+  "drift": {"repeat": 1, "edit_fail_streak": 0, "oscillation": 0, "out_of_scope_read": 2, "late_scope_expansion": 0},
+  "compliance": [{"rule": "pnpm-only", "turns": [1, 9, 22], "ok": [1, 1, 0]}],
+  "blocked_reach_attempts": 0, "component_used": true,
+  "artifacts": {"trace": "sha256:…", "diff": "sha256:…", "harness": "sha256:…"}
+}
+```
+
+### 9.4 Report schema (`saga.bench.report/1`)
+
+```json
+{
+  "schema": "saga.bench.report/1", "manifest": "sha256:…", "tier": "publish",
+  "primary": {"metric": "false_done", "arms": ["A", "B"], "delta": -0.142,
+              "ci95": [-0.198, -0.081], "wilcoxon": {"n": 84, "W": 612, "p": 0.0003, "r": -0.41},
+              "supported": true},
+  "secondary": [{"metric": "pass_k", "k": 10, "A": 0.31, "B": 0.44, "delta": 0.13, "ci95": [0.05, 0.21], "wilcoxon": {…}}],
+  "per_solved": {"A": {"tokens": 412000, "usd": 3.90}, "B": {"tokens": 388000, "usd": 3.61}},
+  "instability": {"A": 0.27, "B": 0.19, "unstable_tasks": ["py-0012-…"]},
+  "negative": [{"kind": "null", "metric": "cost_per_run", "delta": 0.08, "ci95": [-0.02, 0.19]},
+               {"kind": "possibly_broken_task", "task": "go-0007-…", "pass_all_arms": 0.0},
+               {"kind": "component_unused", "cell": {"task": "…", "model": "…"}, "runs": 10}],
+  "exclusions": {"infra": 3}, "contamination": [], "detector_precision": {"hard_coded": 0.71},
+  "reproduce": ["saga bench run --manifest runs/…/manifest.json", "saga bench report … --from rows.jsonl"]
+}
+```
+
+---
+
+## 10. Threats to validity and test plan
+
+### 10.1 Threats
+
+| Threat | Mitigation | Residual |
+|---|---|---|
+| Model drift behind a stable id | Snapshot date and fingerprint in every disclosure block; arms interleaved per task (§3.2) so drift hits both; cells with different snapshots never merged | Silent provider changes mid-run still add noise; visible as instability |
+| Contamination of tasks | §2.5 controls; post-cutoff gate; canary probe; file-guess rate | Private forks can leak; rotation bounds exposure |
+| Oracle is wrong or gameable | Task red proof, gold, broken, cheat controls (§2.4); cheating scan on every arm; `ceiling` for randomised oracles | An oracle can still measure the wrong property; human review of tasks with 0% or 100% everywhere |
+| Control arm reaches the component | Filesystem/PATH/network blocks, instrumented (§4.2) | A harness update could open a new path; adapter conformance re-run per harness version |
+| Treatment arm never uses the component | `component_used` from the trace; `component_unused` cells reported as no exposure | — |
+| Bench harness config differs from real user config | Minimal generated config is the same for every arm; the user tier runs the user's actual config *with its hash recorded* | Results on the minimal config may not transfer to heavy configs; say so |
+| Run-to-run variance mistaken for effect | K ≥ 5, pass^k, per-task medians, paired tests, bootstrap over tasks, instability printed | Small |T| gives wide CIs; the report prints them |
+| Multiple comparisons | One pre-registered primary; everything else labelled secondary/exploratory; no correction applied but counts of comparisons printed | Readers may still cherry-pick; the badge is bound to the primary |
+| Cost accounting inconsistent across harnesses | Usage taken from each harness's own accounting **for all its arms**; cross-harness cost compared only in `bare`-normalised form | Provider-side cache pricing changes; price table hashed and dated |
+| Excluding inconvenient runs | Only `infra` is excludable; every exclusion listed; timeouts/budget breaches count as fail | Mislabelling an agent failure as infra — retries are logged with provider status codes |
+| Reviewer expectation bias | No human scoring in the pipeline; optional human review of transcripts is blinded to arm (arm ids scrambled per reviewer) | — |
+| Generalisation | §1.3 claim table; report header repeats the cell | People will generalise anyway |
+
+### 10.2 Test plan for the bench itself
+
+| Suite | Content | Pass bar |
+|---|---|---|
+| **Metrics** | Fixture `rows.jsonl` sets with hand-computed pass@1, pass^k (including c < k and n = k edges), medians, Wilcoxon (exact and approximate, compared to scipy on 50 random datasets), bootstrap with fixed seed, per-solved with zero denominator | Exact match; Wilcoxon p within 1e-9 of reference |
+| **Determinism** | `report` run twice on the same `rows.jsonl` on two hosts | Byte-identical `report.json` and `report.md` |
+| **Task verification** | A corpus of 12 deliberately defective tasks (oracle passes on baseline, gold fails, missing absence control, leaked gold line in prompt, missing canary, non-deterministic oracle, impossible task with a gold patch) | Each rejected with the §2.4 exit code; the 3 valid twins pass |
+| **Fake harness end-to-end** | A scripted adapter driving a deterministic fake model through 4 tasks × 2 arms × K=3; asserts archive layout, hashes, disclosure completeness, interleaving order, budget stop at cap | All; `verify` exits 0; `replay --strict` exits 0 |
+| **Blocking** | Fake agent that tries every reach path in §4.2 in the control arm | Every attempt logged, none succeeds, `blocked_reach_attempts` equals the attempt count |
+| **Cheating scan** | The gate-spec §10.1 labelled diff corpus plus each task's `cheat-*.patch` | Recall ≥ 0.95 on skip/delete/env-tamper; `hard_coded` precision reported and printed in the report footer |
+| **Drift and compliance** | Synthetic traces with known event counts; rule checkers with positive-control traces | Exact counts; every rule scores 0 on its violating trace |
+| **Adapter conformance** | Per adapter and harness version: golden native log → golden `trace.jsonl` and `harness.json` | Byte-identical; any `null` field has a `_reason` |
+| **Budget** | Estimator vs. spent on the fake harness; `--budget` below estimate; cap reached mid-run | Exit 3 in both; partial archive marked |
+| **Badge** | README with a correct badge, a rounded-wrong badge, a `user`-tier badge, a badge to a tampered manifest | 0 / 1 / 1 / 5 |
+| **Contamination** | Task whose `created` precedes a model's cutoff; canary probe hit (mocked) | Exit 6; report `contamination` non-empty |
+| **Self-bench** | CI runs `saga bench run --tier smoke` on 3 tasks with the `bare` adapter against a mocked provider nightly | Green; archive verifies |
+
+What these tests do **not** validate, in unlazy's words: whether any Saga component changes what a model does. That is what the bench is for, and the bench's first real output is the M0 exit criterion — a bare-harness baseline with pass^k and variance for two models, published with its negative-results section.
