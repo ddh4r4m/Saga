@@ -8,7 +8,7 @@
 | 04 | [Ecosystem survey](04-ecosystem-survey.md) | ~60 trending tools and skills; what works, what is hype, with independent measurements |
 | 05 | [Code knowledge structures](05-code-knowledge-structures.md) | Indexes, graphs, memory, determinism, token efficiency, verification loops |
 | 06 | [Model and harness gap map](06-model-and-harness-gap-map.md) | Per-model and per-harness failure modes, security and privacy ledger, when to use which |
-| 07 | GitHub issue mining | What leading repos have and have not solved *(pending)* |
+| 07 | [GitHub issue mining](07-github-issue-mining.md) | 32 repos: what harnesses and tooling have and have not solved, design lessons, tooling-repo mistakes |
 | 08 | [Reference repo review](08-reference-repo-review.md) | mattpocock/skills and unlazy in depth: mechanisms, evidence, token cost, gaps |
 | 09 | Proposal and roadmap | Architecture direction and milestones *(pending)* |
 
