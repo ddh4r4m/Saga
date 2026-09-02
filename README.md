@@ -41,13 +41,13 @@ From [doc 09, section 5](docs/09-proposal-and-roadmap.md):
 
 | Milestone | Scope | Exit criterion |
 |---|---|---|
-| **M0 Measure** | `bench` + `trace` core, 3-language task set, Claude Code adapter | Baseline published with pass^k and variance for 2 models |
-| **M1 Gate + Guard** | ledger, red proof, diff guards, Stop adapters, secret masking, package check | Measured effect on M0 set; no false positives on control suite |
-| **M2 Index** | tree-sitter graph, BM25, test-impact map, 4 tools, MCP server | Localization/resolve delta reproduced, control arm blocked |
-| **M3 Memory** | typed records, targeted injection, freshness, sub-agent preamble | Compliance-over-session curve measured with and without |
-| **M4 Shape** | output parsers, error-aware truncation, result cache | Tokens per task down, correctness flat or up |
-| **M5 Route** | policy file, budget, cheap-model delegation | Cost down at equal pass^k |
-| **M6 Portability** | remaining adapters (Cursor, OpenCode, Windsurf, Cline), trace resume | Same install on 3+ harnesses |
+| **M0 Measure** | `bench` core; `trace` with per-turn cost ledger, version pinning, watchdog; `doctor`; 3-language task set; Claude Code adapter | Baseline published with pass^k and variance for 2 models; ledger reconciles with provider usage; canary runs on a schedule |
+| **M1 Gate + Guard + compaction survival** | ledger grammar, red proof, claim verification, diff guards, Stop adapters; post-expansion command classifier, per-turn snapshots and `saga undo`, secret masking, package check; PreCompact state block | Measured effect on M0 set; zero escapes on the destructive-command control suite; no false-positive masking; passes on Windows |
+| **M2 Index** | tree-sitter graph, BM25, test-impact map, 4 tools, MCP server, external API cache | Localization/resolve delta reproduced, control arm blocked |
+| **M3 Memory** | typed records, targeted injection, freshness, sub-agent preamble, procedures | Compliance-over-session curve measured with and without; drift on prose-only rules reported |
+| **M4 Shape** | output parsers, error-aware truncation, result cache, comment stripper | Tokens per task down, correctness flat or up |
+| **M5 Route** | policy file, budget, effort pinning, cheap-model delegation, schema repair | Cost down at equal pass^k; no silent model change |
+| **M6 Portability** | remaining adapters (Cursor, OpenCode, Devin Desktop, Cline, Kilo), trace resume, MCP gateway | Same install on 3+ harnesses |
 
 ## Read the research
 

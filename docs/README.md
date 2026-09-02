@@ -10,6 +10,6 @@
 | 06 | [Model and harness gap map](06-model-and-harness-gap-map.md) | Per-model and per-harness failure modes, security and privacy ledger, when to use which |
 | 07 | [GitHub issue mining](07-github-issue-mining.md) | 32 repos: what harnesses and tooling have and have not solved, design lessons, tooling-repo mistakes |
 | 08 | [Reference repo review](08-reference-repo-review.md) | mattpocock/skills and unlazy in depth: mechanisms, evidence, token cost, gaps |
-| 09 | Proposal and roadmap | Architecture direction and milestones *(pending)* |
+| 09 | [Proposal and roadmap](09-proposal-and-roadmap.md) | Evidence-backed architecture, per-model and per-harness gap maps, milestones, open questions |
 
-Vendored reference repositories live in `../research/vendor/` (git-ignored, see MANIFEST.md there).
+Architecture decision records live in [adr/](adr/); layer specifications in [specs/](specs/). Vendored reference repositories live in `../research/vendor/` (git-ignored, see MANIFEST.md there).

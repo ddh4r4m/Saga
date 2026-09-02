@@ -96,7 +96,14 @@ See §3a (appended table from `themes2.tsv`, title-only keyword search across cl
 | mcp | 4638 / 659 | 989 / 590 | 485 / 20 | 845 / 134 | 262 / 51 |
 | multi_agent | 2346 / 596 | 470 / 311 | 169 / 35 | 598 / 120 | 7 / 5 |
 | rate_limits | 1460 / 165 | 487 / 271 | 349 / 6 | 179 / 47 | 44 / 4 |
-| hang_crash | 3891 / 481 | 1257 / 886 | 449 / 16 | 1155 / 253 | - |
+| hang_crash | 3891 / 481 | 1257 / 886 | 449 / 16 | 1155 / 253 | 141 / 42 |
+| windows | 5540 / 953 | 3827 / 2774 | 385 / 7 | 1162 / 217 | 129 / 28 |
+| hallucination | 205 / 48 | 38 / 16 | 11 / 1 | 26 / 5 | 7 / 2 |
+| test_gaming | 336 / 59 | 28 / 17 | 32 / 5 | 58 / 12 | 5 / 3 |
+| sandbox | 795 / 167 | 844 / 529 | 142 / 12 | 25 / 5 | 2 / 1 |
+| hooks | 2746 / 373 | 259 / 176 | 168 / 22 | 195 / 39 | 29 / 12 |
+| dataloss | 568 / 133 | 121 / 86 | 44 / 1 | 92 / 14 | 24 / 3 |
+| inconsistency | 614 / 101 | 172 / 97 | 89 / 0 | 133 / 24 | 41 / 10 |
 
 Top-3 by reactions per theme (from the same search), abbreviated:
 
@@ -159,6 +166,42 @@ Top-3 by reactions per theme (from the same search), abbreviated:
 - **hang_crash** / codex: #35058(141,closed) Codex Diff crashes with “Oops, an error has occurred” in VS Code on macOS || #20214(87,open) Codex App frequently freezes/stutters on Windows 11 Pro despite sufficient syste || #14048(78,closed) All models — Cod
 - **hang_crash** / gemini-cli: #22415(27,closed) CLI hangs indefinitely on "This is taking a bit longer" with gemini-3.1-pro-prev || #24570(26,closed) Gemini CLI v0.36.0 hangs on "Thinking" indefinitely (>5m) despite AI Pro subscri || #22531(17,closed) gemini-3
 - **hang_crash** / opencode: #31122(51,open) OMO Harness Stream Consumer Deadlock: LLM stream hangs indefinitely || #29129(49,closed) OpenAI stream intermittently freezes in working state with high CPU and idle HTT || #33742(47,open) OpenCode v1.17.10 crashes
+- **hang_crash** / cline: #1146(24,closed) Executing terminal commands hangs cline || #531(23,closed) Execute command just freezes || #6516(7,closed) Free cline models crash with Invalid API Response: The provider returned an empt
+- **windows** / claude-code: #4928(235,closed) [BUG] file named nul created on windows || #12506(146,closed) [Feature Request] Claude Desktop: Option to execute commands in WSL instead of W || #29583(144,closed) [BUG] Cowork: Cannot use folders outside home d
+- **windows** / codex: #13993(245,open) Support standalone Windows installer (`codex-setup.exe`) || #2860(110,closed) Unusable on Windows due to permission ask for every shell command || #20214(87,open) Codex App frequently freezes/stutters on Windows 1
+- **windows** / gemini-cli: #11511(78,closed) Gemini CLI takes up to 39 seconds to load on Windows || #4586(18,closed) Gemini CLI 'lost' files during a failed file move operation. [Windows] || #14598(16,closed) Pressing Ctrl+F to focus shell conflicts with V
+- **windows** / opencode: #631(138,closed) Windows Support || #16017(138,closed) [FEATURE]: Add Go plan usage/balance API endpoint (rolling/weekly/monthly window || #4340(76,closed) [FEATURE]: Add Windows arm64 support
+- **windows** / cline: #6416(12,open) Cline JetBrains plugin is unable to work with two or more open IDEA projects (Wi || #902(9,closed) Cannot use MCP servers with `npx` on Windows 11 || #1906(4,closed) [Solved] Solution for being unable to install MCP
+- **hallucination** / claude-code: #53297(8,closed) WebFetch can fabricate confident factual claims by misreading page boilerplate a || #20789(8,closed) Claude in Chrome extension not connecting to browser tabs - "Receiving end does || #64329(7,closed) Opus 4.8 Mod
+- **hallucination** / codex: #25965(43,closed) The model 'gpt-image-2' does not exist. || #25971(36,closed) The model 'gpt-image-2' does not exist. || #25967(27,closed) Codex Responds Only with "The model 'gpt-image-2' does not exist."
+- **hallucination** / gemini-cli: #24832(1,closed) Title: Agent claims permanent behavioral corrections without using save_memory || #12457(1,closed) Can't use API key: Failed to save API key: Token file does not exist || #16423(1,closed) Agent Enters "Self-Assure
+- **hallucination** / opencode: #27821(1,closed) Homebrew tap formula bumped to v1.15.1 but GitHub release does not exist (404 on || #24249(1,closed) Unusable sessions after 1.14.24 upgrade. New messages on session with just 161.2 || #45293(0,open) grep tool sil
+- **hallucination** / cline: #10533(0,open) Claude incorrectly recommended removing Prisma multiSchema @@schema directives || #11439(0,open) replace_in_file says SEARCH block does not match when displayed text exists as a || #8354(0,closed) Cline claims tasks
+- **test_gaming** / claude-code: #25659(53,closed) SSH remote connection fails on Windows — hardcoded /usr/bin/ssh path || #41015(37,closed) [FEATURE] Allow configuring or disabling the URL Handler app install location (c || #24516(26,open) Main branch detection 
+- **test_gaming** / codex: #19679(36,open) Make skills metadata context budget configurable instead of hardcoded 2% || #31882(25,open) gpt-5.6-sol/terra/luna hardcode use_responses_lite / multi_agent_version, causin || #24879(8,open) Bug: auto-review uses h
+- **test_gaming** / gemini-cli: #15493(11,closed) "Feature Request: Allow configuring the default shell execution environment (e.g || #27393(1,open) Command substitution block should be user-configurable, not a hardcoded wall || #26938(1,closed) [bug] --model pi
+- **test_gaming** / opencode: #14882(13,closed) [FEATURE]: Allow disabling or customizing Plan mode's hardcoded READ-ONLY system || #6137(13,closed) [BUG] Cannot scroll to beginning of long conversations (message limit hardcoded || #17323(6,closed) White text 
+- **test_gaming** / cline: #9328(2,open) network timeout on response to llama.cpp there is a hardcoded/undocumented netwo || #7635(2,closed) MCP Server Timeout Issue: Hardcoded 5s Limit Ignores User Configuration || #12043(1,open) Zed - ACP model selector i
+- **sandbox** / claude-code: #28018(75,open) Sandbox: allow outbound connections to localhost || #23416(65,open) [BUG] macOS sandbox blocks Security.framework TLS verification, breaking Go bina || #29533(33,closed) Sandbox blocks Go TLS cert verification on m
+- **sandbox** / codex: #29189(64,closed) Codex Desktop 26.616.41845 node_repl fails: codex/sandbox-state-meta missing san || #3141(58,open) Allow GPU access inside sandbox || #10535(38,open) Desktop app: devcontainer-like sandbox environment
+- **sandbox** / gemini-cli: #8682(10,closed) v0.5.3 only accepts every second keystroke when sandboxed on MacOS || #3404(8,closed) Build docker sandbox fails (macOS) || #26964(7,closed) Sandboxing completely broken in v0.42.0: "Unknown argument: c"
+- **sandbox** / opencode: #2242(81,open) Is there a way to sandbox the agent ? || #9132(40,open) [FEATURE]: Official Docker Sandbox Template for `docker sandbox run opencode` || #21733(3,closed) Add filesystem sandbox for bash/subprocesses, separate from p
+- **sandbox** / cline: #11944(0,open) Plugin sandbox fails to initialize in VS Code extension 4.0.0 — plugin-sandbox-b || #11065(0,closed) Plugin sandbox times out at 4000ms on Windows — official example fails to load
+- **hooks** / claude-code: #13024(81,closed) [FEATURE] Add hook for when Claude is waiting for user input || #8985(67,closed) [BUG] "Notification" hook doesn't work in VS Code extension "native UI" mode || #9516(66,open) [FEATURE] User Interrupt Hook
+- **hooks** / codex: #2109(689,closed) Event Hooks || #21753(40,open) Full Claude Code Hook Parity (29+) || #15497(29,closed) Support suppressing hook status messages in TUI (suppressOutput is a no-op)
+- **hooks** / gemini-cli: #2779(103,closed) Feature Request: Implement a Hooks System for Custom Automation and Workflow Int || #9070(21,closed) Feature: Comprehensive Hooking System || #4641(9,closed) Add Hooks similar to Claude
+- **hooks** / opencode: #8619(51,closed) [FEATURE]: Native StatusLine Hook for Plugins (Context-Free Display) || #12472(40,open) Native Claude Code hooks compatibility (PreToolUse, PostToolUse, Stop) || #20235(38,closed) [FEATURE]: Request GitHub Copilot
+- **hooks** / cline: #4658(11,closed) Support Claude Code-style hooks || #12157(2,open) Rules, hooks and workflows should NOT be saved in ~/Documents || #9937(2,open) An abort from a hook causes cline to get locked in a "Resume task" state
+- **dataloss** / claude-code: #33502(42,open) [FEATURE] When setting up a folder in the CLAUD CODE GUI, please add it to the r || #4587(24,closed) [BUG] Sub agents context is wiped when the user denies an action || #63550(15,closed) [BUG] Stale "Pull request s
+- **dataloss** / codex: #9085(19,closed) deleted || #7054(16,closed) deleted || #40219(13,open) [macOS][Chat] Server-deleted conversations repopulate in Recents and cannot be r
+- **dataloss** / gemini-cli: #26856(170,closed) Your idiotic AI disobeyed me completely lied and has now cost me 300 dollars wor || #15821(2,closed) Gemini CLI deleted entire project directory without explicit delete command || #4010(2,closed) Gemini continue
+- **dataloss** / opencode: #10815(5,closed) Data loss due to session closure without confirmation (OpenCode Desktop for macO || #3148(3,closed) [Bug]: file deleted on Undo action || #20903(2,closed) [BUG] Archive action causes 4+ hours of session data loss 
+- **dataloss** / cline: #5124(6,closed) Cline autonomously delete files without keeping track of the deleted/changed fil || #9453(2,open) Switching from Plan to Act clears unsent prompt text (no recovery / data loss) || #9946(1,closed) Cline should verif
+- **inconsistency** / claude-code: #34845(48,open) Terminal randomly scrolls to top and auto-scrolls to bottom during output, break || #1853(38,open) Claude text editor in terminal back space doesnt work sometimes || #3785(37,closed) [BUG] - Claude Code randomly st
+- **inconsistency** / codex: #17318(30,open) can't change model and reasoning efforts sometimes || #29353(22,closed) gpt-5.5 xhigh sometimes short-circuits with reasoning_output_tokens=516 and wron || #25928(19,open) VS Code/Cursor Codex Extension: Submitted 
+- **inconsistency** / gemini-cli: #23778(6,closed) Sometimes the cli just hangs doing nothing || #2941(5,closed) Terminal shifts back to the top sometimes when Gemini-cli is generating || #26265(4,closed) It's still hanging all the time randomly, when are you goin
+- **inconsistency** / opencode: #2940(21,closed) [BUG] OpenCode just hangs randomly after receiving instructions || #684(21,closed) interrupt sometimes has no effect || #16612(10,closed) Sometimes replies to the previous turn (stale context): keeps repeating an 
+- **inconsistency** / cline: #9790(6,open) Saving a file is broken sometimes (buttons are disabled) || #8768(3,open) Cline for JetBrains sometimes force-opens its log file || #5990(3,closed) Sometimes Cline doesn't see output of the running shell command and 
 <!--/THEMES-->
 
 ## 4. Long-lived open issues (>6 months, many reactions) and why they are hard
