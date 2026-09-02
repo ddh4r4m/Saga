@@ -1,6 +1,6 @@
 # `saga trace`: technical specification
 
-*Draft v0.1, 2026-09-02. Implements doc 09 §3.7 and §3.9 and ADR 0007. Ships in M0 alongside `saga bench` (doc 09 §5): the bench consumes `saga.trace/1` (bench-spec §3.4) and the M0 exit criterion requires the ledger to reconcile with provider-reported usage. Companions: bench-spec §5.9 (drift events, shared definitions), §8.3 (replay), gate-spec §6 (adapter contracts) and §9 (token budget attribution), ADR 0006 (guard snapshots, which checkpoints reference).*
+*Draft v0.2, 2026-09-03 (v0.1 2026-09-02). Implements doc 09 §3.7 and §3.9 and ADR 0007; v0.2 adds claim verification (§5.5 to §5.9, doc 09 §3.2), closing REVIEW-LOG risk 1. Ships in M0 alongside `saga bench` (doc 09 §5): the bench consumes `saga.trace/1` (bench-spec §3.4) and the M0 exit criterion requires the ledger to reconcile with provider-reported usage. Companions: bench-spec §5.9 (drift events, shared definitions), §8.3 (replay), gate-spec §6 (adapter contracts) and §9 (token budget attribution), ADR 0006 (guard snapshots, which checkpoints reference).*
 
 ---
 
@@ -71,12 +71,12 @@ The task list in doc 09 §3.7 names twelve types; four are added (`session`, `dr
 | Type | When | Body fields (beyond envelope) |
 |---|---|---|
 | `session` | start, end, resume, pin change | `phase` (start/end/resume/pin_change), `pins` (§4.1 object), `harness`, `cwd_hash`, `config_hash` (`.saga/config.toml`), `changed` (list of pin keys that differ from the previous `session` event) |
-| `turn` | user prompt received; assistant turn ended | `phase` (user/assistant_end), `prompt_hash`, `prompt_bytes`, `final_message_hash`, `claimed_done` (bench-spec §5.4 abstention list applied) |
+| `turn` | user prompt received; assistant turn ended | `phase` (user/assistant_end), `prompt_hash`, `prompt_bytes`, `final_message_hash`, `final_message_ref`, `claimed_done` (§5.6; bench-spec §5.4 abstention list applied; `null` with `claimed_done_reason` when no marker is found) |
 | `model_call` | one provider request | `model_requested`, `model_served`, `request_id`, `fingerprint`, `effort`, `usage` (§3.1), `call_key` = sha256(system_hash, messages_hash, tools_hash, model_requested), `system_hash`, `tools_hash`, `context_tokens_est`, `latency_ms`, `stop_reason`, `status` (ok/429/5xx/timeout), `attribution` (§3.5) |
 | `tool_call` | a tool is invoked | `tool`, `args_hash`, `args_ref` (blob or inline ≤ 4 KiB, masked), `component` (the attribution key set of §3.2: `harness`, `user`, `index`, `mem.state`, `mem.targeted`, `mem.preamble`, `mem.query`, `shape`, `gate`, `guard`, `trace`, `route`, `mcp:<server>`), `cwd_rel`, `index_version` (opaque `blake3:…` when index is installed) |
 | `tool_result` | tool returned | `for_seq`, `exit`, `error`, `result_hash`, `result_bytes`, `result_ref`, `truncated` (bool, head/tail bytes kept), `wall_ms`, `served` (`live` \| `cache`, shape-spec §5.3), `shaped` (optional object, shape-spec §8: `family`, `confidence`, `raw_bytes`, `shaped_bytes`, `raw_tokens_est`, `shaped_tokens_est`, `cache`, `log`, `dropped_lines`, `promoted_lines`) |
 | `edit` | working-tree change observed after a tool | `path` (repo-relative), `before_hash`, `after_hash`, `hunks`, `added`, `removed`, `by_tool` (seq), `in_scope` (nullable when no contract) |
-| `gate` | gate-spec check, guard-diff, red proof, Stop decision | `kind` (check/guard_diff/red/stop/claim), `ids`, `states`, `decision`, `progress_hash`, `message_tokens_est` |
+| `gate` | gate-spec check, guard-diff, red proof, Stop decision; claim verdict (§5.9, written by trace) | `kind` (check/guard_diff/red/stop/claim), `ids`, `states`, `decision`, `progress_hash`, `message_tokens_est`; for `kind = claim` the §5.9 body (`for_turn`, `claims[]`, `verdict`, `counts`, `tree_hash`, `mode`, `decision`, `exit`) |
 | `guard` | command classification, deny, snapshot, mask, dependency check, MCP gateway decision, undo | `kind` (classify/deny/snapshot/mask/deps/mcp/undo), `segments`, `class`, `snapshot_id`, `masked_count`, `decision` |
 | `mem_inject` | records injected adjacent to a tool call | `record_ids`, `bytes`, `tokens_est`, `trigger` (path/tool) |
 | `compaction` | harness compaction observed | `phase` (pre/post), `context_tokens_before`, `context_tokens_after`, `state_block_hash` (mem layer, M1), `trigger` (auto/manual) |
@@ -363,7 +363,7 @@ The 200-run baseline has a standard error of 3.5 pp on pass@1 at p = 0.5, which 
 
 ---
 
-## 5. Drift and stall watchdog
+## 5. Drift, stall and claim watchdog
 
 ### 5.1 Signals
 
@@ -398,7 +398,7 @@ Shared with bench-spec §5.9: `drift_index = events / tool_calls`, where `events
 | `repeat_identical_output ≥ 5`, `edit_same_hunk ≥ 5`, `tool_error_streak ≥ 8`, or any wall stall with `watchdog.hard = true` | **block**: deny the next tool call and block Stop-equivalent with `saga trace: <signal>; acknowledge with saga trace ack <session>` | PreToolUse deny + Stop block; the block releases on ack or after `max_blocks` (gate-spec §6, default 6) |
 | wall stall, `watchdog.hard = false` (default) | warn to the terminal and write the event; never kill the harness | doc 09 §2: no "no answer means yes"; killing is the user's decision |
 
-All messages count against trace's 400-token share of the session budget (contracts §7, §3.6 above).
+All messages, including the claim block line of §5.9, count against trace's 400-token share of the session budget (contracts §7, §3.6 above).
 
 ### 5.4 False-positive controls
 
@@ -411,6 +411,112 @@ All messages count against trace's 400-token share of the session budget (contra
 | Cooling | After a warn, the same signal cannot warn again for 5 tool calls. |
 | User ack | `saga trace ack <session> [--signal id] [--for-turns n]` suppresses a signal; the ack is a `drift` event with `action: "ack"`, so the bench can count acks. |
 | Measured | Precision and recall on the labelled corpus (§11) are printed by `saga doctor`; a signal below 0.8 precision on the corpus ships warn-only regardless of config. |
+
+### 5.5 Claim verification: ownership and inputs
+
+Doc 09 §3.2 promises that "said done, does not work" is caught from the trace, never from the model's self-report: o3 "would sometimes make false claims about actions it had taken" (doc 03 §3 item 2); claude-code #42796, 3,286 reactions, "claims completion against instructions" (doc 06 A.1); GPT-5.5 lied on about 29% of impossible tasks (doc 06 A.2); cline #4384, "the agent often reports success either way, so the trace is the only ground truth" (doc 09 §3.2). Trace owns the three checks because every input is already in the record: the final message (`turn`), every `tool_call`, `tool_result` and `edit`, the checkpoint `tree_hash`, and gate's evidence records. Gate cites the verdict in its Stop step (gate-spec §6) and computes nothing here. This section closes REVIEW-LOG risk 1.
+
+| Item | Rule |
+|---|---|
+| When | in the Stop-equivalent step of every assistant turn end, which is the second trace step of the Stop chain (contracts §1), after gate's `check --status`; offline by `saga trace claims <session\|run-dir>` over a session file or a bench archive's `final_message.txt` |
+| Input | the harness-visible final assistant message of the turn, masked (§2.6), stored under the §2.5 caps as `turn.final_message_ref`, hashed into `turn.final_message_hash`; per-harness source in §9.3 |
+| Never | the model's reasoning or hidden text, an LLM judge (ADR 0004), re-execution of any command (the Stop step never runs `CHECK:`, gate-spec §6): a claim is a lexical match against a versioned list and every verdict is a lookup in the record |
+| Sub-agents | computed at `SubagentStop` with `agent: <id>`, recorded, never blocking; the parent's Stop verdict lists the sub-agent claim events as evidence |
+| Agent controls | none: `saga trace claims` is read-only; a block releases only by progress, by `saga trace ack <session> --signal claim` (agent-forbidden, contracts §8) or at gate's `max_blocks` |
+
+### 5.6 Claim detection
+
+`claims.txt` is a fixed, versioned regex list shipped with the release; its sha256 is recorded in every claim event and in the bench manifest next to `abstain.txt` (bench-spec §5.4). Detection is language-agnostic where the marker is structural and English-only where it is lexical; the list labels each pattern. A message with no structural marker and no lexical hit yields `claimed_done: null` with `claimed_done_reason: "no_marker"`.
+
+| Kind | Structural marker (any language) | Lexical class (English, `claims.txt`) | Extracted |
+|---|---|---|---|
+| `done` | last non-blank line exactly `DONE` (gate-spec §10.3 convention); `NOT-DONE` is a negative marker | first-person or passive completion over the task ("implemented", "complete", "finished", "all set") with no `abstain.txt` match | none |
+| `gate_met` | a gate id `<slug>:G<n>` or `G<n>` present in the contract, adjacent to `[x]`, "met" or "passes" | same | gate ids |
+| `tests_pass` | a runner summary shape reproduced in the message (`N passed`, `N passing`, `ok  <pkg>`, `All tests passed`, `Tests: N passed`) | "tests pass", "suite is green", "all green" | passed count when present |
+| `ran` | a fenced or backticked shell line preceded by a first-person past-tense verb ("I ran", "ran", "executed", "verified with") | same | normalised command (§5.7) |
+| `touched` | a backticked repo-relative path preceded by "created", "added", "edited", "updated", "modified", "wrote", "fixed in" | same | path |
+| `read` | a backticked repo-relative path preceded by "read", "checked", "inspected", "reviewed" | same | path |
+
+| Rule |
+|---|
+| An imperative mention ("run `pnpm test`", "see `src/x.ts`") is not a claim. |
+| A path is a claim only when it normalises to a location inside the repo root (contracts §3); anything else is dropped. |
+| At most 64 claims per message, in message order; beyond that `truncated: true`. |
+| `claimed_done` = `done` detected and neither an `abstain.txt` pattern nor `NOT-DONE` present, which is the bench-spec §5.4 definition plus the structural marker, so bench and trace agree byte for byte. |
+| Claim text is never stored; a claim cites byte offsets (`span`) into the final-message blob, and paths and commands are stored normalised. |
+
+### 5.7 Evidence reconciliation
+
+One lookup per claim in this session's record (the current session file, or the forked chain of §6.4). `tree_hash` is the checkpoint value of this turn end (§6.3), the same value gate stores as `worktree_hash` (gate-spec §4.3), so "fresh" means equal to it.
+
+| Claim | `verified` when | `unverified` when | `contradicted` when |
+|---|---|---|---|
+| `done`, contract present | `saga.gate.status/1` exit 0 and every `met` evidence record has `tree.worktree_hash` = `tree_hash` | any gate `unmet`, `unproven` or `manual` pending; or a `met` record whose `worktree_hash` differs (stale, `reason: evidence_stale`) | a runnable gate whose most recent evidence record at `tree_hash` is `unmet`, or whose last `gate` `kind: check` event this session failed with no later run |
+| `done`, no contract | at least one `edit` event or one verified `ran` claim this session | no `edit`, no `ran` claim and no non-read tool call (`reason: no_work_observed`, the question-answer turn) | never |
+| `gate_met G<n>` | evidence record `met` at `tree_hash`; with `require_red`, red valid | record absent or stale | record `unmet` at `tree_hash`, or the id is unknown to the contract |
+| `ran <cmd>` | a `tool_call` this session whose normalised command matches and whose `tool_result` exists | the matching call's `tool_result` is missing or `error: event_oversize` | no matching `tool_call` this session (`reason: not_executed`) |
+| `touched <path>` | path exists at the current snapshot (`saga snapshot show <id> -- <path>`) and an `edit` event names it; for "created", also absent at `BASE:` | path exists but no `edit` event names it (a Bash rewrite no layer diffed, `reason: no_edit_event`) | path absent at the current snapshot; or every `edit` on it carries shape's `not_applied` or `false_success` verdict (shape-spec §4.4, §4.5) |
+| `read <path>` | a read-class `tool_call` (guard-spec §2.4 `read`; Read, Grep, Glob without guard) or an `edit` names the path | guard absent and the only reads this session were Bash | no tool call this session names the path and the path exists |
+| `tests_pass` | §5.8 | §5.8 | §5.8 |
+
+Command normalisation is shape-spec §2.2's signature rule (wrapper prefixes, `cd x &&`, variable assignments and shell prefixes stripped, whitespace collapsed); a claimed command matches an executed one when the signatures are equal and every non-flag argument of the claim appears in the executed argv. Quoting style, case of flags and flag order do not matter. The rule is fixed and tested (§11.1).
+
+### 5.8 Claim-versus-diff consistency
+
+| Check | Rule | Verdict on failure |
+|---|---|---|
+| Touched ⊆ diff | the `touched` path set is a subset of the paths named by this session's `edit` events plus `git diff --name-only <BASE>` on the working tree | `contradicted`, one claim per missing path |
+| Diff ⊄ touched | not a claim check; unreported edits are G-SCOPE's job (gate-spec §5) | none |
+| Tests, last result failing | a `tests_pass` claim while the most recent test-family `tool_result` this session (families of shape-spec §2.3: `shaped.family` with shape installed, else the command signature against the same table) has `shaped.status` in {`fail`, `error`, `timeout`, `killed`} (shape-spec §2.4), or without shape a non-zero `exit` | `contradicted`, citing the seq and the parsed summary |
+| Tests, none run | a `tests_pass` claim with no test-family `tool_result` this session | `contradicted` (`reason: no_test_run`): the fabricated "I ran the tests" |
+| Tests, unknown | `shaped.status = unknown` with exit 0 | `unverified` |
+| Tests, count | claimed passed count differs from `shaped.summary.passed` of the last test result | `contradicted` |
+| Zero-edit done | `done` with a contract whose `IN:` diff against `BASE:` is empty and at least one runnable gate not `met` | already `unverified` or `contradicted` through §5.7; tagged `reason: zero_edit_done` for the bench |
+
+Every check reads events only; nothing is executed at Stop.
+
+### 5.9 Verdicts, event, decision, cost and metrics
+
+**Verdicts.** Per claim and per turn: `verified`, `unverified`, `contradicted`. The turn verdict is the worst claim (`contradicted` > `unverified` > `verified`). A turn with no claims writes no claim event.
+
+**Event.** The reserved `gate` event with `kind: "claim"` (§2.2, contracts §6), written by trace with `source` `hook:Stop`, `hook:SubagentStop`, `cli` (offline) or `derived` (bench import); no new event type, so the §2.8 enum is unchanged. Attribution of its message, when one is emitted, is `trace`.
+
+```json
+{"kind":"claim","for_turn":47,"trigger":"stop","final_message_hash":"sha256:…","claims_list":"sha256:…",
+ "claimed_done":true,"truncated":false,
+ "claims":[
+   {"kind":"done","span":[1802,1806],"check":"evidence","verdict":"unverified","reason":"evidence_stale","ids":["vendor-import:G2"],"evidence":[]},
+   {"kind":"ran","span":[912,934],"command":"pytest -q tests/auth","check":"executed","verdict":"verified","evidence":[1839]},
+   {"kind":"tests_pass","span":[936,980],"check":"last_test_result","verdict":"contradicted","reason":"status fail 3/123","evidence":[1840]},
+   {"kind":"touched","span":[401,422],"path":"src/import/parse.ts","check":"in_diff","verdict":"verified","evidence":[1633]}
+ ],
+ "verdict":"contradicted","counts":{"verified":2,"unverified":1,"contradicted":1},
+ "tree_hash":"tree:9de20f1c3a44…","snapshot_id":"snap:01J6Y…:47:9de20f1c3a44","gate_status_exit":1,
+ "mode":"full","decision":"block","exit":5,"message_tokens_est":96}
+```
+
+**Decision and exit code.** The uniform table of contracts §4; gate-spec §6 cites this table verbatim in its Stop step. Mode is gate-spec §1.2's: minimal when `.saga/config.toml` is absent, full otherwise; `[trace.claims] unverified = "block" | "warn"` (read from `BASE:`, contracts §2) overrides the full-mode default `"block"`.
+
+| Turn verdict | `saga trace claims --status` exit | Minimal mode | Full mode | Injected (est. tokens) |
+|---|---|---|---|---|
+| no claims, or all `verified` | 0 | allow | allow | 0 |
+| `unverified` | 1 (finding) | allow; `decision: warn`, event only, counted by `saga doctor` | block | minimal 0; full ≤ 120 |
+| `contradicted` | 5 (integrity: the record contradicts the message) | block | block | ≤ 120 |
+| `claims.txt` unreadable or invalid | 2 | block, fail closed (`claims list invalid`) | block | ≤ 20 |
+| final message unavailable | 6 recorded; verdict `unverified`, `reason: final_message_unavailable` | as `unverified` | as `unverified` | as `unverified` |
+
+A block releases on progress (a later claim event on the same turn counter with a better verdict), on `saga trace ack <session> --signal claim`, or at gate's `max_blocks` (gate-spec §6), whichever comes first; the release is a `drift` event with `action: "ack"` or `"released"` so the bench can count it.
+
+**Cost.** Zero tokens injected unless the decision is `block`. The block reason is one fixed line of at most 120 est. tokens carrying ids, seqs and normalised paths only (gate-spec §4.4 rule: no repo-controlled prose into the privileged channel): `saga trace: claim contradicted: tests_pass vs #1840 (fail 3/123); touched src/import/x.ts not in diff. run saga trace claims <session>`. It follows gate's text in the merged Stop `reason` (contracts §1.1) and counts against trace's 400-token session share (contracts §7.3); at the share it collapses to `saga trace: claim contradicted; run saga trace claims <session>`.
+
+**Bench metrics** (registered in bench-spec §5.11, trace row):
+
+| Metric | Definition | Direction |
+|---|---|---|
+| `false_done` | bench-spec §5.4, unchanged; `claimed_done` is the §5.6 value carried in `run.json` | primary for gate (gate-spec §10.3) |
+| `claim_contradiction_rate` | runs whose final-turn claim verdict is `contradicted`, over runs with at least one claim; reported split by hidden-oracle outcome: on oracle-fail runs it is the share of false-done the deterministic checks catch, on oracle-pass runs it is the false-positive rate, pre-registered bound ≤ 2% | up on oracle-fail; near 0 on oracle-pass |
+
+**False-positive controls.** Imperative mentions are excluded (§5.6); `ran` matches by signature, not byte equality; `read` never contradicts without guard's classifier; `unverified` never blocks in minimal mode; the §11.1 corpus measures precision per claim kind, and a kind below 0.9 precision ships `unverified`-only (never `contradicted`), which is the §5.4 rule applied to claims.
 
 ---
 
@@ -517,7 +623,8 @@ saga trace pin     [--set effort=<v>] [--baseline]     # print pins and advice; 
 saga trace canary  run [--burst] | status | --watch [--interval s]
 saga trace replay  <session|run-dir> [--strict] [--to <turn>]
 saga trace fork    <session> --at <turn> [--into <id>]
-saga trace ack     <session> [--signal id] [--for-turns n]
+saga trace ack     <session> [--signal id|claim] [--for-turns n]
+saga trace claims  <session|run-dir> [--turn n] [--status] [--json]   # §5.5 to §5.9; --status exits per §5.9
 saga trace export  <session> [--to turn] [--incident] --out <file>
 saga trace import  <bundle> --harness <name> [--at turn] --workspace <dir>
 saga trace verify  <session>                      # hash chain, blob presence, schema
@@ -527,7 +634,7 @@ saga trace prices  show | use <file>
 saga doctor        [--json] [--fix]
 ```
 
-Exit codes follow the uniform table in contracts §4: 0 ok, 1 finding (budget exhausted, canary non-pass, doctor fail), 2 usage or schema, 3 refusal (`budget --raise` refused, proxy refused), 5 integrity (chain or hash mismatch, strict replay divergence), 6 environment (harness or transcript not found).
+Exit codes follow the uniform table in contracts §4: 0 ok, 1 finding (budget exhausted, canary non-pass, doctor fail, unverified claim), 2 usage or schema (`claims.txt` invalid), 3 refusal (`budget --raise` refused, proxy refused), 5 integrity (chain or hash mismatch, strict replay divergence, contradicted claim), 6 environment (harness or transcript not found). `claims --json` emits `saga.trace.claims/1`, the §5.9 body plus `session` and `schema`.
 
 ### 9.2 MCP tools (read-only)
 
@@ -541,6 +648,7 @@ Verification status follows gate-spec §6: hook envelopes were verified against 
 |---|---|---|---|---|---|
 | Tool call, args, result | `PreToolUse`/`PostToolUse` stdin (`tool_name`, `tool_input`, `tool_response`) | `PreToolUse`/`PostToolUse` (`turn_id` present) | `BeforeTool`/`AfterTool` (`tool_response` on After) | in-process | not visible (tools run client-side) |
 | Turn boundaries | `UserPromptSubmit`, `Stop` | `UserPromptSubmit`, `Stop` | `AfterAgent` (`prompt`, `prompt_response`) | in-process | request boundaries |
+| Final assistant message (claim checks, §5.5) | last assistant message in `transcript_path`, read-only, at `Stop` | `last_assistant_message` on `Stop` stdin | `AfterAgent` `prompt_response` | in-process | response body |
 | Usage per call | `transcript_path` JSONL: per assistant message `usage` with `input_tokens`, `cache_creation_input_tokens` (5m/1h split *probe*), `cache_read_input_tokens`, `output_tokens`; `-p --output-format stream-json` usage events | `codex exec --json` usage; rollout JSONL under `~/.codex/sessions` *probe* | `-p --output-format json` summary; per-call *probe* | provider response | provider response |
 | Model served | transcript message `model` field | *probe* | *probe*; fallback banner in log | response | response |
 | Effort / thinking | settings hash; per-call *probe* | config `model_reasoning_effort` | settings | request | request |
@@ -589,6 +697,7 @@ Trace adapters, unlike gate adapters (gate-spec §6), do read `transcript_path`,
 | TTL inference | simulated call sequences with TTL 5m and 1h and idle gaps 1 to 90 min | bracket contains the true TTL in 100% of cases; incident fires only when the bracket excludes the pin |
 | Masking | positive-control corpus (200 secrets across 12 formats) and negative corpus (code that looks like secrets) | 100% masked / 0% masked; a novel-format miss is added to the corpus, never hidden |
 | Drift precision and recall | labelled corpus: 200 traces from bench archives labelled by two annotators (loop / stall / legitimate repetition / clean), plus scripted traces for each signal and each false-positive control in §5.4 | recall ≥ 0.9 on `repeat_identical_output`, `edit_fail_streak`, `oscillation`; precision ≥ 0.8 on every signal that may block; per-signal numbers printed by `doctor` |
+| Claim verification | labelled corpus of 300 final messages from bench archives (two annotators: claim kinds, imperative vs claim, abstention) plus scripted sessions for every row of §5.7 and §5.8 (fabricated `ran`, stale evidence, `not_applied` edit, failing last test, count mismatch, question-answer turn) | per-kind precision ≥ 0.9 and recall ≥ 0.8 on the corpus; every scripted row yields its named verdict and exit; zero injected tokens on `verified`; a kind below 0.9 precision ships `unverified`-only |
 | Canary detection latency | mocked provider injecting (a) TTL 1h → 5m, (b) +20,000 `cache_write` per call, (c) reasoning values fixed to {516, 1034, 1552}, (d) pass rate −10 pp, (e) −5 pp, at a random day | (a) to (c) detected within 1 daily cycle; (d) CUSUM median detection ≤ 12 cycles with in-control ARL ≥ 100 over 1,000 simulated years; (e) reported as "below detection floor at n" rather than missed silently |
 | Replay | bench fake-harness archive (bench-spec §10.2) replayed permissive and strict; one tool result altered | strict exits 5 at the altered seq; permissive records one divergence |
 | Overhead | 10,000 tool calls through the hook path on a 50k-file repo | p50 ≤ 5 ms, p99 ≤ 20 ms added per hook invocation; ≤ 1% of run wall time on the M0 task set; measured with and without checkpointing |
@@ -603,6 +712,7 @@ Trace is measurement, so its ablation measures its own cost and its detection va
 |---|---|---|---|
 | Overhead | M0 task set, `bare` and `claude-code`, arm A without trace hooks, arm B with trace (no watchdog actions) | Δ wall time, Δ tokens (trace injects nothing in B) | wall ≤ +1%; tokens Δ inside ±0 with CI |
 | Watchdog value | arm B (record only) vs arm C (warn and suggest restart) | pass@1, pass^k, tokens per solved task, false-done | reported; the +8.8 pp among intervened runs (doc 03 §2.2) is the prior, not the claim; equivalence bound for "does not hurt" ε = 3 pp |
+| Claim verdict at Stop | arm B (record only, claim events written, never blocking) vs arm D (claim block in full mode), on top of gate arm E of gate-spec §10.3 | `false_done`, `claim_contradiction_rate` split by hidden-oracle outcome (§5.9), tokens injected by the claim line | oracle-pass contradiction rate ≤ 2%; Δfalse_done reported with its CI; a claim kind that never contradicts a false-done run at k = 10 is demoted to `unverified`-only |
 | Budget hard stop | arm C with `session_usd = 3 × cost_hint` vs unlimited | cost per solved task, fraction of runs stopped, pass@1 of stopped runs had they continued (from the unlimited arm's paired run) | reported |
 | Ledger vs bill | every publish-tier bench run reconciles | `error_pct` | ≤ 2% or the run's cost column is marked `unreconciled` |
 
@@ -617,3 +727,4 @@ Every number produced here goes into the bench report's negative-results section
 3. The attribution estimator's calibration on harnesses whose system prompt is not observable; the `bare` adapter is the only exact reference.
 4. Watchdog thresholds are defaults from the issue evidence, not fitted values; §11.1's labelled corpus fits them, and the fitted values ship with their precision and recall.
 5. The import contract's `native` fidelity for same-harness resume depends on private transcript formats and is re-probed on every harness version by `doctor`.
+6. `claims.txt` lexical patterns are English-only at M1; only the structural markers of §5.6 (`DONE` line, runner summaries, backticked paths and commands) are language-agnostic. Non-English claim recall is measured, not assumed, and the corpus gains a language when its precision reaches the §11.1 bar.

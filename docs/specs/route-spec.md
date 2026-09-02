@@ -56,7 +56,7 @@ Closed set of eight classes plus `unknown`. A class is a label on a **unit of wo
 | `docs` | Write or update documentation, comments, changelogs | yes, docs only | S |
 | `unknown` | Signals conflict or are absent | assume yes | any |
 
-Two flags orthogonal to class: `security` (the contract, path or request matches `[security]` patterns in §3.1) and `impossible_risk` (the contract has ≥ 1 gate with `RED: control` or the bench tag `impossible`). Both pin the tier upward (§7).
+Two flags orthogonal to class: `security` (the contract, path or request matches `[security]` patterns in §3.1) and `impossible_risk` (the contract header `RISK: impossible`, gate-spec §2.3, surfaced as `risk` in `saga.gate.status/1`, or the bench tag `impossible`; `RED: control` is a red-proof mode and no longer implies it, REVIEW-LOG risk 8). Both pin the tier upward (§7).
 
 ### 2.2 Signals available at run time
 
@@ -70,7 +70,7 @@ Every signal is deterministic and is recorded in the decision record (§7.3) so 
 | `impact_size` | `saga index impact` result count over `scope_files` (index-spec §5); `null` when regime is `off` (index-spec §1.3) | integer or `null` |
 | `gates_runnable` / `gates_manual` | Counts from `saga gate check --status --json` | integers |
 | `gates_failing_at_start` | Runnable gates whose `CHECK` currently fails (a failing gate before any edit is the debug signature) | integer |
-| `red_control` | Any gate with `RED: control` | bool |
+| `risk_impossible` | `risk = "impossible"` in `saga gate check --status --json` (the `RISK:` header, gate-spec §2.3); stays true while `risk_removed` is set, so deleting the line never down-tiers (§7.1) | bool |
 | `tool_allow` | The tool set the sub-agent is spawned with (Claude Code `tools:` frontmatter or Agent tool input; Codex sandbox policy `ReadOnly`) | set |
 | `tool_mix_recent` | Over the last 20 tool calls in the trace: fraction that are read-class (guard-spec §2.4 classification `read`) | 0..1 |
 | `subagent_prompt_len` | Bytes of the sub-agent prompt (never its content) | integer |

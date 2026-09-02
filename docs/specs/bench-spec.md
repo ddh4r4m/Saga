@@ -269,7 +269,7 @@ For continuous outcomes (tokens, cost, wall time, turns): `m(t) = median_i x(t,i
 
 ### 5.4 False-done rate
 
-`false_done = |{(t,i): claimed_done(t,i) ∧ ¬pass(t,i)}| / |{(t,i): claimed_done(t,i)}|`, where `claimed_done` is true when the harness exited without an `ABANDON` terminal state (gate-spec §2) and `final_message.txt` matches none of the abstention patterns in `abstain.txt` (a fixed, versioned regex list: "cannot complete", "blocked", "needs human", …). The list is part of the manifest hash. This is the primary metric for `gate` (gate-spec §10.3).
+`false_done = |{(t,i): claimed_done(t,i) ∧ ¬pass(t,i)}| / |{(t,i): claimed_done(t,i)}|`, where `claimed_done` is true when the harness exited without an `ABANDON` terminal state (gate-spec §2) and `final_message.txt` matches none of the abstention patterns in `abstain.txt` (a fixed, versioned regex list: "cannot complete", "blocked", "needs human", …). The list is part of the manifest hash. `claimed_done` is computed once, by trace-spec §5.6 (this list plus the `DONE` last-line marker of gate-spec §10.3, `claims.txt` hashed into the manifest beside `abstain.txt`), and copied into `run.json`; the bench never recomputes it. This is the primary metric for `gate` (gate-spec §10.3).
 
 ### 5.5 Wilcoxon signed-rank and bootstrap CIs
 
@@ -344,7 +344,7 @@ A layer spec may pre-register metrics beyond §5.1 to §5.9. Each is computed by
 | index | `localization_acc5` (primary for index), `resident_context_tokens_end` (ceiling 1.5× control), `tool_exposure`, `grep_calls`, `line_recall` | index-spec §9.2 |
 | mem | `compaction_survival_rate`, `false_injection_rate`, `tokens_injected` by component, `cache_read_ratio`, `subagent_scope_violation_rate` | mem-spec §9.2 |
 | shape | `first_error_found`, `false_success_after_edit`, `retry_after_false_success`, `wrapper_adherence`, `cache_hit_ratio`, `served_ms_saved`, raw vs shaped `tool_output_bytes_turn` | shape-spec §10.6 |
-| trace | `wall_overhead_pct`, `token_overhead` (must be 0), `reconcile_error_pct` | trace-spec §11.2 |
+| trace | `wall_overhead_pct`, `token_overhead` (must be 0), `reconcile_error_pct`, `claim_contradiction_rate` (runs whose final-turn claim verdict is `contradicted` over runs with ≥ 1 claim, split by hidden-oracle outcome; oracle-pass bound ≤ 2%) | trace-spec §5.9, §11.2 |
 | route | `estimate_error`, `unknown_rate`, `route_unapplied_rate`, `subagent_cache_write_tokens` | route-spec §8.1, §8.2 |
 
 A metric not in this table and not in the run's pre-registration file is exploratory (§7.2 item 7).

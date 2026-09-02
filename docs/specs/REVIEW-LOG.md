@@ -33,11 +33,11 @@
 
 ## Open risks for a human decision
 
-1. **Claim verification has no owner.** Doc 09 §3.2 and M1 promise it; gate v0.2 omits it; trace reserves `turn.claimed_done` and `gate.kind = claim`. Proposal: trace computes the three deterministic checks, gate's Stop step cites them. Needs a spec section before M1.
+1. **Resolved 2026-09-03.** Trace owns claim verification: trace-spec §5.5 to §5.9 (claim detection, evidence reconciliation, claim-versus-diff, the `gate` `kind: claim` event, verdict and exit mapping, `claim_contradiction_rate`); gate-spec §6 cites the verdict at Stop (`contradicted` blocks; `unverified` warns in minimal mode, blocks in full mode); contracts §1, §4, §6, §7.3, §11 and bench-spec §5.4, §5.11 amended.
 2. **Claude Code `PreToolUse` `additionalContext` is contradicted across two vendor pages.** Mem's targeted placement depends on it; M3 must stratify by placement.
 3. **Codex `PostToolUse` prevention, Stop cap and `updatedInput` are unverified.** Without them guard masking and shape wrapping fall back to wrapper mode on Codex.
 4. **The 3,800-token injected budget is a sum of priors.** If too small on long sessions, the cap-breach rule fails runs.
 5. **Snapshot cost on monorepos** now sits inside every PreToolUse entry through the single primitive; `on_budget = "ask"` reintroduces prompts.
 6. **Exit-code renumbering** touches bench and guard fixture tables; cheap now, expensive after code exists.
-7. **bench-spec keeps 21 em-dashes** against house style; untouched, the pass was semantic.
-8. **`RED: control` doubles as route's `impossible_risk` proxy;** should be a tag, not an overloaded field.
+7. **Resolved 2026-09-03.** Em-dashes removed mechanically from bench-spec.
+8. **Resolved 2026-09-03.** Contract header `RISK: impossible` (gate-spec §2.2 grammar, §2.3, §2.6 row 19, §7.2 `risk` and `risk_removed`); route-spec §2.1 and §2.2 read `risk_impossible` from gate status; `RED: control` is a red-proof mode only.

@@ -31,7 +31,7 @@ Six research agents (Opus-class general-purpose), then Fable agents for every sp
 
 From docs/specs/REVIEW-LOG.md and docs/09 §7:
 
-1. **Claim verification has no owner.** The proposal and M1 promise that "done" claims are checked; gate v0.2 dropped it and trace only reserves fields. An agent is writing the missing section tonight; confirm you want it in M1.
+1. **Claim verification now has an owner (trace, spec v0.2 §5.5 to §5.9), with gate blocking Stop on a contradicted claim.** Three judgement calls to confirm: contradicted maps to exit 5 (integrity) rather than 3; the verdict lives inside the watchdog section; `RISK: impossible` is a full-mode contract header, not a per-gate attribute.
 2. **Harness facts still unverified.** Claude Code PreToolUse `additionalContext` is contradicted across two vendor pages; Codex PostToolUse prevention, Stop cap, and `updatedInput` are unverified. Memory placement and guard masking on Codex depend on these. A short verification sprint against live harness versions should precede M1 adapters.
 3. **Token budget of 3,800 injected tokens per session** is a sum of priors. Accept as the M0 starting value to be tuned by bench, or set a different ceiling.
 4. **Snapshot cost on monorepos** now sits inside every PreToolUse call. Accept `on_budget = "ask"` prompts, or default snapshots to per-turn rather than per-tool-call on large trees.
@@ -50,5 +50,6 @@ From docs/specs/REVIEW-LOG.md and docs/09 §7:
 
 - All numbers in the research docs are as of 2026-09-02 and many come from preprints; the provenance headers say so.
 - Research reports 03 to 08 were written by agents and reviewed only through their summaries; spot-check any number before quoting it externally.
+- Open risks 1, 7 and 8 in docs/specs/REVIEW-LOG.md were closed overnight; risks 2 to 6 remain and are the decisions above.
 - The em-dash style rule was applied mechanically across all docs after the fact (558 replacements); a few sentences may read slightly oddly.
 - Nothing has been pushed to GitHub.

@@ -1,6 +1,6 @@
 # `saga gate`: technical specification
 
-*v0.2, Fable-reviewed, 2026-09-02. Implements doc 09 §3.2. Adopts the ledger grammar and fail-closed rules of unlazy (doc 08 Part 2), the verification-evidence and reward-hacking findings of doc 03 §2.5/§3/§4, and ADRs 0001 (measurement first), 0002 (mechanisms over prompts) and 0003 (one core, three surfaces). Review log: `gate-spec-review.md`.*
+*v0.3, 2026-09-03 (v0.2 Fable-reviewed 2026-09-02): the Stop step cites trace's claim verdict (§6) and the `RISK:` header replaces the `RED: control` routing proxy (§2.3), REVIEW-LOG risks 1 and 8. Implements doc 09 §3.2. Adopts the ledger grammar and fail-closed rules of unlazy (doc 08 Part 2), the verification-evidence and reward-hacking findings of doc 03 §2.5/§3/§4, and ADRs 0001 (measurement first), 0002 (mechanisms over prompts) and 0003 (one core, three surfaces). Review log: `gate-spec-review.md`.*
 
 ---
 
@@ -27,9 +27,9 @@ Everything a solo developer needs is one file and one command. Everything else i
 
 | | Minimal | Full |
 |---|---|---|
-| Contract | title, `IN:`, gates with `CHECK:`/`EXPECT:` | + `REQUEST:`/`FROM:` traceability, `OUT:`, `BASE:`, `RED:` modes, `WITNESS:`, `WAIVE:` |
+| Contract | title, `IN:`, gates with `CHECK:`/`EXPECT:` | + `REQUEST:`/`FROM:` traceability, `OUT:`, `BASE:`, `RED:` modes, `RISK:`, `WITNESS:`, `WAIVE:` |
 | Red proof | automatic `baseline` when possible, else reported `unproven` | explicit `mutation` / `control` / `none` per gate |
-| Enforcement | `saga gate check` run by the human or the agent | Stop hook adapter + CI `reverify` |
+| Enforcement | `saga gate check` run by the human or the agent; an `unverified` claim at Stop warns only (§6) | Stop hook adapter citing trace's claim verdict (§6) + CI `reverify` |
 | Guards | G-SCOPE, G-TESTDEL, G-SKIP, G-LEDGER | + G-ASSERT, G-DEP, G-HARDCODE (advisory) |
 | Config | none (`.saga/config.toml` absent) | `.saga/config.toml` |
 
@@ -76,7 +76,9 @@ Each mechanism traces to a documented failure mode or is marked **experimental**
 |---|---|---|
 | Scope contract (`IN:`/`OUT:`, G-SCOPE) | "touched what I did not ask" / "stopped short" pendulum | doc 02 §9; doc 07 §9 (forbidden paths untouched) |
 | Runnable gates, exit-0 AND marker, evidence records | "said done, does not work"; overclaiming completion | doc 02 §4; doc 03 §3.2; doc 08 §2.5 |
+| Claim verdict cited at Stop (trace-spec §5.5 to §5.9) | fabricated "I ran the tests"; claimed edits absent from the diff; premature done | doc 03 §3 item 2; doc 06 A.1 (#42796) and A.2; doc 07 §6 item 4 |
 | `ABANDON:` as terminal non-success | silent scope reduction; impossible-task hacking | doc 03 §3.1; doc 08 §2.2 |
+| `RISK: impossible` header | impossible-task units routed to models with documented hack rates | doc 03 §3 item 1; doc 06 A.1, A.2; route-spec §7.1 |
 | Red proof, `baseline` and `control` | building to a visible oracle; tautological checks | doc 03 §2.5; unlazy negative-control rule (doc 08 §2.5) |
 | Red proof, `mutation` | same | **experimental**: no measurement that the operators discriminate real gates from tautologies |
 | G-TESTDEL, G-ASSERT, G-SKIP | assertion edits, permissive tests, skipped tests | doc 03 §3.1 (Anthropic impossible-tasks behaviours); doc 02 §10 |
@@ -115,7 +117,7 @@ contract      = title , { header-line | blank } , { block } ;
 
 title         = "#" , SP , text , NL ;
 header-line   = header-key , ":" , SP , value , NL ;
-header-key    = "CONTRACT" | "REQUEST" | "IN" | "OUT" | "BASE" ;
+header-key    = "CONTRACT" | "REQUEST" | "IN" | "OUT" | "BASE" | "RISK" ;
 
 block         = gate-block | statement | blank | fenced-code | prose ;
 
@@ -160,6 +162,7 @@ Rules the EBNF cannot express:
 | `IN:` | 1..n | minimal | Repo-relative globs the diff may touch. |
 | `OUT:` | 0..n | minimal | Globs the diff must not touch. `OUT:` wins over `IN:`. |
 | `BASE:` | 0..1 | full | Git rev the guards diff against. Default `HEAD` at the time of each run (so minimal mode guards the uncommitted working tree). |
+| `RISK:` | 0..1 | full | Closed set, `impossible` only at v0.3: the task may be impossible as stated and `ABANDON:` is an expected terminal. Surfaced as `risk` in `saga.gate.status/1` (§7.2); route-spec §2.1 reads it as `impossible_risk` and pins the tier upward (route-spec §7.1). Independent of `RED:`: a `control` red proof describes the oracle, not the task. A `RISK:` line tracked at `BASE:` and absent from the working tree is reported as `risk_removed: true` and stays in force. |
 | `CHECK:` | 0..1 | minimal | Shell command. Present ⇔ `EXPECT:` present. |
 | `EXPECT:` | 0..1 | minimal | Plain substring, or `/pattern/flags` (§4.1 regex dialect). |
 | `CWD:` | 0..1 | full | Repo-relative. Absolute or `..` is exit 2. |
@@ -253,6 +256,7 @@ Every row is exit **2**, produces no evidence, and never yields a completion cer
 | 16 | `EVIDENCE:` hash with no matching record in the store | Inconsistent ledger (see trust note, §2.1). |
 | 17 | Contract file is a symlink, multi-link, FIFO, or >1 MiB | Hostile input. |
 | 18 | `WAIVE:` with unknown guard id, malformed hunk hash, or reason <8 tokens | Waiver that covers nothing, or nothing said. |
+| 19 | `RISK:` with a value outside the closed set of §2.3, or repeated | An unknown risk class must not silently route downward. |
 
 Warnings (exit 0, printed, counted; `lint --strict` promotes to exit 1): slash-wrapped path-shaped regex; `EXPECT:` from the vocabulary failure output also uses (`ok`, `done`, `pass`, `passed` alone); an outcome phrased as an activity (`improve`, `ensure`, `refactor`); a number in the outcome that no `CHECK:` measures; >50% manual gates; `RED: none`; `CHECK:` that is `echo`/`printf`/`true`/`exit 0` only.
 
@@ -455,7 +459,7 @@ WAIVE: G-ASSERT tests/import/parse.test.ts 3f9a12cd7b04 consolidated four equali
 
 Adapters are translation-only: read the harness's JSON from stdin, run `saga gate check --status --json` or `saga gate guard-diff --json`, map exit codes to the harness envelope, cap the message at the §9 ceiling. Each adapter is under 150 lines, contains no gate logic, never reads `transcript_path`, and is covered by recorded-fixture tests (§10.1).
 
-**Composition.** Gate installs no hook of its own. `saga install --harness <h>` writes one `saga hook <h> <event>` command per event, and that entry runs every installed layer in the fixed order of contracts §1 (PreToolUse: trace, guard, route, mem, shape, gate, trace; PostToolUse: trace, shape, gate, guard, mem, trace; Stop: trace, gate, trace, mem) and merges their outputs: a deny or block from any layer wins, `updatedInput` is merged field-wise, `additionalContext` and `reason` are concatenated under the §9 ceilings with gate's text first on Stop. The tables below therefore describe gate's contribution to the merged output, not a separate hook. `saga gate install` and `saga gate uninstall` are aliases that add or remove gate from the manifest and re-run the single installer.
+**Composition.** Gate installs no hook of its own. `saga install --harness <h>` writes one `saga hook <h> <event>` command per event, and that entry runs every installed layer in the fixed order of contracts §1 (PreToolUse: trace, guard, route, mem, shape, gate, trace; PostToolUse: trace, shape, gate, guard, mem, trace; Stop: trace, gate, trace with the claim verdict below, mem) and merges their outputs: a deny or block from any layer wins, `updatedInput` is merged field-wise, `additionalContext` and `reason` are concatenated under the §9 ceilings with gate's text first on Stop. The tables below therefore describe gate's contribution to the merged output, not a separate hook. `saga gate install` and `saga gate uninstall` are aliases that add or remove gate from the manifest and re-run the single installer.
 
 Common algorithm, every harness:
 
@@ -470,6 +474,18 @@ Common algorithm, every harness:
 
 **Progress hash**: sha256 of the sorted `(gate, state, evidence_hash, red_valid)` tuples, so a reflowed line or rewritten comment is not progress. Counter lives in `.saga/observed/session-<id>.json`. `max_blocks` default 6 (below Claude Code's own hard cap of 8 consecutive blocks). This is a backstop, not a guarantee: an agent can wait it out.
 
+**Claim verdict (Stop only).** After gate's `check --status`, the second trace step of the Stop chain (contracts §1) runs `saga trace claims --status` over the turn's final message (trace-spec §5.5 to §5.9) and the composed entry merges its decision after gate's. Gate's status is one input to that verdict (a `met` record is fresh only at the current `tree_hash`, §4.3); gate computes no claim check itself. Exit codes are the uniform table (contracts §4, §7.1):
+
+| `saga trace claims --status` exit | Verdict | Minimal mode (no `.saga/config.toml`) | Full mode | Reason text |
+|---|---|---|---|---|
+| 0 | no claims, or all `verified` | allow | allow | none |
+| 1 | `unverified` | allow; warning logged as the `gate` `kind: claim` trace event, nothing injected | block | trace's fixed line, ≤ 120 est. tokens, after gate's text |
+| 5 | `contradicted` | block | block | same |
+| 2 | `claims.txt` invalid | block (fail closed) | block | `claims list invalid` |
+| 6 | final message unavailable | as exit 1 | as exit 1 | as exit 1 |
+
+`[trace.claims] unverified = "warn"` in `.saga/config.toml` keeps full mode at the minimal behaviour; the key is read from `BASE:` like `[gate]` (§5.4). A claim block counts toward `max_blocks`, and the progress hash is extended with the claim verdict, so an agent that only rewords its final message makes no progress.
+
 **The Stop-equivalent adapter never executes `CHECK:`.** It reports ledger state. Execution happens in `check`, run by the agent or by CI.
 
 ### 6.1 Claude Code (verified against code.claude.com/docs/en/hooks, 2026-09-02)
@@ -481,7 +497,7 @@ Hook input is JSON on stdin; output is exit code and optional JSON on stdout. Se
 | `PreToolUse` / `Edit\|Write\|NotebookEdit` | `tool_input.file_path`, `cwd` | `guard-diff --predict --path <p> --json` (G-SCOPE only) | `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"<≤150 tok>"}}` |
 | `PreToolUse` / `Bash` | `tool_input.command` | none (string match) | deny when the command invokes `saga gate approve`, `saga gate attest`, or `check --approve`; these three strings are gate's rows in the shared agent-forbidden command list (contracts §8), which guard's post-expansion classifier enforces when guard is installed and the composed hook enforces by string match otherwise |
 | `PostToolUse` / `Edit\|Write\|NotebookEdit\|Bash` | `tool_name`, `tool_input` | `guard-diff --incremental --json` | `{"decision":"block","reason":"<≤200 tok>"}`. **Feedback only**: Claude Code's PostToolUse cannot prevent anything, the tool already ran; `reason` is attached next to the tool result. Refusal is at Stop and in CI. |
-| `Stop` | `session_id`, `stop_hook_active` | `check --status --json` | `{"decision":"block","reason":"<≤400 tok>"}` (top-level fields, `reason` required) |
+| `Stop` | `session_id`, `stop_hook_active` | `check --status --json` | `{"decision":"block","reason":"<≤400 tok>"}` (top-level fields, `reason` required); the composed entry appends trace's claim line (≤ 120, trace-spec §5.9) after gate's text |
 
 Facts that shaped the table:
 
@@ -601,6 +617,7 @@ Precedence when several apply: **6, 7, 2, 3, 4, 5, 1** (first listed wins). Envi
   "contract": "vendor-import",
   "contract_hash": "sha256:…",
   "base": "4c1e9ab",
+  "risk": "impossible", "risk_removed": false,
   "exit": 1,
   "summary": {"gates": 4, "met": 2, "unmet": 1, "abandoned": 1, "attested": 0,
               "unproven": 1, "manual": 1, "waivers": 1},
@@ -626,6 +643,7 @@ Precedence when several apply: **6, 7, 2, 3, 4, 5, 1** (first listed wins). Envi
 |---|
 | Every record carries `schema` as `<name>/<major>`; consumers reject unknown majors. |
 | `state` ∈ `met`, `unmet`, `unproven`, `attested`, `abandoned`, `manual`. |
+| `risk` ∈ `impossible` or `null`; `risk_removed` is true when the `RISK:` line exists at `BASE:` only (§2.3). |
 | `red.reason` when not valid ∈ `baseline missed`, `mutation not observed`, `no operator`, `wrong-reason red`, `invalidated`, `expired`, `declared none`. |
 | Text fields are control-stripped and bidi-stripped before serialisation. |
 
@@ -697,7 +715,7 @@ Per ADR 0002 every emission is a bounded translation of a check result, attribut
 | `check` failure diagnostics (tool output, not injected) | error-aware tail, masked | 4 KiB per call (≈1,200), reported per call in trace, not session-capped |
 | Contract file when the agent reads it | authored by the agent; typical 5-gate contract ≈ 450 | measured, not capped |
 
-Enforcement: the composed hook keeps a per-session byte counter per layer in `.saga/observed/session-<id>.json` (contracts §7); gate's 1,000 is its share of the one session budget, alongside guard 400, shape 600, trace 400, route 200 and mem 1,200. When gate's share is reached, the decision is unchanged (still `block`) and the message collapses to a fixed 20-token line: `saga gate: N unmet; run saga gate status`. The bench treats an injected-cap breach as a failed run of the layer itself.
+Enforcement: the composed hook keeps a per-session byte counter per layer in `.saga/observed/session-<id>.json` (contracts §7); gate's 1,000 is its share of the one session budget, alongside guard 400, shape 600, trace 400, route 200 and mem 1,200. When gate's share is reached, the decision is unchanged (still `block`) and the message collapses to a fixed 20-token line: `saga gate: N unmet; run saga gate status`. The bench treats an injected-cap breach as a failed run of the layer itself. Trace's claim line at Stop (trace-spec §5.9, ≤ 120) is trace's emission under trace's 400-token share, not gate's.
 
 ---
 
@@ -738,7 +756,7 @@ These validate implementation behaviour. They say nothing about whether the laye
 
 **Primary metric: false-done rate**, the fraction of runs claimed done where the hidden oracle failed. Doc 03 §2.5 predicts arm A is worst and that a visible oracle alone (arm B) does not fix it.
 
-**Secondary metrics** (bench-spec §5.2, §5.7, §5.8 and the gate row of §5.11): pass^k on the hidden oracle; scope-violation rate; cheat rate from the independent post-hoc scan run on every arm (so the guards are measured against ground truth, not against themselves); `abandon_rate` on the impossible tasks (higher is better); `uncovered_sentences_at_stop`; tokens, wall time, cost per solved (§5.6); `injected_tokens` against the §9 cap (from harness usage counters, alongside the byte/4 estimate).
+**Secondary metrics** (bench-spec §5.2, §5.7, §5.8 and the gate row of §5.11): pass^k on the hidden oracle; scope-violation rate; cheat rate from the independent post-hoc scan run on every arm (so the guards are measured against ground truth, not against themselves); `abandon_rate` on the impossible tasks (higher is better); `uncovered_sentences_at_stop`; tokens, wall time, cost per solved (§5.6); `injected_tokens` against the §9 cap (from harness usage counters, alongside the byte/4 estimate); `claim_contradiction_rate` split by hidden-oracle outcome (trace-spec §5.9, bench-spec §5.11 trace row), so the deterministic claim checks are scored against ground truth rather than against themselves.
 
 **Reporting**: per-run rows, per-task medians, Wilcoxon signed-rank across paired arms, pass^k with variance, negative results committed. A component that does not move the false-done rate at k = 10 is cut, not shipped and explained.
 

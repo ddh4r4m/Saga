@@ -12,7 +12,7 @@ One binding per harness event: `saga hook <harness> <event>`, written by `saga i
 |---|---|---|
 | `PreToolUse` | trace (record) → guard → route → mem → shape → gate → trace (record decision) | a `deny` from guard or gate ends the chain |
 | `PostToolUse` | trace → shape → gate → guard (deps) → mem (capture) → index (`update`, optional) → trace (watchdog, budget) | none; feedback only except on Gemini |
-| `Stop` / `AfterAgent` | trace (turn end, checkpoint) → gate (`check --status`) → trace (budget hard stop, watchdog block) → mem (pending line) | `block` wins; gate's reason first |
+| `Stop` / `AfterAgent` | trace (turn end, checkpoint) → gate (`check --status`) → trace (claim verdict, trace-spec §5.9; budget hard stop; watchdog block) → mem (pending line) | `block` wins; gate's reason first, trace's claim line second |
 | `UserPromptSubmit` / `BeforeAgent` | trace (turn) → guard (mask scan) → mem (statement capture; Gemini: state re-inject) | guard `block` ends the chain |
 | `PreCompact` / `PreCompress` | mem (`state --write`) → trace | never blocks; exit 0 always |
 | `SessionStart` / `PostCompact` | trace (session, pins) → mem (state re-inject on `compact`/`resume`) | |
@@ -26,7 +26,7 @@ One binding per harness event: `saga hook <harness> <event>`, written by `saga i
 | `updatedInput` | field-wise union (`command`: the one rewrite below; `prompt`: mem; `model`: route; `content`: guard); two layers on one field is a composition bug, exit 2 |
 | Bash rewrite | exactly one: `saga shape run --mask -- <cmd>` when shape is installed (its masker and unmask-in are guard's), else `saga guard exec --mask -- <cmd>` |
 | `additionalContext` | concatenated in layer order, each block prefixed `saga <layer>:` |
-| `reason` | concatenated in layer order under the gate-spec §9 per-event ceilings (pre-tool 150, post-tool 200, Stop 400 est. tokens) |
+| `reason` | concatenated in layer order under the gate-spec §9 per-event ceilings (pre-tool 150, post-tool 200, Stop 400 est. tokens); on Stop, trace's claim line (≤ 120, trace-spec §5.9) follows gate's text and is charged to trace's share |
 | exit code | §4 precedence over the layers' codes; exit-2-with-stderr only when the harness rejects JSON |
 | latency | whole entry p95 ≤ 300 ms with a snapshot, ≤ 20 ms without (guard-spec §11.4, trace-spec §11.1) |
 
@@ -58,7 +58,7 @@ Other harnesses (Cursor, OpenCode, Cline, Kilo, CI) are CLI plus MCP only until 
 
 | Path | Owner | Committed | Notes |
 |---|---|---|---|
-| `.saga/config.toml` | all | yes | one table per layer: `[gate]`, `[trace.budget]`, `[trace.watchdog]`, `[index]`, `[shape]`, `[mem]`; `[gate]` and `[trace.*]` are read from gate's `BASE:` via `git show`, the rest from the working tree |
+| `.saga/config.toml` | all | yes | one table per layer: `[gate]`, `[trace.budget]`, `[trace.watchdog]`, `[trace.claims]`, `[index]`, `[shape]`, `[mem]`; `[gate]` and `[trace.*]` are read from gate's `BASE:` via `git show`, the rest from the working tree |
 | `.saga/policy.toml` | guard | yes | `saga.guard.policy/1`; honoured after `saga guard policy trust` |
 | `.saga/route.toml` | route | yes | `saga.route.policy/1`; honoured after `saga route policy trust` |
 | `.saga/manifest.json` | install | yes | installed layers; every auto-executing entry (guard-spec §7) |
@@ -96,11 +96,11 @@ One table for every subcommand; `saga shape run` alone propagates the child's co
 | Code | Meaning | Examples |
 |---|---|---|
 | 0 | ok, allow, all met | |
-| 1 | finding | unmet gate, ask, stale record, canary non-pass, runtime budget exhausted, empty result, doctor check failed |
+| 1 | finding | unmet gate, ask, stale record, unverified claim, canary non-pass, runtime budget exhausted, empty result, doctor check failed |
 | 2 | usage, parse or schema failure (fail closed) | invalid contract, unknown major, repo policy touching a fixed table |
 | 3 | refusal | hard deny, unwaived guard violation, bench estimate over budget, masked write rejected |
 | 4 | approval or trust required | gate approval missing, policy hash untrusted, snapshot over budget with `on_budget = "ask"` |
-| 5 | integrity or proof missing | red proof absent, hash chain mismatch, strict replay divergence, manifest hash drift, stale index under `--require-fresh`, evicted log |
+| 5 | integrity or proof missing | red proof absent, contradicted claim (the record refutes the final message), hash chain mismatch, strict replay divergence, manifest hash drift, stale index under `--require-fresh`, evicted log |
 | 6 | environment refusal | hostile file shape, unreadable store, harness or runtime missing, vault unavailable |
 | 7 | contamination (bench only) | leak scan, canary GUID, post-cutoff check |
 
@@ -134,12 +134,12 @@ Envelope per trace-spec §2.1; trace-spec §2.2 is normative for bodies.
 | Type | Body |
 |---|---|
 | `session` | phase, pins (`saga.trace.pins/1`), harness, config hash, changed pin keys |
-| `turn` | phase, prompt hash and bytes, final message hash, `claimed_done` |
+| `turn` | phase, prompt hash and bytes, final message hash and ref, `claimed_done` (trace-spec §5.6) |
 | `model_call` | requested and served model, request id, fingerprint, effort, usage (§7.2), `call_key`, hashes, latency, status, attribution |
 | `tool_call` | tool, args hash and ref, `component` (§7.1), cwd, `index_version` |
 | `tool_result` | for_seq, exit, error, result hash, bytes, ref, truncated, wall, `served`, optional `shaped` (shape-spec §8) |
 | `edit` | path, before and after `sha256:`, hunks, added, removed, by_tool, in_scope |
-| `gate` | kind (check, guard_diff, red, stop, claim), ids, states, decision, progress hash |
+| `gate` | kind (check, guard_diff, red, stop, claim), ids, states, decision, progress hash; for `claim` (written by trace, last blocking step of the Stop chain): `for_turn`, `claims[]`, `verdict` (verified, unverified, contradicted), `counts`, `tree_hash`, `mode`, `decision`, `exit` (trace-spec §5.9) |
 | `guard` | kind (classify, deny, snapshot, mask, deps, mcp, undo), segments, class, snapshot id, masked count, decision |
 | `mem_inject` | record ids, bytes, tokens, trigger |
 | `compaction` | phase, context tokens before and after, state block hash, trigger |
@@ -171,7 +171,7 @@ Est. tokens, counted per layer in `.saga/observed/session-<id>.json`. At its sha
 | gate | pre-tool 150, post-tool 200, Stop 400 | 1,000 | gate-spec §9 |
 | guard | reason 150 | 400 | guard-spec §2.6 |
 | shape | feedback 120 inside the post-tool 200 | 600 | shape-spec §4.5 |
-| trace | budget line 60, watchdog warn 80 | 400 | trace-spec §3.6, §5.3 |
+| trace | budget line 60, watchdog warn 80, claim block line 120 (only on `block`) | 400 | trace-spec §3.6, §5.3, §5.9 |
 | route | budget line 60 | 200 | route-spec §5.3 |
 | mem (targeted) | 200 per injection, ≤ 3 records | 1,200 | mem-spec §5.4 |
 | **Injected total** | | **3,800** | |
@@ -234,4 +234,4 @@ All thresholds are priors, revised only from a bench manifest.
 | Body schemas live in `schema/<layer>/<major>/`; an unknown field is a validation failure. |
 | Adding a field, enum value or event type is minor; renaming or removing is a new major. |
 
-Registry: `saga.trace/1`, `saga.trace.ledger/1`, `saga.trace.report/1`, `saga.trace.prices/1`, `saga.trace.pins/1`, `saga.trace.checkpoint/1`, `saga.trace.bundle/1`, `saga.doctor/1`; `saga.gate.status/1`, `saga.gate.evidence/1`, `saga.gate.red/1`, `saga.gate.approval/1`; `saga.guard.policy/1`, `saga.guard.decision/1`, `saga.guard.mask/1`; `saga.shape.parser/1`, `saga.shape.result/1`, `saga.shape.edit/1`, `saga.shape.window/1`, `saga.shape.cache/1`; `saga.mem.record/1`, `saga.mem.index/1`, `saga.mem.session/1`, `saga.mem.inject-request/1`, `saga.mem.inject/1`; `saga.route.policy/1`, `saga.route.plan/1`; `saga.index.status/1`; `saga.bench.task/1`, `saga.bench.run/1`, `saga.bench.harness/1`, `saga.bench.manifest/1`, `saga.bench.report/1`.
+Registry: `saga.trace/1`, `saga.trace.ledger/1`, `saga.trace.report/1`, `saga.trace.prices/1`, `saga.trace.pins/1`, `saga.trace.checkpoint/1`, `saga.trace.bundle/1`, `saga.trace.claims/1`, `saga.doctor/1`; `saga.gate.status/1`, `saga.gate.evidence/1`, `saga.gate.red/1`, `saga.gate.approval/1`; `saga.guard.policy/1`, `saga.guard.decision/1`, `saga.guard.mask/1`; `saga.shape.parser/1`, `saga.shape.result/1`, `saga.shape.edit/1`, `saga.shape.window/1`, `saga.shape.cache/1`; `saga.mem.record/1`, `saga.mem.index/1`, `saga.mem.session/1`, `saga.mem.inject-request/1`, `saga.mem.inject/1`; `saga.route.policy/1`, `saga.route.plan/1`; `saga.index.status/1`; `saga.bench.task/1`, `saga.bench.run/1`, `saga.bench.harness/1`, `saga.bench.manifest/1`, `saga.bench.report/1`.
