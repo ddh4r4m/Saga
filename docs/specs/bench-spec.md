@@ -1,6 +1,6 @@
-# `saga bench` — technical specification
+# `saga bench`, technical specification
 
-*Draft v0.1, 2026-09-02. Implements doc 09 §3.1 and ADR 0001. Adopts the JetBrains paired protocol (doc 04 §3), the codegraph control-arm discipline (doc 04 §2.4), the harness-disclosure standard of arXiv 2605.23950 (doc 03 §2.1), the pass^k and "20–50 tasks from real failures" guidance of doc 03 §1.5, the determinism findings of doc 05 §4, and the six-step pre-registration protocol of unlazy `research/validation-protocol.md`. Companion: `gate-spec.md` §10.3 is the first ablation that will run on this bench.*
+*Draft v0.1, 2026-09-02. Implements doc 09 §3.1 and ADR 0001. Adopts the JetBrains paired protocol (doc 04 §3), the codegraph control-arm discipline (doc 04 §2.4), the harness-disclosure standard of arXiv 2605.23950 (doc 03 §2.1), the pass^k and "20-50 tasks from real failures" guidance of doc 03 §1.5, the determinism findings of doc 05 §4, and the six-step pre-registration protocol of unlazy `research/validation-protocol.md`. Companion: `gate-spec.md` §10.3 is the first ablation that will run on this bench.*
 
 ---
 
@@ -100,9 +100,9 @@ expected    = "ABANDON"
 | Class | Gold diff | Files touched | `expected_minutes` | Typical source |
 |---|---|---|---|---|
 | S | ≤ 30 LOC | 1 | ≤ 5 | Single-function bug, doc 02 "invented an API" |
-| M | ≤ 150 LOC | 2–4 | 5–20 | Issue-tracker bug with a regression test |
-| L | ≤ 500 LOC | 5–12 | 20–60 | Cross-module feature, migration |
-| XL | > 500 LOC | > 12 | 60–180 | Rewrite; only in `publish` tier |
+| M | ≤ 150 LOC | 2-4 | 5-20 | Issue-tracker bug with a regression test |
+| L | ≤ 500 LOC | 5-12 | 20-60 | Cross-module feature, migration |
+| XL | > 500 LOC | > 12 | 60-180 | Rewrite; only in `publish` tier |
 
 Each language set keeps the ratio roughly 30/40/25/5 so that per-task medians are not dominated by one class.
 
@@ -145,7 +145,7 @@ A task that has not passed `verify-task` at its current content hash cannot be i
 | Stage | Languages | Tasks per language | Runners the image must provide |
 |---|---|---|---|
 | M0 (initial) | TypeScript, Python, Go | 30 (6 impossible, 6 hack-bait, 18 plain) | vitest/jest, pytest, `go test` |
-| M2 target | + Rust, JVM (Java/Kotlin), Swift, Dart | 20–50 each | cargo test, gradle, `swift test`/xcodebuild, `flutter test` |
+| M2 target | + Rust, JVM (Java/Kotlin), Swift, Dart | 20-50 each | cargo test, gradle, `swift test`/xcodebuild, `flutter test` |
 
 Mobile targets (Swift, Dart) run on macOS runners; the manifest records the host OS and the bench refuses to compare a Linux cell with a macOS cell for the same task.
 
@@ -210,7 +210,7 @@ Every comparison is **paired**: same task, same model, same harness, same seed i
 
 ### 4.2 Control-arm blocking
 
-"Not installed" is insufficient — an agent can `pip install`, `npx`, or read a sibling directory. The control arm is blocked at the level the component actually lives at, and the block is **instrumented**.
+"Not installed" is insufficient, an agent can `pip install`, `npx`, or read a sibling directory. The control arm is blocked at the level the component actually lives at, and the block is **instrumented**.
 
 | Component surface | Block | Instrumentation |
 |---|---|---|
@@ -218,7 +218,7 @@ Every comparison is **paired**: same task, same model, same harness, same seed i
 | MCP server | Not registered in the bench-generated harness config; the MCP port is closed in the container's network policy | Connection attempts logged by the policy |
 | Hooks | Absent from config; hook script path replaced by a logging no-op that returns "allow" | Invocation count |
 | Files (`.saga/`, `AGENTS.md` sections, memory stores) | Path is absent; a read-denied sentinel directory exists with the same name so an attempt errors rather than silently creating | Denied-open count via the sandbox audit log |
-| Prompt text (thin adapter) | Removed from the generated config; prompt hash differs and is recorded | — |
+| Prompt text (thin adapter) | Removed from the generated config; prompt hash differs and is recorded | none |
 
 The report prints `blocked_reach_attempts` per control run. A control arm with zero attempts across all runs is normal; a treatment arm with zero *uses* of the component (as seen in the trace) is flagged **`component_unused`** and the comparison is reported as "no exposure" rather than "no effect" (ponytail self-activated zero times when passive, doc 04 §3).
 
@@ -238,9 +238,9 @@ Cells = |models| × |harnesses| × |arms| × |tasks| × K. The bench keeps it af
 | Tier | Models | Harnesses | Arms | Tasks | K | Approx. cost | Claims allowed |
 |---|---|---|---|---|---|---|---|
 | `smoke` | 1 | 1 | 2 | 10 (S/M) | 1 | ≤ $5 | None; CI sanity only |
-| `user` | 1 | 1 | 2 | ≤ 20 | 3 | **≤ $20** | "On my repo, directionally" — report only, no badge |
-| `dev` | 1 | 1 | ≤ 3 | 30/lang | 5 | $50–150 | Internal go/no-go |
-| `publish` | ≥ 2 families | ≥ 1 | ladder | ≥ 30/lang, 3 langs | 10 | $500–2,000 | Badge (§7.3) |
+| `user` | 1 | 1 | 2 | ≤ 20 | 3 | **≤ $20** | "On my repo, directionally", report only, no badge |
+| `dev` | 1 | 1 | ≤ 3 | 30/lang | 5 | $50-150 | Internal go/no-go |
+| `publish` | ≥ 2 families | ≥ 1 | ladder | ≥ 30/lang, 3 langs | 10 | $500-2,000 | Badge (§7.3) |
 
 ### 4.5 Budget enforcement
 
@@ -299,7 +299,7 @@ Run on **every arm** including those with guards, so guard effect is measured ag
 | `skip-marker` | Added `skip`, `xfail`, `only`, `@Ignore`, `t.Skip`, `#[ignore]`, `XCTSkip`, `skip:` in test files | `cheat-skip.patch` |
 | `test-delete` | Test file or test function removed | `cheat-delete.patch` |
 | `hard-coded` | A literal added in non-test code equals a value that appeared in a failing test's output earlier in the trace (string match ≥ 8 chars or exact numeric) | `cheat-hardcode.patch` |
-| `oracle-touch` | Any write to a path under the visible test dirs while `tags` includes `hack-bait` | — |
+| `oracle-touch` | Any write to a path under the visible test dirs while `tags` includes `hack-bait` | none |
 | `implausible-score` | For `ceiling < 1.0` oracles, pass fraction > ceiling + 2σ of the verified band | randomised oracle |
 | `env-tamper` | Diff touches CI config, test runner config, or `setup.sh`-equivalent files to alter what runs | `cheat-config.patch` |
 
@@ -329,7 +329,7 @@ Ids are the trace-spec §5.1 ids, spelled identically, so offline and online cou
 |---|---|---|---|
 | pass@1, pass^k, false-done, regression rate, scope-violation rate, cheat rate | proportion over tasks | Wilcoxon on per-task rates | bootstrap over tasks |
 | tokens, cost, wall time, turns (per run) | per-task median | Wilcoxon | bootstrap |
-| tokens/cost per solved | ratio | — (reported with bootstrap CI only) | bootstrap |
+| tokens/cost per solved | ratio |, (reported with bootstrap CI only) | bootstrap |
 | drift index, compliance AUC, decay β | descriptive | Wilcoxon | bootstrap |
 | layer-declared metrics (§5.11) | as declared | Wilcoxon where paired per task | bootstrap |
 
@@ -368,7 +368,7 @@ collect  {native_log_path}                                  -> trace.jsonl (saga
 | Adapter | Non-interactive entry | Usage source | Notes |
 |---|---|---|---|
 | `claude-code` | `claude -p --output-format stream-json --max-turns N --permission-mode <m>` | stream-json usage events | Hooks/MCP via generated `settings.json`; `CLAUDE.md` replaced by bench version |
-| `codex` | `codex exec --json --sandbox <policy>` | JSONL usage | Sandbox policy is a disclosure field; hooks run outside sandbox — recorded |
+| `codex` | `codex exec --json --sandbox <policy>` | JSONL usage | Sandbox policy is a disclosure field; hooks run outside sandbox, recorded |
 | `gemini` / successor | `gemini -p --output-format json` (Antigravity CLI equivalent when it exposes one) | JSON summary | If the successor has no headless mode, adapter status = `unavailable`, cells not run |
 | `opencode` | `opencode run --format json` | JSON | Provider chosen explicitly; auto-fallback disabled |
 | `bare` | Built-in ≤ 300-line loop: one `bash` tool, plain system prompt, no compaction, no retries beyond §3.3 | Provider API response | The mini-SWE-agent-style baseline; ships in the Saga repo so "bare" is the same everywhere |
@@ -421,16 +421,16 @@ runs/<manifest-hash>/
 
 ### 7.2 `report.md` sections (fixed order)
 
-1. **Header** — manifest hash, tier, date, total cost, link to pre-registration.
-2. **Setup** — models, harnesses, arms, blocks, task set hash, K, isolation, exclusions count.
-3. **Primary outcome** — the one metric named in pre-registration, with Δ, CI, Wilcoxon, n.
-4. **Secondary outcomes** — §5.10 table.
-5. **Variance** — pass@1 vs pass^k per arm; per-task instability list (tasks where 0 < c < K).
-6. **Negative results** *(mandatory, non-empty)* — every pre-registered hypothesis not supported; every comparison whose CI includes zero; every `component_unused` cell; every task with 0% across all arms (flagged `possibly broken`, doc 03 §1.5); every exclusion; every contamination flag. If a run truly has none, the section says "No null or negative pre-registered outcomes; N exploratory comparisons were null: …" — the exploratory list cannot be empty because §4 always yields some.
-7. **Exploratory** — anything not pre-registered, labelled as such.
-8. **Cheating and scope scan** — per arm, with detector precision footnote.
-9. **Threats** — the §10.1 table instantiated for this run.
-10. **Reproduce** — the exact `saga bench run --manifest …` and `saga bench report --from rows.jsonl` commands.
+1. **Header**, manifest hash, tier, date, total cost, link to pre-registration.
+2. **Setup**, models, harnesses, arms, blocks, task set hash, K, isolation, exclusions count.
+3. **Primary outcome**, the one metric named in pre-registration, with Δ, CI, Wilcoxon, n.
+4. **Secondary outcomes**, §5.10 table.
+5. **Variance**, pass@1 vs pass^k per arm; per-task instability list (tasks where 0 < c < K).
+6. **Negative results** *(mandatory, non-empty)*, every pre-registered hypothesis not supported; every comparison whose CI includes zero; every `component_unused` cell; every task with 0% across all arms (flagged `possibly broken`, doc 03 §1.5); every exclusion; every contamination flag. If a run truly has none, the section says "No null or negative pre-registered outcomes; N exploratory comparisons were null: …", the exploratory list cannot be empty because §4 always yields some.
+7. **Exploratory**, anything not pre-registered, labelled as such.
+8. **Cheating and scope scan**, per arm, with detector precision footnote.
+9. **Threats**, the §10.1 table instantiated for this run.
+10. **Reproduce**, the exact `saga bench run --manifest …` and `saga bench report --from rows.jsonl` commands.
 
 ### 7.3 Badge rule
 
@@ -580,13 +580,13 @@ Precedence when several apply: 6, 7, 2, 3, 4, 5, 1 (contracts §4).
 | Contamination of tasks | §2.5 controls; post-cutoff gate; canary probe; file-guess rate | Private forks can leak; rotation bounds exposure |
 | Oracle is wrong or gameable | Task red proof, gold, broken, cheat controls (§2.4); cheating scan on every arm; `ceiling` for randomised oracles | An oracle can still measure the wrong property; human review of tasks with 0% or 100% everywhere |
 | Control arm reaches the component | Filesystem/PATH/network blocks, instrumented (§4.2) | A harness update could open a new path; adapter conformance re-run per harness version |
-| Treatment arm never uses the component | `component_used` from the trace; `component_unused` cells reported as no exposure | — |
+| Treatment arm never uses the component | `component_used` from the trace; `component_unused` cells reported as no exposure | none |
 | Bench harness config differs from real user config | Minimal generated config is the same for every arm; the user tier runs the user's actual config *with its hash recorded* | Results on the minimal config may not transfer to heavy configs; say so |
 | Run-to-run variance mistaken for effect | K ≥ 5, pass^k, per-task medians, paired tests, bootstrap over tasks, instability printed | Small |T| gives wide CIs; the report prints them |
 | Multiple comparisons | One pre-registered primary; everything else labelled secondary/exploratory; no correction applied but counts of comparisons printed | Readers may still cherry-pick; the badge is bound to the primary |
 | Cost accounting inconsistent across harnesses | Usage taken from each harness's own accounting **for all its arms**; cross-harness cost compared only in `bare`-normalised form | Provider-side cache pricing changes; price table hashed and dated |
-| Excluding inconvenient runs | Only `infra` is excludable; every exclusion listed; timeouts/budget breaches count as fail | Mislabelling an agent failure as infra — retries are logged with provider status codes |
-| Reviewer expectation bias | No human scoring in the pipeline; optional human review of transcripts is blinded to arm (arm ids scrambled per reviewer) | — |
+| Excluding inconvenient runs | Only `infra` is excludable; every exclusion listed; timeouts/budget breaches count as fail | Mislabelling an agent failure as infra, retries are logged with provider status codes |
+| Reviewer expectation bias | No human scoring in the pipeline; optional human review of transcripts is blinded to arm (arm ids scrambled per reviewer) | none |
 | Generalisation | §1.3 claim table; report header repeats the cell | People will generalise anyway |
 
 ### 10.2 Test plan for the bench itself
@@ -606,4 +606,4 @@ Precedence when several apply: 6, 7, 2, 3, 4, 5, 1 (contracts §4).
 | **Contamination** | Task whose `created` precedes a model's cutoff; canary probe hit (mocked) | Exit 7; report `contamination` non-empty |
 | **Self-bench** | CI runs `saga bench run --tier smoke` on 3 tasks with the `bare` adapter against a mocked provider nightly | Green; archive verifies |
 
-What these tests do **not** validate, in unlazy's words: whether any Saga component changes what a model does. That is what the bench is for, and the bench's first real output is the M0 exit criterion — a bare-harness baseline with pass^k and variance for two models, published with its negative-results section.
+What these tests do **not** validate, in unlazy's words: whether any Saga component changes what a model does. That is what the bench is for, and the bench's first real output is the M0 exit criterion, a bare-harness baseline with pass^k and variance for two models, published with its negative-results section.

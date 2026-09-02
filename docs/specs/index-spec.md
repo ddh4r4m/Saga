@@ -1,6 +1,6 @@
 # `saga index`: technical specification
 
-*Draft v0.1, 2026-09-02. Implements doc 09 §3.3 and ADR 0005. Evidence base: doc 05 §1 (structural graphs help localization; depth two hurts), §6 (gated API knowledge), §7 (test-impact maps), §9 (recommended shape) and §10 (open problems); doc 04 §2.4 (serena, codegraph, graphify trade-offs, including codegraph's +80% resident-context cost); doc 03 §1.2 (few tools, compact output, descriptions are prompts). Integrates with `gate-spec.md` §2 (contracts) and `bench-spec.md` §4–5 (ablation and metrics). Ships at M2.*
+*Draft v0.1, 2026-09-02. Implements doc 09 §3.3 and ADR 0005. Evidence base: doc 05 §1 (structural graphs help localization; depth two hurts), §6 (gated API knowledge), §7 (test-impact maps), §9 (recommended shape) and §10 (open problems); doc 04 §2.4 (serena, codegraph, graphify trade-offs, including codegraph's +80% resident-context cost); doc 03 §1.2 (few tools, compact output, descriptions are prompts). Integrates with `gate-spec.md` §2 (contracts) and `bench-spec.md` §4-5 (ablation and metrics). Ships at M2.*
 
 ---
 
@@ -21,8 +21,8 @@
 
 | Not this | Because |
 |---|---|
-| An LLM-extracted knowledge graph | Costs 10⁷–10⁸ tokens per corpus and adds relation errors; AST graphs are cheaper and at least as accurate (doc 05 §2). ADR 0004 forbids narrative memory as facts. |
-| Narrative summaries of modules or files | LLM-generated repo notes reduce resolve rate 3% and raise cost 20–23% (doc 05 §3.3). The index stores signatures and edges, never prose about them. |
+| An LLM-extracted knowledge graph | Costs 10⁷-10⁸ tokens per corpus and adds relation errors; AST graphs are cheaper and at least as accurate (doc 05 §2). ADR 0004 forbids narrative memory as facts. |
+| Narrative summaries of modules or files | LLM-generated repo notes reduce resolve rate 3% and raise cost 20-23% (doc 05 §3.3). The index stores signatures and edges, never prose about them. |
 | A replacement for grep | Grep persists in every major agent for zero setup, all file types, and benign failure (doc 05 §1.4). No adapter removes, wraps, or discourages grep. |
 | A compiler-grade index | SCIP, Glean and Kythe need builds and per-language indexers. This index needs a parser. The precision gap is documented (§3) and bridged lazily by LSP (§3.4). |
 | Two-hop context | RepoGraph 1-hop 29.67% vs 2-hop 26.00% (doc 05 §1.2). `depth` defaults to 1 and is capped at 2. |
@@ -277,7 +277,7 @@ Resolution runs per reference, first rule that binds wins, later rules never ove
 | 4 | Receiver type: `x.m()` where `x` has a declared type, constructor call, or `new` in the same function or class, and a class of that name (or an ancestor via `inherits`, depth ≤ 3) defines `m` | `receiver` | 0.8 |
 | 5 | Same package or module (Go, Java, Kotlin, Swift target) defines the name exactly once | `import` | 0.85 |
 | 6 | Exactly one definition of the name in the whole repo, excluding vendored | `global_unique` | 0.6 |
-| 7 | 2–5 definitions: an edge to each, `confidence = 0.5 / n` | `ambiguous` | ≤ 0.25 |
+| 7 | 2-5 definitions: an edge to each, `confidence = 0.5 / n` | `ambiguous` | ≤ 0.25 |
 | 8 | More than 5, or zero: row in `unresolved` | | |
 
 Results show confidence < 0.8 with a `~` prefix so the agent can escalate to `read` or to the LSP overlay.
@@ -688,7 +688,7 @@ Adapters are under 150 lines, contain no ranking or resolution logic, and pass t
 | Suite | Content | Pass bar |
 |---|---|---|
 | **Grammar fixtures** | Per language in §3.1, ≥ 30 fixture files covering every node kind, every edge kind, every module-resolver path, and every blind-spot row (which must produce the documented `unresolved` or low-confidence result, not a wrong edge). Golden `facts` JSON per fixture; grammar version bumps re-run the suite | 100% golden match; a bump that changes a golden requires a reviewed diff |
-| **Name-resolution corpus** | 3 repos per language (10k–150k lines) with SCIP or LSP ground truth for `calls` and `references`. Report precision and recall per rule and per language | Typed languages: precision ≥ 0.90, recall ≥ 0.75 on `calls`; Python/JS: precision ≥ 0.85, recall ≥ 0.60; no language ships without its row in `status --explain` |
+| **Name-resolution corpus** | 3 repos per language (10k-150k lines) with SCIP or LSP ground truth for `calls` and `references`. Report precision and recall per rule and per language | Typed languages: precision ≥ 0.90, recall ≥ 0.75 on `calls`; Python/JS: precision ≥ 0.85, recall ≥ 0.60; no language ships without its row in `status --explain` |
 | **Incremental correctness** | Property test: from a seed repo apply 200 random edit sequences (insert, delete, rename symbol, move file, revert, branch switch, formatter run); after each, `incremental index == cold build` on `node`, `edge`, `unresolved`, `test_map` and `index_version` | Byte-identical, 100% of sequences |
 | **Latency** | The §4.5 table on the reference machine, recorded per commit | Every budget met; regression > 20% fails CI |
 | **Token ceilings** | Adversarial repos (10k-symbol single file, 500-caller function, 40 KB signature) | No result exceeds its hard ceiling; `truncated` set correctly |
@@ -714,14 +714,14 @@ Position in the stacking ladder (bench-spec §4.3): `gate → guard → index`. 
 | D3 | D1 with `lsp = "on"` regardless of tier |
 | D4 | D1 with embeddings on (`full` regime tasks only) |
 
-Only D1 vs C is funded at `dev` tier; D2–D4 are `publish`-tier or pre-registered follow-ups.
+Only D1 vs C is funded at `dev` tier; D2-D4 are `publish`-tier or pre-registered follow-ups.
 
 Report keys are the index row of bench-spec §5.11 (`localization_acc5`, `resident_context_tokens_end`, `tool_exposure`, `grep_calls`, `line_recall`); resolve rate is bench-spec §5.1 and §5.2.
 
 | Metric | Definition | Role |
 |---|---|---|
 | **Localization acc@5** | Fraction of runs in which at least one gold-diff file is among the first 5 distinct files the agent reads or receives as a `search`/`symbol` hit, from `trace.jsonl` | Primary |
-| **Resolve rate** | pass@1 and pass^k on the hidden oracle (bench-spec §5.1–5.2) | Primary |
+| **Resolve rate** | pass@1 and pass^k on the hidden oracle (bench-spec §5.1-5.2) | Primary |
 | **Resident context tokens at session end** | Input tokens of the final model call, minus the cached prefix, from the ledger; reported as median and as the ratio treatment/control | **Mandatory cost; pre-registered ceiling 1.5×** |
 | Tokens and cost per solved task | bench-spec §5.6 | Secondary |
 | Tool exposure | `search`/`symbol`/`read`/`impact` call counts; a treatment run with zero index calls is `component_unused` | Validity |

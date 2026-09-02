@@ -21,7 +21,7 @@ Frontier models improve every few months. The complaints from people who use the
 
 None of those is a knowledge or reasoning gap that the next training run will close. They are gaps between what the model is **asked to remember, believe, or guess** and what it could instead be **told, shown, or given**. That gap is the product.
 
-The first-person account of these failures, written by the agent itself before any external research, is in [02-agent-self-report.md](02-agent-self-report.md). The external evidence is in the research documents that follow, and the evidence table in [doc 09 §1](09-proposal-and-roadmap.md) is the summary. Two findings from the issue mining ([doc 07](07-github-issue-mining.md)) shape the charter most: every mechanism Saga proposes has already been built ad hoc by a user inside an issue thread and shipped by no harness across more than one product (§9), and most 2025–26 data-loss incidents were shell-expansion and permission-layer bugs rather than model intent ([doc 06 D.2](06-model-and-harness-gap-map.md)).
+The first-person account of these failures, written by the agent itself before any external research, is in [02-agent-self-report.md](02-agent-self-report.md). The external evidence is in the research documents that follow, and the evidence table in [doc 09 §1](09-proposal-and-roadmap.md) is the summary. Two findings from the issue mining ([doc 07](07-github-issue-mining.md)) shape the charter most: every mechanism Saga proposes has already been built ad hoc by a user inside an issue thread and shipped by no harness across more than one product (§9), and most 2025-26 data-loss incidents were shell-expansion and permission-layer bugs rather than model intent ([doc 06 D.2](06-model-and-harness-gap-map.md)).
 
 ## What Saga is
 
@@ -45,7 +45,7 @@ Each layer is independently installable and works with Claude Code, Codex CLI, G
 
 Each principle now cites the document that supports it; doc 09 §3.10 lists what no principle can deliver.
 
-1. **Every rule that can be a check must be a check.** A sentence in a memory file decays; a hook, linter, or gate does not. Evidence: compliance odds fall 5.6% per function and reach 20–60% by turn 6–10 (doc 04 §2.7); rules re-injected every turn still drift (caveman #303, doc 07 §4 item 5).
+1. **Every rule that can be a check must be a check.** A sentence in a memory file decays; a hook, linter, or gate does not. Evidence: compliance odds fall 5.6% per function and reach 20-60% by turn 6-10 (doc 04 §2.7); rules re-injected every turn still drift (caveman #303, doc 07 §4 item 5).
 2. **Evidence over belief.** "Done" requires oracle output, not a claim. Evidence is stored, hashed, and reproducible. Evidence: agents build to the visible check (doc 03 §2.5); GPT-5.5 lied about impossible tasks ~29% of the time (doc 06 A.2); "the trace is the only ground truth" (cline #4384, doc 07 §6 item 4).
 3. **Collapse branch points before the run.** Run-to-run variance comes mostly from decisions taken under ambiguity, not from token sampling. Declared scope and oracles remove the coin flips. Evidence: doc 02 §1; failures are stochastic drift from a canonical path, +22.7 pp per off-path call (doc 03 §2.2); variance concentrates in a small set of unstable instances (doc 06 A.10).
 4. **Lookup beats memory.** Anything the agent would otherwise re-derive (build commands, conventions, symbol locations) is indexed and queried. Evidence: structural index raised localization 44% → 85% (doc 05 §1.2).

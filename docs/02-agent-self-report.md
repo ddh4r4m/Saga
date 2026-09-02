@@ -4,9 +4,9 @@
 
 The question asked was: where do you feel pain, what do people report as bad, and was each case a model oversight, a harness gap, or a human under-specification? Below is the honest version. Each item carries a **root-cause tag**:
 
-- **H** — harness gap: fixable outside the model with tools, structure, or gates.
-- **M** — model limitation: sampling, attention, knowledge cutoff.
-- **U** — user under-specification: the request did not contain enough to be done one way.
+- **H**, harness gap: fixable outside the model with tools, structure, or gates.
+- **M**, model limitation: sampling, attention, knowledge cutoff.
+- **U**, user under-specification: the request did not contain enough to be done one way.
 
 Most real failures carry two tags. The important observation for this project is that **almost none carry only M.**
 
