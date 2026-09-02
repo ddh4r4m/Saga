@@ -48,13 +48,13 @@ The gate is measured by `saga index status --probe`, which is cheap enough to ru
 
 Hysteresis: a repo leaves `off` when it exceeds either threshold by 10% and re-enters only when it falls 10% below. `[index] regime = "off" | "lite" | "full" | "auto"` in `.saga/config.toml` overrides. The thresholds are priors, not findings; §9.2 measures the crossover and the defaults are revised from the bench, never from a README.
 
-A second gate applies to the LSP overlay only (§3.4): `[index] lsp = "auto"` enables it for models the route policy tags `tier = "small"` and disables it for `tier = "frontier"`, because LSP tools saved tokens for Haiku and cost 118% more for Sonnet (doc 05 §1.4).
+A second gate applies to the LSP overlay only (§3.4): `[index] lsp = "auto"` enables it for models in the route policy's `small` and `local` tiers and disables it for `frontier` and `standard` (route-spec §3.1 `[tiers]`; the primary's tier when route is not installed is read from `[index] tier`, default `frontier`), because LSP tools saved tokens for Haiku and cost 118% more for Sonnet (doc 05 §1.4). Contracts §10 restates both gates.
 
 ---
 
 ## 2. Data model
 
-One SQLite database per repository at `.saga/index/index.db` (WAL mode, `.saga/index/` gitignored by `build`). All derived, all rebuildable, nothing in it is authoritative over the working tree.
+One SQLite database per repository at `.saga/index/index.db` (WAL mode, `.saga/index/` gitignored through `.saga/.gitignore`, written by `saga init`, contracts §2). All derived, all rebuildable, nothing in it is authoritative over the working tree.
 
 ### 2.1 Content addressing
 
@@ -564,7 +564,7 @@ codegraph's own benchmark reports 62% fewer tokens processed but 80% more tokens
 
 | Harness | Mechanism | Fallback |
 |---|---|---|
-| Claude Code, Anthropic API | `context_management.edits[clear_tool_uses]` with `keep` and `trigger` set from the expiry table; `PreCompact` hook rewrites index results into one-line stubs `search("x") → 8 hits, top: path:line` | Result footer plus ledger |
+| Claude Code, Anthropic API | `context_management.edits[clear_tool_uses]` with `keep` and `trigger` set from the expiry table. The stub form `search("x") → 8 hits, top: path:line` is what the mem state block's `FILES` line and the trace import context (trace-spec §8.2) carry after a compaction; `PreCompact` itself cannot modify the transcript (mem-spec §4.4, verified), so no PreCompact stub-rewriter exists | Result footer plus ledger |
 | Codex CLI | No context editing; `notify` cannot edit history | Footer, ledger; ceilings halved (`[index.ceilings] scale = 0.5`) when `harness = codex` |
 | Gemini CLI | Version-dependent; adapter probes and records | Footer, ledger |
 | `bare` bench adapter | Implements `clear_tool_uses` directly in its 300-line loop so the bench can ablate expiry | |
@@ -599,7 +599,7 @@ saga index clean     [--cache-only]
 | `rename` | yes | yes, after applying | yes |
 | `serve` | on demand | cache rows, watcher updates | on demand |
 
-Exit codes follow gate-spec §7.1 where the meaning matches: 0 ok, 1 result empty or regime `off` (`query` and `map` print why), 2 usage or schema error, 3 budget exceeded (`map --budget` unsatisfiable, cold build over 2× budget with `--strict`), 5 index stale relative to the tree when `--require-fresh` is set, 6 environment refusal (index directory symlinked outside the repo, unreadable, or not owner-private).
+Exit codes follow the uniform table of contracts §4: 0 ok, 1 result empty or regime `off` (`query` and `map` print why), 2 usage or schema error, 3 budget refusal (`map --budget` unsatisfiable, cold build over 2× budget with `--strict`), 5 integrity: index stale relative to the tree when `--require-fresh` is set, 6 environment refusal (index directory symlinked outside the repo, unreadable, or not owner-private).
 
 `saga index status --json`:
 
@@ -641,7 +641,7 @@ Descriptions are prompts (doc 03 §1.2); they are versioned text under `core/too
 
 | Harness | Registration | Map placement |
 |---|---|---|
-| Claude Code | `.mcp.json` entry `{"saga": {"command": "saga", "args": ["index", "serve", "--stdio"]}}`; no hooks required; optional `PreCompact` stub-rewriter (§6.3) | Managed block in `CLAUDE.md` between `<!-- saga:map -->` markers, written once per session start by `saga index map`; never rewritten mid-session |
+| Claude Code | `.mcp.json` entry `{"saga": {"command": "saga", "args": ["index", "serve", "--stdio"]}}`; no hooks required; the optional `PostToolUse` `saga index update --paths` step (§4.1) runs inside the composed `saga hook` entry (contracts §1) when enabled | Managed block in `CLAUDE.md` between `<!-- saga:map -->` markers, written once per session start by `saga index map`; never rewritten mid-session |
 | Codex CLI | `~/.codex/config.toml` `[mcp_servers.saga] command = "saga" args = ["index","serve","--stdio"]` | Managed block in `AGENTS.md` |
 | Gemini CLI | `settings.json` `mcpServers.saga` | Managed block in `GEMINI.md` or its successor file |
 | OpenCode | `opencode.json` `mcp.saga` | Managed block in `AGENTS.md` |
@@ -672,7 +672,7 @@ Adapters are under 150 lines, contain no ranking or resolution logic, and pass t
 | Rule | Mechanism |
 |---|---|
 | The index never leaves the machine | `.saga/index/` is gitignored by `build`; no network call exists in `build`, `update`, `query`, `map`, `impact`, `status`. `serve` binds stdio or a Unix socket, never TCP |
-| External API cache is opt-in per network use | `[index.extapi] network = false` default; when true, only package names and pinned versions from the lockfile are sent, never repo paths or code; the contract's `SIDE-EFFECTS:` must include `network` for an agent-triggered fetch |
+| External API cache is opt-in per network use | `[index.extapi] network = false` default; when true, only package names and pinned versions from the lockfile are sent, never repo paths or code; an agent-triggered fetch is a `network_fetch` segment under guard's `[net] fetch` policy (guard-spec §2.5, §2.6), since the contract has no side-effect field (gate-spec §1.3) |
 | Embeddings are local by default | A remote embedding provider requires `[index.embeddings] remote = true`; `status` then prints `code text leaves the machine for embedding` and the bench disclosure block records it |
 | Masking on every result | Results pass through `saga guard mask` before rendering: gitleaks-class secret rules, configured PII patterns, `.env` values, absolute paths outside the repo root rewritten to `<outside-repo>`; masking is reversible only inside `saga guard`'s placeholder store, never in the index |
 | Snippets from denied files | Files matching `saga guard`'s credential deny-list (`.env*`, `*.pem`, `id_rsa*`, keychains) are indexed as `file` nodes only; `read` on them is refused with the guard's reason |
@@ -715,6 +715,8 @@ Position in the stacking ladder (bench-spec §4.3): `gate → guard → index`. 
 | D4 | D1 with embeddings on (`full` regime tasks only) |
 
 Only D1 vs C is funded at `dev` tier; D2–D4 are `publish`-tier or pre-registered follow-ups.
+
+Report keys are the index row of bench-spec §5.11 (`localization_acc5`, `resident_context_tokens_end`, `tool_exposure`, `grep_calls`, `line_recall`); resolve rate is bench-spec §5.1 and §5.2.
 
 | Metric | Definition | Role |
 |---|---|---|

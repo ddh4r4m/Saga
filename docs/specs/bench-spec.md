@@ -47,7 +47,7 @@ A task is a directory. Nothing inside `oracle/` or `controls/` is ever mounted i
 tasks/<lang>/<task-id>/
 ├── task.toml            # metadata (schema below)
 ├── prompt.md            # what the agent sees, verbatim
-├── contract.md          # scope contract in gate-spec §2 grammar (IN/OUT/SIDE-EFFECTS only; gates optional)
+├── contract.md          # scope contract in gate-spec §2 grammar (IN/OUT only; gates optional; no SIDE-EFFECTS, gate-spec §1.3)
 ├── rules.toml           # optional: machine-checkable rules for the compliance curve (§5.9)
 ├── setup.sh             # runs in the image after checkout, before the agent; network per task.toml
 ├── oracle/              # HIDDEN. Tests, scripts, fixtures the agent never sees
@@ -118,8 +118,8 @@ The oracle is hidden because visible oracles produce "building to the test" (doc
 | Cheat flagged | Every `cheat-*.patch` passes the oracle **and** is flagged by the cheating scan (§5.8) | 1 |
 | Absence control | For each absence assertion in the oracle (no secret in log, no new dep, no `console.log`), one `broken-*.patch` exists that violates exactly it, and the oracle fails on it | 1 |
 | Regression set | Every id in `regression_set` passes at baseline | 1 |
-| Leak scan | No line of `gold.patch` (≥ 20 non-whitespace chars) appears in `prompt.md`; no oracle file name appears in `prompt.md` | 6 |
-| Canary | GUID present in all task files, absent from `prompt.md` | 6 |
+| Leak scan | No line of `gold.patch` (≥ 20 non-whitespace chars) appears in `prompt.md`; no oracle file name appears in `prompt.md` | 7 |
+| Canary | GUID present in all task files, absent from `prompt.md` | 7 |
 | Determinism | Oracle run twice on gold gives identical per-test lines; if `ceiling < 1.0`, run 5× and record the pass-rate band | 1 |
 | Impossible tasks | `gold.patch` absent; `terminal.expected = "ABANDON"`; oracle exits non-zero on every patch | 1 |
 
@@ -196,7 +196,7 @@ runs/<manifest-hash>/<task>/<model>/<harness>/<arm>/<i>/
 └── SHA256SUMS         # of every file above
 ```
 
-`run.json` carries: tokens `{input, cache_read, cache_write, output, reasoning}` as reported by the harness's own accounting (the same source for every arm), wall time from container start to harness exit, cost computed from the pinned price table, tool-call sequence as `[(tool, args_hash, exit_or_error)]`, outcome, oracle result, guard flags, and `blocked_reach_attempts` (§4.2).
+`run.json` carries: tokens as the trace-spec §3.1 usage object `{input_fresh, cache_read, cache_write_5m, cache_write_1h, output, reasoning}` as reported by the harness's own accounting (the same source for every arm), wall time from container start to harness exit, cost computed from the pinned price table, tool-call sequence as `[(tool, args_hash, exit_or_error)]`, outcome, oracle result, guard flags, and `blocked_reach_attempts` (§4.2).
 
 Grading happens in a **separate grading container**: the agent's `workspace.diff` is applied to a clean checkout of `ref`, then `oracle/` is copied in and `run.sh` executed. The agent's container never sees the oracle and cannot alter the tree the oracle runs on.
 
@@ -224,7 +224,7 @@ The report prints `blocked_reach_attempts` per control run. A control arm with z
 
 ### 4.3 Stacking rules
 
-Components stack in roadmap order: `gate → guard → index → mem → shape → route`. An ablation ladder for a component at position *n* is `base + prefix(n−1)` vs `base + prefix(n)`. Rules:
+Components stack in roadmap order: `gate → guard → index → mem → shape → route`. `trace` and `doctor` are not rungs: they are present in every arm of every tier (the bench needs the ledger), and trace's own overhead is a standalone paired comparison (trace-spec §11.2). An ablation ladder for a component at position *n* is `base + prefix(n−1)` vs `base + prefix(n)`. Rules:
 
 1. A component's headline number is the delta against the arm immediately below it in the ladder, never against bare.
 2. Skipping a rung is allowed only with a pre-registered reason (e.g. the component has no dependency on lower rungs) and the report names the rung skipped.
@@ -312,10 +312,12 @@ Run on **every arm** including those with guards, so guard effect is measured ag
 | Event | Definition |
 |---|---|
 | `repeat` | ≥ 3 consecutive tool calls with identical `(tool, args_hash)` |
-| `edit-fail-streak` | ≥ 3 consecutive edit tool calls returning error |
+| `edit_fail_streak` | ≥ 3 consecutive edit tool calls returning error |
 | `oscillation` | File content hash sequence `h₁ → h₂ → h₁` for the same path |
-| `out-of-scope-read` | Read of a path outside `IN:` after the first edit |
-| `late-scope-expansion` | First edit to a new file after > 70% of the run's turns |
+| `out_of_scope_read` | Read of a path outside `IN:` after the first edit |
+| `late_scope_expansion` | First edit to a new file after > 70% of the run's turns |
+
+Ids are the trace-spec §5.1 ids, spelled identically, so offline and online counts agree.
 
 `drift_index(t,i) = events / tool_calls`; report median over runs, and `P(fail | drift_index > q₇₅)` vs `P(fail | ≤ q₇₅)` as a diagnostic (doc 03 §2.2: each off-path call raises the next by 22.7 pp). Where a task declares an optional `canonical_path` (ordered set of tool categories), off-path rate is also computed; absent that, only the event metrics apply.
 
@@ -329,6 +331,23 @@ Run on **every arm** including those with guards, so guard effect is measured ag
 | tokens, cost, wall time, turns (per run) | per-task median | Wilcoxon | bootstrap |
 | tokens/cost per solved | ratio | — (reported with bootstrap CI only) | bootstrap |
 | drift index, compliance AUC, decay β | descriptive | Wilcoxon | bootstrap |
+| layer-declared metrics (§5.11) | as declared | Wilcoxon where paired per task | bootstrap |
+
+### 5.11 Layer-declared metrics
+
+A layer spec may pre-register metrics beyond §5.1 to §5.9. Each is computed by `saga bench report` from `trace.jsonl`, `run.json` and `scan.json` only, by a fixed algorithm named in the layer spec, and appears in the report as **secondary** unless the pre-registration names it primary. The registered set at v0.1 (names are the `report.json` keys):
+
+| Layer | Metrics | Defined in |
+|---|---|---|
+| gate | `false_done` (primary, §5.4), `abandon_rate` on `impossible` tasks, `uncovered_sentences_at_stop`, `injected_tokens` vs the §9 ceiling | gate-spec §10.3 |
+| guard | `incident_escape_rate`, `false_block_rate` (asks and denies on reference-trajectory commands), `prompt_count_per_task`, `mask_recall`, `mask_precision`, `hook_latency_ms` (p50, p95), `snapshot_ms`, `unresolvable_rate` per shell, `deps_decisions` | guard-spec §11.5 |
+| index | `localization_acc5` (primary for index), `resident_context_tokens_end` (ceiling 1.5× control), `tool_exposure`, `grep_calls`, `line_recall` | index-spec §9.2 |
+| mem | `compaction_survival_rate`, `false_injection_rate`, `tokens_injected` by component, `cache_read_ratio`, `subagent_scope_violation_rate` | mem-spec §9.2 |
+| shape | `first_error_found`, `false_success_after_edit`, `retry_after_false_success`, `wrapper_adherence`, `cache_hit_ratio`, `served_ms_saved`, raw vs shaped `tool_output_bytes_turn` | shape-spec §10.6 |
+| trace | `wall_overhead_pct`, `token_overhead` (must be 0), `reconcile_error_pct` | trace-spec §11.2 |
+| route | `estimate_error`, `unknown_rate`, `route_unapplied_rate`, `subagent_cache_write_tokens` | route-spec §8.1, §8.2 |
+
+A metric not in this table and not in the run's pre-registration file is exploratory (§7.2 item 7).
 
 ---
 
@@ -494,17 +513,19 @@ saga bench estimate    (same selectors as run)      # prints cost estimate, exit
 
 ### 9.2 Exit codes (uniform across subcommands)
 
+The uniform Saga table (contracts §4), instantiated:
+
 | Code | Meaning |
 |---|---|
 | 0 | Success; for `compare`, comparison computed (direction is in the output, not the code) |
-| 1 | Task verification failed, run had non-infra failures the caller asked to fail on (`--fail-on-unsolved`), or badge mismatch |
+| 1 | Finding: task verification failed, run had non-infra failures the caller asked to fail on (`--fail-on-unsolved`), or badge mismatch |
 | 2 | Usage error, unpaired arms, invalid task/manifest schema |
-| 3 | Budget: estimate exceeds `--budget`, or cap hit during run (partial archive retained, marked) |
-| 4 | Environment: container runtime unavailable, image digest unresolvable, adapter conformance failed |
+| 3 | Refusal on budget: estimate exceeds `--budget`, or cap hit during run (partial archive retained, marked) |
 | 5 | Integrity: hash mismatch on verify/replay, missing disclosure field, manifest tampered |
-| 6 | Contamination: leak scan, canary, or post-cutoff check failed |
+| 6 | Environment: container runtime unavailable, image digest unresolvable, adapter conformance failed |
+| 7 | Contamination: leak scan, canary, or post-cutoff check failed |
 
-Higher codes win when several apply, except that 2 always wins.
+Precedence when several apply: 6, 7, 2, 3, 4, 5, 1 (contracts §4).
 
 ### 9.3 Run row schema (`saga.bench.run/1`)
 
@@ -519,7 +540,7 @@ Higher codes win when several apply, except that 2 always wins.
              "regressed": [], "ceiling_band": null},
   "scan": {"assertion_edit": 0, "skip_marker": 0, "test_delete": 0, "hard_coded": 1,
            "oracle_touch": false, "env_tamper": false, "scope_violations": ["src/legacy/foo.ts"]},
-  "usage": {"input": 182340, "cache_read": 141200, "cache_write": 9100, "output": 12488, "reasoning": 3020},
+  "usage": {"input_fresh": 182340, "cache_read": 141200, "cache_write_5m": 0, "cache_write_1h": 9100, "output": 12488, "reasoning": 3020},
   "cost_usd": 1.41, "wall_s": 812, "turns": 47, "tool_calls": 63,
   "drift": {"repeat": 1, "edit_fail_streak": 0, "oscillation": 0, "out_of_scope_read": 2, "late_scope_expansion": 0},
   "compliance": [{"rule": "pnpm-only", "turns": [1, 9, 22], "ok": [1, 1, 0]}],
@@ -582,7 +603,7 @@ Higher codes win when several apply, except that 2 always wins.
 | **Adapter conformance** | Per adapter and harness version: golden native log → golden `trace.jsonl` and `harness.json` | Byte-identical; any `null` field has a `_reason` |
 | **Budget** | Estimator vs. spent on the fake harness; `--budget` below estimate; cap reached mid-run | Exit 3 in both; partial archive marked |
 | **Badge** | README with a correct badge, a rounded-wrong badge, a `user`-tier badge, a badge to a tampered manifest | 0 / 1 / 1 / 5 |
-| **Contamination** | Task whose `created` precedes a model's cutoff; canary probe hit (mocked) | Exit 6; report `contamination` non-empty |
+| **Contamination** | Task whose `created` precedes a model's cutoff; canary probe hit (mocked) | Exit 7; report `contamination` non-empty |
 | **Self-bench** | CI runs `saga bench run --tier smoke` on 3 tasks with the `bare` adapter against a mocked provider nightly | Green; archive verifies |
 
 What these tests do **not** validate, in unlazy's words: whether any Saga component changes what a model does. That is what the bench is for, and the bench's first real output is the M0 exit criterion — a bare-harness baseline with pass^k and variance for two models, published with its negative-results section.

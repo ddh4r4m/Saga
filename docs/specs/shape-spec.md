@@ -210,7 +210,7 @@ Two hook points per editor tool, plus a working-tree diff after any Bash call (C
 
 | Step | Hook | Action |
 |---|---|---|
-| pre | `PreToolUse` / `Edit\|Write\|NotebookEdit\|MultiEdit\|apply_patch` | record `before_hash = blake3(bytes)` and a copy of the pre-image (≤8 MiB) under `.saga/shape/edit/<session>/<seq>`; when guard is installed the per-turn snapshot (guard-spec §3) is the pre-image and no copy is made |
+| pre | `PreToolUse` / `Edit\|Write\|NotebookEdit\|MultiEdit\|apply_patch` | record `before_hash = sha256(bytes)` and the id returned by `saga snapshot take --reason shape` (the shared snapshot primitive, contracts §5, guard-spec §3.1); the pre-image is read back with `saga snapshot show <id> -- <path>`. Shape keeps no copy of its own; there is no `.saga/shape/edit/` directory |
 | post | `PostToolUse` same matcher | read `tool_input` and `tool_response`; compute `after_hash`; compute the **expected** post-image from the pre-image and the tool's arguments; diff expected vs actual and pre vs actual; parse the actual with tree-sitter; emit `saga.shape.edit/1` |
 | post | `PostToolUse` / `Bash` | `git diff --name-only` plus untracked scan against the turn's pre-image set; every changed file gets the parse check and a diff echo; no expected-image check (arguments unknown) |
 
@@ -247,7 +247,7 @@ The echo is the exact `pre → actual` unified diff, 0 context lines, at most 40
 
 ```json
 {"schema": "saga.shape.edit/1", "tool": "Edit", "path": "src/api/session.ts",
- "before_hash": "blake3:…", "after_hash": "blake3:…", "harness_claimed": "success",
+ "before_hash": "sha256:…", "after_hash": "sha256:…", "snapshot_id": "snap:01J6Y…:41:7c1a12cd7b04", "harness_claimed": "success",
  "verdict": "not_applied", "occurrences": {"expected": 1, "found": 0},
  "hunks": [], "added": 0, "removed": 0,
  "parse": {"lang": "typescript", "ok": true, "errors_before": 0, "errors_after": 0, "first_error": null},
@@ -256,7 +256,7 @@ The echo is the exact `pre → actual` unified diff, 0 context lines, at most 40
 
 ### 4.5 Interaction with gate and trace
 
-Shape's post step runs before gate's `guard-diff --incremental` on the same event and writes the trace `edit` event (trace-spec §2.2: `path`, `before_hash`, `after_hash`, `hunks`, `added`, `removed`, `by_tool`); gate reads those hunks instead of re-diffing. The two feedback messages are merged by the adapter into one `reason` under gate-spec §9 (post-tool ceiling 200 est. tokens; shape's share is capped at 120 and the diff echo moves to `additionalContext` where the harness has it, §7). Gate's claim verification and G-LEDGER are unchanged; shape adds `false_success` counts to the trace so the Stop-time claim check can cite "N edits reported success with no change".
+Shape's post step runs before gate's `guard-diff --incremental` on the same event (contracts §1 PostToolUse order: trace, shape, gate, guard, mem, trace) and writes the trace `edit` event (trace-spec §2.2: `path`, `before_hash`, `after_hash`, `hunks`, `added`, `removed`, `by_tool`, all hashes `sha256:` per contracts §3); gate reads those hunks instead of re-diffing. The two feedback messages are merged by the adapter into one `reason` under gate-spec §9 (post-tool ceiling 200 est. tokens; shape's share is capped at 120 and the diff echo moves to `additionalContext` where the harness has it, §7). Gate's claim verification and G-LEDGER are unchanged; shape adds `false_success` counts to the trace so the Stop-time claim check can cite "N edits reported success with no change".
 
 ### 4.6 Comment stripper (experimental)
 
@@ -311,8 +311,8 @@ Entries live in `.saga/shape/cache/<key[0:2]>/<key>.json` with the log blob by h
 
 | Class | Detection |
 |---|---|
-| Network: `curl`, `wget`, `git fetch/pull/push/clone`, `npm install/publish`, `pip install` without `--no-index`, `docker pull/push`, `gh`, `aws`, `gcloud`, `kubectl` | guard's post-expansion classifier (guard-spec §2.4) classes `network` and `remote` |
-| Time and state dependent: `date`, `uptime`, `ps`, `top`, `df`, `du`, `lsof`, `netstat`, `printenv`, `env`, `whoami`, anything reading `/dev/random`, `$RANDOM`, `--seed` absent on a randomised runner | signature list plus classifier class `volatile` |
+| Network: `curl`, `wget`, `git fetch/pull/push/clone`, `npm install/publish`, `pip install` without `--no-index`, `docker pull/push`, `gh`, `aws`, `gcloud`, `kubectl` | guard's post-expansion classifier (guard-spec §2.4) classes `network_fetch`, `mutate_out_of_scope` (which includes the `ssh`/`docker exec`/`kubectl exec` remote wrappers of §2.3) and `destructive` |
+| Time and state dependent: `date`, `uptime`, `ps`, `top`, `df`, `du`, `lsof`, `netstat`, `printenv`, `env`, `whoami`, anything reading `/dev/random`, `$RANDOM`, `--seed` absent on a randomised runner | shape's own `volatile` signature list (`core/shape/volatile.toml`); guard has no such class |
 | Interactive or stdin-consuming commands, TTY-requiring commands | stdin not a pipe to shape, or the child opened `/dev/tty` |
 | Side effects outside build and test output directories: writes to paths not under `[shape.cache.scratch]` (defaults: `node_modules/.cache`, `.pytest_cache`, `target/`, `build/`, `.dart_tool/`, `DerivedData/`, `__pycache__/`) | post-run diff of the working tree; a command that changed a tracked file is stored with `cacheable: false` |
 | Commands the agent marked `--no-cache`, and any command containing `saga` | literal |
@@ -353,7 +353,7 @@ narrow: add a path prefix or a longer literal; symbol lookup: saga index search 
 
 ## 7. Harness adapters
 
-Adapters follow gate-spec §6: translation only, under 150 lines, recorded-fixture tested, no shaping logic. Guard, shape and gate bind the same events; where a harness accepts only one `updatedInput` or one `reason` per event, the installer writes a single `saga hook <event>` command that runs the installed layers in the order **guard → shape → gate** and merges their outputs (deny wins over rewrite; reasons concatenate under the gate-spec §9 ceilings). This composition rule is new to this spec and applies to the guard and gate installers as well.
+Adapters follow gate-spec §6: translation only, under 150 lines, recorded-fixture tested, no shaping logic. Every layer binds the same events and a harness accepts one `updatedInput` and one `reason` per event, so the installer writes a single `saga hook <harness> <event>` command per event. The normative order and merge rules are contracts §1: on PreToolUse **trace, guard, route, mem, shape, gate, trace** (deny short-circuits; `updatedInput` merged field-wise, one command rewrite; `additionalContext` and `reason` concatenated under the gate-spec §9 ceilings); on PostToolUse **trace, shape, gate, guard, mem, trace**. Shape's rows below are its contribution to that merged output, and `saga shape install` is an alias that adds shape to the manifest and re-runs `saga install`.
 
 ### 7.1 Claude Code (hook facts from gate-spec §6.1 and guard-spec §8.1, verified 2026-09-02; shape-specific fields marked *probe*)
 
@@ -401,7 +401,7 @@ Runs the command with the harness's shell semantics (`bash -lc` on POSIX, `pwsh 
 
 ## 8. Token accounting
 
-Every shaped call writes, on the trace `tool_result` event, a `shaped` object (additive field in `schema/trace/1/tool_result.json`; trace-spec §2.8 per-type schemas are versioned in the repo and this is a minor bump within `saga.trace/1`):
+Every shaped call writes, on the trace `tool_result` event, the `shaped` object that trace-spec §2.2 now carries (optional, present only when shape handled the call):
 
 ```json
 "shaped": {"family": "pytest", "confidence": "exact", "raw_bytes": 38412, "shaped_bytes": 1840,
@@ -409,7 +409,7 @@ Every shaped call writes, on the trace `tool_result` event, a `shaped` object (a
            "dropped_lines": 1230, "promoted_lines": 2}
 ```
 
-The ledger row (trace-spec §3.2) gains `tool_output_bytes_raw_turn` next to `tool_output_bytes_turn`, and `attribution.shape` becomes the share of `context_delta` that shaped results occupy. The report (trace-spec §3.7) prints per session: raw vs shaped tool bytes, cache hits and the wall time they saved, and edits by verdict. Tokens are estimated by `bytes/4` at the hook and reconciled by the bench against harness usage counters, the same discipline as gate-spec §9.
+The ledger row (trace-spec §3.2) carries `tool_output_bytes_raw_turn` next to `tool_output_bytes_turn`, and `attribution.shape` is the share of `context_delta` that shaped results occupy. Shape's feedback messages (§4.2) are its 600-token share of the one per-session injected budget (contracts §7); shaped tool results and diff echoes are tool output, attributed to `shape`, and are not injected text. The report (trace-spec §3.7) prints per session: raw vs shaped tool bytes, cache hits and the wall time they saved, and edits by verdict. Tokens are estimated by `bytes/4` at the hook and reconciled by the bench against harness usage counters, the same discipline as gate-spec §9.
 
 **Honest expected range.** Per-call reductions on parsed families are large (a 40k-character test log, doc 02 item 6, becomes a few hundred tokens), but tool output is a fraction of context and the saving "dilutes at every step" (rtk, doc 04 §2.3). rtk's verdict is single-digit to low-double-digit bill savings; context editing, a different mechanism, showed −84% tokens on a 100-turn vendor eval (doc 05 §5), which is an upper bound for what removing stale results can do, not a shape number. Shape therefore pre-registers a primary outcome of `tokens_per_solved` down by at least 8% with a 95% CI excluding zero, and reports whatever the bench finds. No README number appears except as a `saga bench badge` (bench-spec §7.3).
 
@@ -431,7 +431,7 @@ saga shape parsers list | test <family> [--corpus dir] [--json]
 saga shape install --harness claude|gemini|codex [--shared] | status | uninstall
 ```
 
-### 9.2 Exit codes (gate-spec §7.1 numbering where meanings coincide)
+### 9.2 Exit codes (the uniform table of contracts §4)
 
 | Code | Meaning |
 |---|---|
@@ -533,7 +533,7 @@ For each of the seven languages: 20 recorded edit calls covering exact apply, wh
 
 ### 10.6 Bench ablation
 
-Ladder position per bench-spec §4.3: `base + gate + guard + index + mem` vs the same plus shape; the cache directory exists only in the treatment arm (bench-spec §3, "no shared caches unless under test"). Paired, K ≥ 5, control arm blocked at the `saga shape` binary and `.saga/shape/`. Pre-registered:
+Ladder position per bench-spec §4.3: `base + gate + guard + index + mem` vs the same plus shape; the cache directory exists only in the treatment arm (bench-spec §3, "no shared caches unless under test"). Paired, K ≥ 5, control arm blocked at the `saga shape` binary and `.saga/shape/`. Pre-registered (the shape row of bench-spec §5.11 names the report keys):
 
 | Metric | Definition | Expectation |
 |---|---|---|

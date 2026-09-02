@@ -272,7 +272,7 @@ A gate is **proven-red** when the checker has itself observed the gate's oracle 
 |---|---|---|---|
 | `baseline` | Available only while `git diff <BASE> -- <IN globs>` is empty (no work done yet). `check` runs the oracle on the current tree and requires a **real red** (§3.3). Once the diff is non-empty, baseline is unavailable and `check` reports `unproven (baseline missed)` with the hint to use `mutation` or `control`. | Free | default |
 | `control` | Run `RED-CHECK:` and require: exit 0, output matches `RED-EXPECT:`, and output does **not** match `EXPECT:`. Proves the oracle logic distinguishes the known-different fixture from the target. | One extra run | supported |
-| `mutation` | After the gate is green: copy the tree to a scratch worktree, apply the first applicable operator below, run the oracle, require a real red, discard the scratch, re-run on the real tree and require green. | Two extra runs | **experimental** (§11) |
+| `mutation` | After the gate is green: materialise the current snapshot (`saga snapshot take --reason gate`, the shared mechanism of contracts §5) into a scratch worktree, apply the first applicable operator below, run the oracle, require a real red, discard the scratch, re-run on the real tree and require green. | Two extra runs | **experimental** (§11) |
 | `none` | Declared unproven. Never blocks; always listed in `status` and a lint warning. | Free | escape hatch |
 
 Why baseline is bound to the empty-diff condition and not to `init`: running agent-authored `CHECK:` lines at `init` would execute code before approval (§8), and a fresh worktree at `BASE:` lacks installed dependencies, which makes almost any oracle go red for the wrong reason.
@@ -305,7 +305,7 @@ A red observation is **rejected** (the proof is not established) when the failur
 
 ```json
 {
-  "schema": "saga.red/1",
+  "schema": "saga.gate.red/1",
   "gate": "vendor-import:G1",
   "mode": "mutation",
   "oracle_hash": "sha256:…",
@@ -354,7 +354,7 @@ A manual gate is met only through `saga gate attest <id> --note "<text>"`, which
 
 ```json
 {
-  "schema": "saga.evidence/1",
+  "schema": "saga.gate.evidence/1",
   "gate": "vendor-import:G1",
   "contract_hash": "sha256:…",
   "oracle_hash": "sha256:…",
@@ -368,7 +368,7 @@ A manual gate is met only through `saga gate attest <id> --note "<text>"`, which
   "resolved": {"shell": "/bin/sh", "cwd": "packages/importer", "platform": "darwin-arm64",
                "path_fingerprint": "sha256:…", "path_entries": 24,
                "timeout_s": 120, "output_cap_bytes": 1048576},
-  "tree": {"base": "4c1e9ab", "head": "9de20f1", "worktree_hash": "sha256:…", "dirty": true},
+  "tree": {"base": "4c1e9ab", "head": "9de20f1", "worktree_hash": "tree:7c1a12cd7b04…", "snapshot_id": "snap:01J6Y…:29:7c1a12cd7b04", "dirty": true},
   "red_proof": "sha256:…",
   "guards": {"clean": true, "waivers": []},
   "approval": "sha256:…"
@@ -378,7 +378,7 @@ A manual gate is met only through `saga gate attest <id> --note "<text>"`, which
 | Field | Definition |
 |---|---|
 | `contract_hash` | sha256 of the contract with every `EVIDENCE:` line removed and every `[x]` normalised to `[ ]`. Without this normalisation the checker's own write would change the hash it just recorded. |
-| `worktree_hash` | sha256 of the sorted `path\0mode\0sha256` list over `git ls-files -co --exclude-standard` (tracked plus untracked-not-ignored). Lets `reverify` detect that the tree moved under a green gate. |
+| `worktree_hash` | The `tree_hash` returned by `saga snapshot take --reason gate` (contracts §5): the git tree object id over tracked plus untracked-not-ignored files, written through a temporary index. It is the same value trace-spec §6.3 stores in a checkpoint and guard-spec §3 stores under `refs/saga/snap/`, so an evidence record, a checkpoint and an undo point name the same tree. `snapshot_id` is the snapshot that produced it. Lets `reverify` detect that the tree moved under a green gate. |
 | `outcome` | `met` \| `unmet` \| `attested` |
 
 ### 4.4 Never persisted
@@ -455,6 +455,8 @@ WAIVE: G-ASSERT tests/import/parse.test.ts 3f9a12cd7b04 consolidated four equali
 
 Adapters are translation-only: read the harness's JSON from stdin, run `saga gate check --status --json` or `saga gate guard-diff --json`, map exit codes to the harness envelope, cap the message at the §9 ceiling. Each adapter is under 150 lines, contains no gate logic, never reads `transcript_path`, and is covered by recorded-fixture tests (§10.1).
 
+**Composition.** Gate installs no hook of its own. `saga install --harness <h>` writes one `saga hook <h> <event>` command per event, and that entry runs every installed layer in the fixed order of contracts §1 (PreToolUse: trace, guard, route, mem, shape, gate, trace; PostToolUse: trace, shape, gate, guard, mem, trace; Stop: trace, gate, trace, mem) and merges their outputs: a deny or block from any layer wins, `updatedInput` is merged field-wise, `additionalContext` and `reason` are concatenated under the §9 ceilings with gate's text first on Stop. The tables below therefore describe gate's contribution to the merged output, not a separate hook. `saga gate install` and `saga gate uninstall` are aliases that add or remove gate from the manifest and re-run the single installer.
+
 Common algorithm, every harness:
 
 | Situation | Adapter decision |
@@ -477,7 +479,7 @@ Hook input is JSON on stdin; output is exit code and optional JSON on stdout. Se
 | Event / matcher | Input fields used | Saga call | Output |
 |---|---|---|---|
 | `PreToolUse` / `Edit\|Write\|NotebookEdit` | `tool_input.file_path`, `cwd` | `guard-diff --predict --path <p> --json` (G-SCOPE only) | `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"<≤150 tok>"}}` |
-| `PreToolUse` / `Bash` | `tool_input.command` | none (string match) | deny when the command invokes `saga gate approve`, `saga gate attest`, or `check --approve`; otherwise allow |
+| `PreToolUse` / `Bash` | `tool_input.command` | none (string match) | deny when the command invokes `saga gate approve`, `saga gate attest`, or `check --approve`; these three strings are gate's rows in the shared agent-forbidden command list (contracts §8), which guard's post-expansion classifier enforces when guard is installed and the composed hook enforces by string match otherwise |
 | `PostToolUse` / `Edit\|Write\|NotebookEdit\|Bash` | `tool_name`, `tool_input` | `guard-diff --incremental --json` | `{"decision":"block","reason":"<≤200 tok>"}`. **Feedback only**: Claude Code's PostToolUse cannot prevent anything, the tool already ran; `reason` is attached next to the tool result. Refusal is at Stop and in CI. |
 | `Stop` | `session_id`, `stop_hook_active` | `check --status --json` | `{"decision":"block","reason":"<≤400 tok>"}` (top-level fields, `reason` required) |
 
@@ -587,8 +589,9 @@ saga gate guard-diff  [--base <rev>] [--incremental] [--predict --path <p>]
 | 4 | Approval required: an oracle has no exact approval record |
 | 5 | Red proof missing, stale, or unavailable under `require_red` |
 | 6 | Environment refusal: hostile file shape, symlinked store, unreadable state |
+| 7 | Reserved (contamination, bench only; contracts §4) |
 
-Precedence when several apply: **6, 2, 3, 4, 5, 1** (first listed wins). Environment and parse failures are reported before anything that depends on having parsed.
+Precedence when several apply: **6, 7, 2, 3, 4, 5, 1** (first listed wins). Environment and parse failures are reported before anything that depends on having parsed. This table is the uniform Saga table (contracts §4); every other layer instantiates the same numbers.
 
 ### 7.2 JSON output
 
@@ -628,6 +631,8 @@ Precedence when several apply: **6, 2, 3, 4, 5, 1** (first listed wins). Environ
 
 ### 7.3 `.saga/config.toml` (full)
 
+Gate's keys live under the `[gate]` table of the shared `.saga/config.toml` (contracts §2; trace uses `[trace.*]`, index `[index]`, shape `[shape]`). `[gate]`, `[trace.budget]` and `[trace.watchdog]` are read from `BASE:` (§5.4); the other tables are read from the working tree.
+
 | Key | Default | Meaning |
 |---|---|---|
 | `require_red` | `true` | Unproven gates are unmet (exit 5). |
@@ -651,13 +656,13 @@ Precedence when several apply: **6, 2, 3, 4, 5, 1** (first listed wins). Environ
 | Control | Rule |
 |---|---|
 | Approval store | `~/.saga/approved` by default. `SAGA_APPROVAL_DIR` is accepted only if it is a real, owner-private directory whose canonical target is outside the canonical repo root. Symlinked stores, multi-link records, and non-private modes fail closed (exit 6). |
-| Approval identity | Repo-relative contract path, gate id, `oracle_hash` (exact `CHECK:`/`EXPECT:`/`CWD:`, resolved shell, timeout, output cap), platform, full inherited `PATH`, and `witness_hash`. Any change requires re-approval. Record: `{"schema":"saga.approval/1", "identity_sha256":…, "approved_at":…, "by": <os user>}`. |
+| Approval identity | Repo-relative contract path, gate id, `oracle_hash` (exact `CHECK:`/`EXPECT:`/`CWD:`, resolved shell, timeout, output cap), platform, full inherited `PATH`, and `witness_hash`. Any change requires re-approval. Record: `{"schema":"saga.gate.approval/1", "identity_sha256":…, "approved_at":…, "by": <os user>}`. |
 | Who can approve or attest | Anyone at the terminal. On hook-bearing harnesses the PreToolUse adapter denies `saga gate approve`, `attest`, and `check --approve` from the agent's shell (§6.1). Without a hook, the harness's own permission rules should deny those strings; the spec cannot enforce it. |
 | Dry run | A gate without an exact approval prints its resolved oracle and is not executed (exit 4). `status`, `lint`, and every adapter never execute. |
 | Untrusted ledger text | Titles, outcomes, `ABANDON:` reasons, waiver reasons and check output are data, never instructions: control-, line-separator- and bidi-stripped before display, capped per field, never copied into a hook message. An inherited contract is read with `status`/`lint` before any `check`. |
 | Repo-discovered inputs | Regular, single-link, inside the canonical repo root, under the size cap; opened no-follow; re-verified to name the same inode after read. |
 | Config | Read from `BASE:` (§5.4), so the agent cannot loosen `scope_exempt`, `max_blocks`, or `waiver_policy` for the run it is in. |
-| Hook install | Atomic write with `.saga.bak`, preserves unrelated hooks, exact managed marker, `saga gate uninstall` removes only marked entries. Embeds absolute paths, so shared-settings targets are non-portable. |
+| Hook install | Done by `saga install` (contracts §9): atomic write with `.saga.bak`, preserves unrelated hooks, exact managed marker, `saga uninstall` removes only marked entries and `saga gate uninstall` only gate's manifest rows. Embeds absolute paths, so shared-settings targets are non-portable. |
 | CI | No secrets on the gate job; `contents: read`; base-ref config; `reverify` trusts nothing committed. |
 
 **What the checker cannot protect against**, stated as plainly as unlazy states it:
@@ -692,7 +697,7 @@ Per ADR 0002 every emission is a bounded translation of a check result, attribut
 | `check` failure diagnostics (tool output, not injected) | error-aware tail, masked | 4 KiB per call (≈1,200), reported per call in trace, not session-capped |
 | Contract file when the agent reads it | authored by the agent; typical 5-gate contract ≈ 450 | measured, not capped |
 
-Enforcement: the adapter keeps a per-session byte counter in `.saga/observed/session-<id>.json`. When the injected cap is reached, the decision is unchanged (still `block`) and the message collapses to a fixed 20-token line: `saga gate: N unmet; run saga gate status`. The bench treats an injected-cap breach as a failed run of the layer itself.
+Enforcement: the composed hook keeps a per-session byte counter per layer in `.saga/observed/session-<id>.json` (contracts §7); gate's 1,000 is its share of the one session budget, alongside guard 400, shape 600, trace 400, route 200 and mem 1,200. When gate's share is reached, the decision is unchanged (still `block`) and the message collapses to a fixed 20-token line: `saga gate: N unmet; run saga gate status`. The bench treats an injected-cap breach as a failed run of the layer itself.
 
 ---
 
@@ -733,7 +738,7 @@ These validate implementation behaviour. They say nothing about whether the laye
 
 **Primary metric: false-done rate**, the fraction of runs claimed done where the hidden oracle failed. Doc 03 §2.5 predicts arm A is worst and that a visible oracle alone (arm B) does not fix it.
 
-**Secondary metrics**: pass^k on the hidden oracle; scope-violation count; test-weakening incidents from an independent post-hoc scan run on every arm (so the guards are measured against ground truth, not against themselves); `ABANDON`/`NOT-DONE` rate on the impossible tasks (higher is better); uncovered-sentence count at Stop; tokens, wall time, cost; injected tokens against the §9 cap (from harness usage counters, alongside the byte/4 estimate).
+**Secondary metrics** (bench-spec §5.2, §5.7, §5.8 and the gate row of §5.11): pass^k on the hidden oracle; scope-violation rate; cheat rate from the independent post-hoc scan run on every arm (so the guards are measured against ground truth, not against themselves); `abandon_rate` on the impossible tasks (higher is better); `uncovered_sentences_at_stop`; tokens, wall time, cost per solved (§5.6); `injected_tokens` against the §9 cap (from harness usage counters, alongside the byte/4 estimate).
 
 **Reporting**: per-run rows, per-task medians, Wilcoxon signed-rank across paired arms, pass^k with variance, negative results committed. A component that does not move the false-done rate at k = 10 is cut, not shipped and explained.
 

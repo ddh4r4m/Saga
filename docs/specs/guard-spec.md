@@ -138,7 +138,7 @@ Each segment gets exactly one class. "Scope" is the union of the repository root
 | D8 | Package publish: `npm publish`, `pnpm publish`, `yarn npm publish`, `twine upload`, `poetry publish`, `cargo publish`, `gem push`, `pod trunk push`, `dart pub publish`, `mvn deploy`, `gradle publish`, `docker push`, `gh release create` | Shai-Hulud propagated via publish (doc 06 C.3) |
 | D9 | Disk and device: `dd of=/dev/*`, `mkfs*`, `diskutil erase*`, `format`, `> /dev/sd*`, `shred`, `wipefs`, `chmod -R 000`, `chown -R` outside scope, `:(){ :\|:& };:` | defensive, no incident in the ledger |
 | D10 | Piped remote script: `curl \| sh` family, `iwr \| iex`, `Invoke-Expression (Invoke-WebRequest ...)` | doc 04 §6 item 7 |
-| D11 | Escaping the layer: any segment that edits `.saga/policy.toml`, `.saga/manifest.json`, the harness hook settings, or invokes `saga guard policy set --allow` | copilot-chat #5098 (sandbox self-modification); gate-spec §6.1 does the same for `saga gate approve` |
+| D11 | Escaping the layer: any segment that edits `.saga/policy.toml`, `.saga/route.toml`, `.saga/manifest.json`, `.saga/.gitignore`, the harness hook settings, or `refs/saga/`; and any segment whose resolved argv is on the agent-forbidden command list of contracts §8 (`saga gate approve|attest|check --approve`, `saga trace budget --raise|ack|pin --set|prices use|prune`, `saga route policy trust|validate --write`, `saga mem confirm|review|prune`, `saga guard policy trust|set`, `saga snapshot gc|prune`, `saga install`, `saga uninstall`). The same paths are denied to the editor tools in §8.1 | copilot-chat #5098 (sandbox self-modification); gate-spec §6.1 does the same for `saga gate approve` |
 
 `credential_paths` default: `~/.ssh/**`, `~/.aws/**`, `~/.config/gcloud/**`, `~/.azure/**`, `~/.kube/config`, `~/.docker/config.json`, `~/.netrc`, `~/.npmrc`, `~/.pypirc`, `~/.gem/credentials`, `~/.gitconfig` (credential helpers), `~/.claude.json`, `~/.claude/**/*.json`, `~/.codex/auth.json`, `~/.gemini/.env`, `~/.gemini/oauth_creds.json`, `**/.env`, `**/.env.*`, `**/*.pem`, `**/*.p12`, `**/*.key`, `**/id_*`, `**/secrets.*`, `**/credentials*`, `/proc/*/environ` (Gemini CLI `/proc` credential leakage, doc 06 Part B), Windows `%APPDATA%\gcloud\**`, `%USERPROFILE%\.aws\**`.
 
@@ -147,9 +147,12 @@ Each segment gets exactly one class. "Scope" is the union of the repository root
 Precedence, highest first: hard denies (§2.4.1, extendable, never removable by a repo policy) > user global policy `~/.saga/policy.toml` > repo policy `.saga/policy.toml` (may only tighten) > contract `IN:` scope > defaults. A repo policy is honoured only after the user has approved its hash (`saga guard policy trust`); a changed hash re-prompts with the diff. This is the Rules File Backdoor control (doc 06 C.3): a cloned repo cannot loosen the layer it is cloned into.
 
 ```toml
-# .saga/policy.toml  (schema version 1)
-version = 1
+# .saga/policy.toml
+schema = "saga.guard.policy/1"
 shell = "auto"                     # auto | bash | zsh | pwsh | cmd
+
+[net]
+fetch = true                       # network_fetch segments allowed without a prompt (§2.6)
 
 [scope]
 extra = ["/tmp/saga-*", "~/.cache/pip"]   # additional writable roots
@@ -271,7 +274,9 @@ Rows I-05, I-06, I-08 and I-14 are also snapshot fixtures: `saga undo` must rest
 
 ### 3.1 Mechanism
 
-Selected per repository at `saga guard snapshot init`, recorded in `.saga/snap/mode`:
+`saga snapshot` is the one snapshot primitive in Saga (contracts §5). Guard implements it; trace checkpoints (trace-spec §6.3), shape pre-images (shape-spec §4.1) and gate red-proof scratch trees (gate-spec §3.2) call it and keep no copies of their own. `saga snapshot take [--reason guard|trace|shape|gate|user]` returns `{id, tree_hash, kind, session, turn, taken}`; when the tree is unchanged since the previous snapshot it returns that snapshot with `taken = false`. Ids are `snap:<session>:<turn>:<tree_hash[0:12]>`; `tree_hash` is the git tree object id with the prefix `tree:` and is the value gate records as `worktree_hash`.
+
+Mode is selected per repository at `saga snapshot init`, recorded in `.saga/snap/mode`:
 
 | Mode | When | How | Cost |
 |---|---|---|---|
@@ -284,7 +289,7 @@ APFS volume snapshots (`tmutil localsnapshot`) are volume-wide and need admin; A
 
 ### 3.2 Scope and trigger
 
-Taken in PreToolUse before `Bash`, `Write`, `Edit`, `NotebookEdit` and any MCP tool declaring `fs:write` (§6.3); skipped when the tree hash equals the previous snapshot's (one `git status --porcelain` pass). Turn id is the harness `turn_id` (Codex) or a session counter. Scope is the repository only; the decision record says `snapshot.scope = "repo"`.
+Taken in PreToolUse before `Bash`, `Write`, `Edit`, `NotebookEdit`, `MultiEdit` and any MCP tool declaring `fs:write` (§6.3); skipped when the tree hash equals the previous snapshot's (one `git status --porcelain` pass). Turn id is the shared session counter in `.saga/observed/session-<id>.json` (contracts §3), which trace advances on every user-prompt event; the harness `turn_id` (Codex) is recorded alongside it. Scope is the repository only; the decision record says `snapshot.scope = "repo"`.
 
 ### 3.3 Cost budget
 
@@ -300,7 +305,7 @@ Over `snapshot.budget_ms` guard records `snapshot.taken=false` and downgrades mu
 
 ### 3.4 Retention
 
-`retain = {turns, days, bytes}`, whichever first; `saga guard snapshot gc` prunes refs oldest-first after each snapshot, objects go with the repo's normal gc. Refs under `refs/saga/` are never pushed (default push refspecs do not match them; `policy init` adds a `pre-push` guard).
+`retain = {turns, days, bytes}`, whichever first; `saga snapshot gc` prunes refs oldest-first after each snapshot, objects go with the repo's normal gc. Refs under `refs/saga/` are never pushed (default push refspecs do not match them; `policy init` adds a `pre-push` guard).
 
 ### 3.5 `saga undo`
 
@@ -485,7 +490,7 @@ Derived from doc 04 §6 item 7 and the tooling-tracker evidence in doc 07 §7.
 | Rule | Implementation |
 |---|---|
 | Signed releases | One static binary per platform (`darwin-arm64`, `darwin-x86_64`, `linux-x86_64`, `linux-arm64`, `windows-x86_64`); Sigstore cosign signature plus `SHA256SUMS` and a minisign signature; `saga doctor` verifies the running binary against the embedded manifest |
-| No script hooks | Harness configs invoke the binary directly: `saga guard hook claude PreToolUse`. Where a wrapper is unavoidable (Windows `.cmd` shim) its sha256 is in `.saga/manifest.json` and `saga doctor` refuses to run hooks whose shim hash drifted |
+| No script hooks | Harness configs invoke the binary directly, one composed entry per event: `saga hook claude PreToolUse` (contracts §1). Where a wrapper is unavoidable (Windows `.cmd` shim) its sha256 is in `.saga/manifest.json` and `saga doctor` refuses to run hooks whose shim hash drifted |
 | Manifest of everything that auto-executes | `.saga/manifest.json`: `[{event, harness, command, argv, reads, writes, network}]`; `saga doctor --manifest` prints it; anything executed that is not in it is a bug |
 | No self-update | The binary never fetches code; `saga doctor` reports a newer version and the install command. No `git pull`, no `curl \| sh` (D10 applies to Saga's own docs) |
 | No repo-supplied execution | `.saga/policy.toml` is data with no exec fields; a repo policy is honoured only after hash approval (§2.5) and can only tighten; the vendored gitleaks rules and top-5,000 lists ship inside the binary, never fetched |
@@ -496,10 +501,10 @@ Manifest excerpt:
 
 ```json
 [
-  {"event":"PreToolUse","harness":"claude","argv":["saga","guard","hook","claude","PreToolUse"],
-   "reads":["stdin","cwd tree (stat)","policy","env"],"writes":[".saga/snap/","refs/saga/",".saga/audit.jsonl"],"network":"registries only, if deps.offline=false"},
-  {"event":"UserPromptSubmit","harness":"claude","argv":["saga","guard","hook","claude","UserPromptSubmit"],
-   "reads":["stdin","vault"],"writes":[".saga/audit.jsonl","clipboard (opt-in)"],"network":"none"}
+  {"event":"PreToolUse","harness":"claude","argv":["saga","hook","claude","PreToolUse"],"layers":["trace","guard","route","mem","shape","gate"],
+   "reads":["stdin","cwd tree (stat)","policy","env"],"writes":[".saga/snap/","refs/saga/",".saga/audit.jsonl",".saga/trace/",".saga/observed/"],"network":"registries only, if deps.offline=false"},
+  {"event":"UserPromptSubmit","harness":"claude","argv":["saga","hook","claude","UserPromptSubmit"],"layers":["trace","guard","mem"],
+   "reads":["stdin","vault"],"writes":[".saga/audit.jsonl","clipboard (opt-in)",".saga/mem/",".saga/trace/"],"network":"none"}
 ]
 ```
 
@@ -507,7 +512,7 @@ Manifest excerpt:
 
 ## 8. Harness adapters
 
-Adapters follow gate-spec §6: translation-only, under 150 lines, no guard logic, never read `transcript_path`, recorded-fixture tested. Guard hooks are installed alongside gate hooks in the same settings file; on the same event the harness runs both and the stricter decision wins.
+Adapters follow gate-spec §6: translation-only, under 150 lines, no guard logic, never read `transcript_path`, recorded-fixture tested. Guard installs no hook of its own: the composed `saga hook <harness> <event>` entry (contracts §1) runs guard first among the deciding layers on PreToolUse (after trace's record step) and short-circuits on a guard deny, so no later layer spends a snapshot, an injection or a scope check on a command that will not run. When guard and shape both rewrite a Bash command, the composed hook emits exactly one rewrite: `saga shape run --mask -- <cmd>` if shape is installed (its masker and unmask-in are guard's), else `saga guard exec --mask -- <cmd>`.
 
 ### 8.1 Claude Code
 
@@ -515,7 +520,7 @@ Adapters follow gate-spec §6: translation-only, under 150 lines, no guard logic
 |---|---|---|
 | `PreToolUse` / `Bash` | `check-cmd --json` then `snapshot take` if the decision is not deny | `permissionDecision: allow\|ask\|deny` with `permissionDecisionReason`; when `mask.enabled` and the install probe found `updatedInput`, `updatedInput.command = "saga guard exec --mask -- <cmd>"` |
 | `PreToolUse` / `Read` | credential-path match | `deny` with the `saga guard mask cat` hint; else allow |
-| `PreToolUse` / `Write\|Edit\|NotebookEdit` | `snapshot take`; `mask scan --content`; `unmask` placeholders in content | `ask` when the write introduces a real secret; `updatedInput.content` with placeholders unmasked where §4.3 permits |
+| `PreToolUse` / `Write\|Edit\|NotebookEdit\|MultiEdit` | `snapshot take`; `mask scan --content`; `unmask` placeholders in content; D11 path check on `file_path` | `deny` on a D11 path (`.saga/policy.toml`, `.saga/route.toml`, `.saga/manifest.json`, `.saga/.gitignore`, hook settings); `ask` when the write introduces a real secret; `updatedInput.content` with placeholders unmasked where §4.3 permits |
 | `PreToolUse` / `mcp__*` | `mcp check --tool --args` | `deny` when outside `caps` or not allow-listed |
 | `UserPromptSubmit` | `mask scan --prompt` | `{"decision":"block","reason":"<masked prompt>"}` |
 | `PostToolUse` / `Edit\|Write` on manifests | `deps check --manifest` | feedback only (gate-spec §6.1 fact table) |
@@ -559,16 +564,16 @@ saga guard exec       [--mask] [--no-snapshot] [--json] -- <command>
 saga guard mask       [--file F | --stdin | --clipboard | --watch-clipboard] [--types T,..] [--json]
 saga guard unmask     [--file F | --stdin] [--placeholder P]... [--json]
 saga guard deps       check [--ecosystem E] [--manifest F] [--offline] [--ci] [--json] <name>...
-saga guard snapshot   init|take|list|show <turn>|gc|status [--json]
-saga undo             <turn|ref> [--paths G]... [--dry-run] [--keep-untracked-new] [--json]
+saga snapshot         init|take [--reason L]|list|show <id> [-- <path>]|gc|status [--json]   # shared primitive, contracts §5
+saga undo             <turn|id> [--paths G]... [--dry-run] [--keep-untracked-new] [--json]
 saga guard policy     init|lint|show|trust|diff|explain -- <command>   [--json]
 saga guard audit      [--since T] [--decision allow|ask|deny] [--tool T] [--export F] [--json]
 saga guard mcp        serve|status|approve <server/tool>|quarantine <server/tool>
-saga guard hook       <claude|gemini|codex> <event>          # adapter entry point, stdin JSON
-saga guard doctor / uninstall
+saga hook             <claude|gemini|codex> <event>          # composed entry point for every layer, stdin JSON (contracts §1)
+saga guard doctor / uninstall                                # aliases: guard's subset of `saga doctor`; guard's rows of `saga uninstall`
 ```
 
-Exit codes (uniform with gate-spec §7.1 where they overlap):
+Exit codes (the uniform table of contracts §4):
 
 | Code | Meaning |
 |---|---|
@@ -576,9 +581,9 @@ Exit codes (uniform with gate-spec §7.1 where they overlap):
 | 1 | ask (interactive) or finding present (`mask`, `deps` warn) |
 | 2 | usage error, policy parse failure, unknown shell |
 | 3 | deny (hard-deny or policy deny); `deps` not found in `--ci` |
-| 4 | snapshot failure or budget exceeded with `on_budget = "ask"` |
-| 5 | vault locked or unavailable (masking fails closed: the tool result is withheld, not passed unmasked) |
-| 6 | manifest or hook-hash mismatch (`doctor`) |
+| 4 | approval or trust required: snapshot budget exceeded with `on_budget = "ask"`, repo policy hash not trusted |
+| 5 | integrity: manifest or hook-hash mismatch (`doctor`), snapshot ref missing for a checkpoint |
+| 6 | environment: vault locked or unavailable (masking fails closed: the tool result is withheld, not passed unmasked), snapshot store unwritable |
 
 `--json` always emits the `saga.guard.decision/1` schema (§2.6) or, for `mask`, `{"schema":"saga.guard.mask/1","findings":[{"type","placeholder","line","col","detector"}],"masked":"<text>"}`.
 
@@ -601,7 +606,7 @@ Per §4.3: local SQLite, XChaCha20-Poly1305, key in the OS keystore, file mode 0
 ```json
 {"ts":"2026-09-02T10:14:03Z","session":"…","turn":41,"harness":"claude","event":"PreToolUse","tool":"Bash",
  "decision":"deny","rule":"D1","shell":"bash","raw_sha256":"…","argv_sha256":"…","paths":["/Users/dd"],
- "snapshot":"refs/saga/snap/…/41","masks":[{"type":"AWS","placeholder":"SAGA_MASK_AWS_3f9a1c7e"}],
+ "snapshot":"snap:01J6Y…:41:7c1a12cd7b04","masks":[{"type":"AWS","placeholder":"SAGA_MASK_AWS_3f9a1c7e"}],
  "unmasks":0,"elapsed_ms":7,"policy_hash":"…","sandbox":"seatbelt"}
 ```
 
@@ -652,7 +657,7 @@ Recorded stdin and expected stdout per harness version under `fixtures/adapters/
 
 ### 11.5 Bench ablation
 
-Guard is rung 2 of the ladder (bench-spec §4.3), measured against `base + gate`; control arm blocked per bench-spec §4.2 (no-op hook returning allow, `saga` shim exiting 127).
+Guard is rung 2 of the ladder (bench-spec §4.3), measured against `base + gate`; control arm blocked per bench-spec §4.2 (no-op hook returning allow, `saga` shim exiting 127). The metrics below are the guard row of bench-spec §5.11 (`incident_escape_rate`, `false_block_rate`, `prompt_count_per_task`, `mask_recall`, `mask_precision`, `hook_latency_ms`, `snapshot_ms`, `unresolvable_rate`, `deps_decisions`), computed from `trace.jsonl` `guard` events.
 
 | Metric | Definition | Direction |
 |---|---|---|
@@ -667,6 +672,12 @@ Guard is rung 2 of the ladder (bench-spec §4.3), measured against `base + gate`
 | pass^k, cost | Bench-spec primary metrics | unchanged or better; a drop is a guard bug |
 
 Negative results are published with the rest (doc 04 §6 item 1).
+
+---
+
+## 12. Deferred to M5: tool-call schema validation and repair
+
+Doc 09 §3.5 and §5 (M5) assign "tool-call schema validation and repair for open-weight and local models" to guard, and route-spec §3.1 `[openweight] schema_repair` switches it on for the `local` tier. This version specifies nothing for it beyond the contract: it is a PostToolUse-equivalent step in the composed hook, deterministic (JSON schema validation against the harness's tool definitions plus a fixed repair table: trailing commas, unquoted keys, fenced JSON, argument-name case), never a model call, with a `guard` event of `kind = "schema"` in the trace and a positive-control corpus from cline #7262 and Roo #10322 (doc 06 D.2 item 11). Its ablation is the `schema_repair` arm named in route-spec §9 item 8. It ships in the guard-spec revision that accompanies M5, not before.
 
 ---
 

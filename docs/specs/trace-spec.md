@@ -66,18 +66,18 @@ Canonical JSON is sorted keys, no insignificant whitespace, UTF-8, the bench-spe
 
 ### 2.2 Event types
 
-The task list in doc 09 §3.7 names twelve types; three are added (`session`, `drift`, `checkpoint`) because pins, watchdog findings and restart points need a home that is not a turn.
+The task list in doc 09 §3.7 names twelve types; four are added (`session`, `drift`, `checkpoint`, `route_decision`) because pins, watchdog findings, restart points and routing decisions need a home that is not a turn. The catalogue below is the normative one; `docs/specs/00-cross-spec-contracts.md` §6 repeats it verbatim.
 
 | Type | When | Body fields (beyond envelope) |
 |---|---|---|
 | `session` | start, end, resume, pin change | `phase` (start/end/resume/pin_change), `pins` (§4.1 object), `harness`, `cwd_hash`, `config_hash` (`.saga/config.toml`), `changed` (list of pin keys that differ from the previous `session` event) |
 | `turn` | user prompt received; assistant turn ended | `phase` (user/assistant_end), `prompt_hash`, `prompt_bytes`, `final_message_hash`, `claimed_done` (bench-spec §5.4 abstention list applied) |
 | `model_call` | one provider request | `model_requested`, `model_served`, `request_id`, `fingerprint`, `effort`, `usage` (§3.1), `call_key` = sha256(system_hash, messages_hash, tools_hash, model_requested), `system_hash`, `tools_hash`, `context_tokens_est`, `latency_ms`, `stop_reason`, `status` (ok/429/5xx/timeout), `attribution` (§3.5) |
-| `tool_call` | a tool is invoked | `tool`, `args_hash`, `args_ref` (blob or inline ≤ 4 KiB, masked), `component` (harness/index/mem/shape/gate/guard/mcp:<server>/user), `cwd_rel` |
-| `tool_result` | tool returned | `for_seq`, `exit`, `error`, `result_hash`, `result_bytes`, `result_ref`, `truncated` (bool, head/tail bytes kept), `wall_ms` |
+| `tool_call` | a tool is invoked | `tool`, `args_hash`, `args_ref` (blob or inline ≤ 4 KiB, masked), `component` (the attribution key set of §3.2: `harness`, `user`, `index`, `mem.state`, `mem.targeted`, `mem.preamble`, `mem.query`, `shape`, `gate`, `guard`, `trace`, `route`, `mcp:<server>`), `cwd_rel`, `index_version` (opaque `blake3:…` when index is installed) |
+| `tool_result` | tool returned | `for_seq`, `exit`, `error`, `result_hash`, `result_bytes`, `result_ref`, `truncated` (bool, head/tail bytes kept), `wall_ms`, `served` (`live` \| `cache`, shape-spec §5.3), `shaped` (optional object, shape-spec §8: `family`, `confidence`, `raw_bytes`, `shaped_bytes`, `raw_tokens_est`, `shaped_tokens_est`, `cache`, `log`, `dropped_lines`, `promoted_lines`) |
 | `edit` | working-tree change observed after a tool | `path` (repo-relative), `before_hash`, `after_hash`, `hunks`, `added`, `removed`, `by_tool` (seq), `in_scope` (nullable when no contract) |
 | `gate` | gate-spec check, guard-diff, red proof, Stop decision | `kind` (check/guard_diff/red/stop/claim), `ids`, `states`, `decision`, `progress_hash`, `message_tokens_est` |
-| `guard` | command classification, deny, snapshot, mask | `kind` (classify/deny/snapshot/mask), `segments`, `class`, `snapshot_id`, `masked_count`, `decision` |
+| `guard` | command classification, deny, snapshot, mask, dependency check, MCP gateway decision, undo | `kind` (classify/deny/snapshot/mask/deps/mcp/undo), `segments`, `class`, `snapshot_id`, `masked_count`, `decision` |
 | `mem_inject` | records injected adjacent to a tool call | `record_ids`, `bytes`, `tokens_est`, `trigger` (path/tool) |
 | `compaction` | harness compaction observed | `phase` (pre/post), `context_tokens_before`, `context_tokens_after`, `state_block_hash` (mem layer, M1), `trigger` (auto/manual) |
 | `subagent` | spawn, stop | `phase`, `subagent_id`, `parent_agent`, `model_requested`, `preamble_hash`, cumulative `usage` at stop |
@@ -85,6 +85,7 @@ The task list in doc 09 §3.7 names twelve types; three are added (`session`, `d
 | `drift` | watchdog signal or action | `signal` (§5.1 id), `window`, `drift_index`, `action`, `evidence` (seqs) |
 | `checkpoint` | restart point written | `checkpoint_id`, `snapshot_id`, `context_hash`, `open_gates`, `ledger_cum` |
 | `canary` | canary run or verdict | `run_id`, `task_set_hash`, `baseline_hash`, `metrics`, `verdict` (§4.4) |
+| `route_decision` | route-spec §7.3: plan, refusal, unapplied plan, user answer to the budget prompt | `plan` (the `saga.route.plan/1` object), `outcome` (applied/unapplied/refused/user_answered), `option` (§5.4 choice, when answered), `ack` (`user` when answered) |
 
 ### 2.3 Content-hash keys
 
@@ -115,12 +116,12 @@ Tool results are truncated never mid-line and keep the error-aware tail (doc 05 
 
 ### 2.6 Redaction before persistence
 
-Every string field passes the masker before hashing or writing. In M0 the masker is a built-in gitleaks-class rule set (provider keys, JWTs, private-key blocks, `.env` assignments, IPv4 and email as configurable classes); from M1 it is `saga guard mask` (ADR 0006) and the built-in set is its fallback when guard is not installed. Placeholders are `«saga:mask:<class>:<n>»`, stable within a session so equality comparisons still work. `masked_count` per event is recorded; a positive-control corpus (§11) must mask at 100% and a negative-control corpus at 0%. Masking has a non-zero miss rate on novel formats and the README says so (gate-spec §8).
+Every string field passes the masker before hashing or writing. In M0 the masker is a built-in gitleaks-class rule set (provider keys, JWTs, private-key blocks, `.env` assignments, IPv4 and email as configurable classes); from M1 it is `saga guard mask` (ADR 0006) and the built-in set is its fallback when guard is not installed. Placeholders use guard's form in both cases, `SAGA_MASK_<TYPE>_<8 hex>` (guard-spec §4.3), stable within a session so equality comparisons still work. `masked_count` per event is recorded; a positive-control corpus (§11) must mask at 100% and a negative-control corpus at 0%. Masking has a non-zero miss rate on novel formats and the README says so (gate-spec §8).
 
 ### 2.7 Storage layout
 
 ```
-.saga/trace/                       # gitignored by `saga trace init`
+.saga/trace/                       # gitignored through .saga/.gitignore, written by `saga init` (contracts §2)
 ├── sessions/<session>/
 │   ├── events.000001.jsonl        # append-only, rotated at 64 MiB
 │   ├── blobs/<sha256>             # masked payloads over 4 KiB
@@ -146,7 +147,7 @@ Everything under `.saga/trace/` is derived from `events.*.jsonl` plus `blobs/`; 
     "schema": {"const": "saga.trace/1"},
     "seq": {"type": "integer", "minimum": 1},
     "type": {"enum": ["session","turn","model_call","tool_call","tool_result","edit","gate","guard",
-                      "mem_inject","compaction","subagent","budget","drift","checkpoint","canary"]},
+                      "mem_inject","compaction","subagent","budget","drift","checkpoint","canary","route_decision"]},
     "source": {"pattern": "^(hook:[A-Za-z]+|transcript|stream-json|proxy|cli|derived)$"},
     "prev": {"pattern": "^sha256:[0-9a-f]{64}$|^sha256:genesis$"},
     "hash": {"pattern": "^sha256:[0-9a-f]{64}$"},
@@ -187,21 +188,25 @@ Per-type `body` schemas live in `schema/trace/1/<type>.json` in the repo; a fiel
 ### 3.2 Ledger row (derived, `ledger.jsonl`)
 
 ```json
-{"schema":"saga.ledger/1","session":"01J6Y…","turn":47,"seq":1840,"model":"claude-opus-5",
+{"schema":"saga.trace.ledger/1","session":"01J6Y…","turn":47,"seq":1840,"model":"claude-opus-5",
  "usage":{…},"price_table":"sha256:…","usd":{"input":0.0091,"cache_read":0.0706,"cache_write":0.0569,"output":0.0103,"total":0.1469},
- "context_tokens":152532,"context_delta":9100,"tool_output_bytes_turn":31804,
- "attribution":{"harness":0.61,"index":0.0,"shape":0.0,"mem":0.0,"gate":0.01,"user":0.02,"tool_results":0.36},
+ "context_tokens":152532,"context_delta":9100,"tool_output_bytes_turn":31804,"tool_output_bytes_raw_turn":38412,
+ "attribution":{"harness":0.61,"user":0.02,"tool_results":0.35,"index":0.0,"mem.state":0.0,"mem.targeted":0.0,"mem.preamble":0.0,"mem.query":0.0,
+                "shape":0.0,"gate":0.01,"guard":0.0,"trace":0.0,"route":0.0},
+ "resident_tokens":{"index":0},
  "cache_hit_ratio":0.926,"ttl_inferred":"1h","cum_usd":3.41}
 ```
+
+`tool_output_bytes_raw_turn` is the pre-shaping byte count (shape-spec §8; equal to `tool_output_bytes_turn` when shape is absent). The `attribution` key set is closed and is the same set used by `tool_call.component` (§2.2) and by every layer's ledger references; `mem.*` keys follow mem-spec §8, `resident_tokens.index` follows index-spec §6.2. A key for a layer that is not installed is `0.0`, never absent.
 
 `cache_hit_ratio = cache_read / (input_fresh + cache_read + cache_write_5m + cache_write_1h)`. `context_delta` is this call's `input_fresh + cache_write_*` minus the previous call's, which is the per-turn growth #16157's author had to compute by hand.
 
 ### 3.3 Price table
 
-`saga.prices/1`, TOML, one file per version, addressed by sha256 and pinned into every ledger row and bench manifest (bench-spec §8.1 `price_table_sha256`).
+`saga.trace.prices/1`, TOML, one file per version, addressed by sha256 and pinned into every ledger row and bench manifest (bench-spec §8.1 `price_table_sha256`). The shipped table carries a row for every model id named in route-spec §3.1 `[tiers]` (the excerpt below shows six) and an `open_weight = true` tag where route-spec §3.1 `[openweight]` needs it.
 
 ```toml
-schema = "saga.prices/1"
+schema = "saga.trace.prices/1"
 observed = 2026-09-02
 [[model]]
 id = "claude-fable-5.1";  vendor = "anthropic"; training_cutoff = "2026-06"
@@ -216,7 +221,7 @@ id = "gpt-5.6-sol";       vendor = "openai";    in = 5.00;  out = 30.00; cache_r
 [[model]]
 id = "gemini-3.1-pro";    vendor = "google";    in = 2.00;  out = 12.00; long_context = { over = 200000, in = 4.00, out = 18.00 }; source = "doc 06 A.3"
 [[model]]
-id = "deepseek-v4-pro-0813"; vendor = "deepseek"; in = 0.435; out = 0.87; cache_read = 0.0036; source = "doc 06 A.4 (raised 2026-08-16)"
+id = "deepseek-v4-pro-0813"; vendor = "deepseek"; in = 0.435; out = 0.87; cache_read = 0.0036; open_weight = true; source = "doc 06 A.4 (raised 2026-08-16)"
 ```
 
 Prices are USD per million tokens. Rules: a model id absent from the table costs `null`, never 0, and the report prints `unpriced`; `saga trace prices update` fetches nothing automatically, it takes a file and records its hash, source and date; two ledger rows priced under different tables are never summed without a `mixed_price_tables` flag.
@@ -236,7 +241,7 @@ Output: `tokens_ledger`, `tokens_provider`, `error_pct` per field, and the large
 
 ### 3.5 Per-component attribution
 
-Providers do not report tokens per prompt region, so attribution is an estimate and is labelled as one. Method: every byte added to the context in a turn has a known origin at the hook boundary (the harness system prompt and tool definitions, the user prompt, each tool result tagged with its `component`, each gate or guard message, each `mem_inject`). Trace sums estimated tokens per origin for the turn, scales them so they total the observed `context_delta`, and stores the shares. Cumulatively over a session, share × cost gives dollars per component. The `bare` adapter, which owns the prompt, reports exact counts by calling the provider's token-count endpoint per region on the first turn (Anthropic `count_tokens`, OpenAI `tiktoken` locally) and the ratio between exact and estimated is printed as `attribution_calibration`; the bench (§11) reports the same ratio for every harness adapter.
+Providers do not report tokens per prompt region, so attribution is an estimate and is labelled as one. Method: every byte added to the context in a turn has a known origin at the hook boundary (the harness system prompt and tool definitions, the user prompt, each tool result tagged with its `component`, each gate, guard, trace or route message, each `mem_inject`, each state block and preamble), and the composed hook (contracts §1) labels every byte it emits with its layer. Trace sums estimated tokens per origin for the turn, scales them so they total the observed `context_delta`, and stores the shares. Cumulatively over a session, share × cost gives dollars per component. The `bare` adapter, which owns the prompt, reports exact counts by calling the provider's token-count endpoint per region on the first turn (Anthropic `count_tokens`, OpenAI `tiktoken` locally) and the ratio between exact and estimated is printed as `attribution_calibration`; the bench (§11) reports the same ratio for every harness adapter.
 
 ### 3.6 Budgets
 
@@ -259,7 +264,7 @@ hard_action = "stop"       # stop | ask | warn-only
 | compact | message recommends `/compact` and names the three largest tool results by bytes | same |
 | hard | deny the next tool call with reason `saga trace: budget <scope> exhausted (<value>/<limit>); run saga trace budget --raise` and block Stop-equivalent with the same text until acknowledged | PreToolUse deny + Stop block (gate-spec §6 envelopes) |
 
-Budget messages count against the gate-spec §9 per-session injected cap of 1,000 estimated tokens; the ledger attributes them to `trace`. Raising a budget is a CLI action by the user, logged with `ack: "user"`; an agent cannot raise it (the Bash matcher denies `saga trace budget --raise`, mirroring gate-spec §6.1).
+Budget and watchdog messages share trace's per-session ceiling of 400 estimated tokens inside the one session budget of contracts §7; the ledger attributes them to `trace`. Raising a budget is a CLI action by the user, logged with `ack: "user"`; an agent cannot raise it (`saga trace budget --raise`, `saga trace ack`, `saga trace pin --set`, `saga trace prices use` and `saga trace prune` are on the agent-forbidden command list of contracts §8, denied by the composed PreToolUse hook).
 
 ### 3.7 The report the user sees
 
@@ -288,7 +293,7 @@ attribution (estimated, calibration 0.96)          usd
 top tool results by bytes:  #1840 Bash `pnpm test` 31,804 B   #1712 Read src/… 18,220 B   #1633 Grep 12,910 B
 ```
 
-`--json` emits `saga.ledger.report/1` with the same fields; `--by turn|component|tool|agent` pivots the same rows.
+`--json` emits `saga.trace.report/1` with the same fields; `--by turn|component|tool|agent` pivots the same rows.
 
 ---
 
@@ -299,10 +304,10 @@ top tool results by bytes:  #1840 Bash `pnpm test` 31,804 B   #1712 Read src/…
 Written as `session.body.pins` at start and whenever a value changes; the latest copy lives in `pins/current.json`.
 
 ```json
-{"schema":"saga.pins/1",
+{"schema":"saga.trace.pins/1",
  "harness":{"name":"claude-code","version":"2.1.190","binary_sha256":"…","settings_hash":"…","hooks_hash":"…"},
  "model":{"requested":"claude-opus-5","served":"claude-opus-5","served_reason":null,"fingerprint":null,"fingerprint_reason":"anthropic does not expose one"},
- "effort":{"value":"medium","source":"settings","source_hash":"…"},
+ "effort":{"value":"medium","source":"settings","source_hash":"…"},       // source ∈ settings | route (route-spec §4.1) | request (bare, proxy)
  "system_prompt":{"sha256":null,"sha256_reason":"not exposed by claude-code hooks; enable proxy"},
  "tools":{"sha256":"…","count":19},
  "cache":{"ttl_pinned":"1h","ttl_observed":"1h","observed_at":"2026-09-02T13:40:02Z"},
@@ -393,7 +398,7 @@ Shared with bench-spec §5.9: `drift_index = events / tool_calls`, where `events
 | `repeat_identical_output ≥ 5`, `edit_same_hunk ≥ 5`, `tool_error_streak ≥ 8`, or any wall stall with `watchdog.hard = true` | **block**: deny the next tool call and block Stop-equivalent with `saga trace: <signal>; acknowledge with saga trace ack <session>` | PreToolUse deny + Stop block; the block releases on ack or after `max_blocks` (gate-spec §6, default 6) |
 | wall stall, `watchdog.hard = false` (default) | warn to the terminal and write the event; never kill the harness | doc 09 §2: no "no answer means yes"; killing is the user's decision |
 
-All messages count against the gate-spec §9 injected cap.
+All messages count against trace's 400-token share of the session budget (contracts §7, §3.6 above).
 
 ### 5.4 False-positive controls
 
@@ -433,16 +438,16 @@ Replay validates that the archive is complete and the environment still buildabl
 
 ### 6.3 Checkpoint format
 
-Written at every turn end when guard is installed (the snapshot exists anyway, ADR 0006) and every 5 turns otherwise (a content-addressed overlay under `.saga/snap/` taken by trace itself).
+Written at every turn end. The working-tree part is always the shared snapshot primitive `saga snapshot take --reason trace` (contracts §5; guard-spec §3 implements it), which is a no-op returning the existing id when the tree is unchanged since the last snapshot, so a checkpoint costs nothing extra when guard already snapshotted this turn. Trace never keeps a snapshot store of its own.
 
 ```json
-{"schema":"saga.checkpoint/1","session":"01J6Y…","turn":29,"seq":1204,
- "snapshot":{"id":"snap:2026-09-02T13:40:02Z:7c1a…","kind":"apfs|zfs|overlay","tree_hash":"sha256:…","untracked_included":true},
+{"schema":"saga.trace.checkpoint/1","session":"01J6Y…","turn":29,"seq":1204,
+ "snapshot":{"id":"snap:01J6Y…:29:7c1a12cd7b04","kind":"git-tree|zfs|btrfs","tree_hash":"tree:7c1a12cd7b04…","untracked_included":true},
  "context_hash":"sha256:…","open_gates":["G2","G4"],"contract_hash":"sha256:…",
  "ledger_cum":{"usd":3.41,"tokens":{"input_fresh":…}},"pins":"sha256:…","state_block":"sha256:…"}
 ```
 
-`snapshot.id` is the same identifier `saga undo` accepts; a checkpoint with a missing snapshot is `restorable: false` and never offered by the watchdog.
+`snapshot.id` is the same identifier `saga undo` accepts and `tree_hash` is the same value gate-spec §4.3 records as `worktree_hash`; a checkpoint with a missing snapshot is `restorable: false` and never offered by the watchdog.
 
 ### 6.4 Fork
 
@@ -483,7 +488,7 @@ Written at every turn end when guard is installed (the snapshot exists anyway, A
  "precision":{"repeat_identical_output":0.97,"context_no_progress":0.82}}
 ```
 
-Exit codes: 0 all pass, 1 any check failed, 4 harness not found. `--fix` re-registers hooks and rebuilds `index.sqlite`; it never edits budgets or pins.
+Exit codes: 0 all pass, 1 any check failed, 6 harness not found (contracts §4). `--fix` re-registers hooks and rebuilds `index.sqlite`; it never edits budgets or pins. `saga doctor` is the single doctor; `saga <layer> doctor` runs that layer's subset of the same checks.
 
 ---
 
@@ -522,7 +527,7 @@ saga trace prices  show | use <file>
 saga doctor        [--json] [--fix]
 ```
 
-Exit codes follow bench-spec §9.2: 0 ok, 1 finding (budget exhausted, canary non-pass, doctor fail), 2 usage or schema, 3 budget refused, 4 environment, 5 integrity (chain or hash mismatch, strict replay divergence).
+Exit codes follow the uniform table in contracts §4: 0 ok, 1 finding (budget exhausted, canary non-pass, doctor fail), 2 usage or schema, 3 refusal (`budget --raise` refused, proxy refused), 5 integrity (chain or hash mismatch, strict replay divergence), 6 environment (harness or transcript not found).
 
 ### 9.2 MCP tools (read-only)
 
@@ -546,7 +551,7 @@ Verification status follows gate-spec §6: hook envelopes were verified against 
 | Feedback channel for warn | PostToolUse `reason`, Stop `additionalContext` | PostToolUse `reason` | AfterTool `reason` (replaces the tool result: emit only on a finding, gate-spec §6.2) | stderr | none |
 | Block channel | PreToolUse `permissionDecision: deny`, Stop `decision: block` | same | BeforeTool `deny`, AfterAgent `block` | in-process | none |
 
-Trace adapters, unlike gate adapters (gate-spec §6), do read `transcript_path`, because usage lives there; they open it read-only, never write to it, and copy nothing but the usage, model and timing fields plus hashes of content.
+Trace adapters, unlike gate adapters (gate-spec §6), do read `transcript_path`, because usage lives there; they open it read-only, never write to it, and copy nothing but the usage, model and timing fields plus hashes of content. Every event above binds through the single composed entry `saga hook <harness> <event>` (contracts §1): trace runs first (records the payload) and last (records the merged decision) in that entry, and installs no hook of its own.
 
 **Proxy capture** (`saga trace proxy --port n`, opt-in) sets the harness's base URL to a local listener that forwards unchanged, records request and response metadata, hashes bodies after masking, and stores bodies only with `--store-bodies`. It is the #46917 method as a command. It is privacy-sensitive (ADR 0007) and prints a banner on every start; it never terminates TLS to any host except the configured provider.
 
@@ -565,7 +570,7 @@ Trace adapters, unlike gate adapters (gate-spec §6), do read `transcript_path`,
 | Repo-relative paths | Absolute paths outside the repo root are stored as `«outside-repo»/<basename-hash>` (gate-spec §4.4 rule). |
 | Gitignored | `saga trace init` adds `.saga/trace/` to `.gitignore`; `saga trace verify` warns if any trace file is tracked. |
 | Retention defaults | events and checkpoints 30 days or 2 GiB per repo, whichever first; blobs 14 days; `ledger.jsonl` and `index.sqlite` summaries 365 days; canary archives 365 days; price tables forever (they are small and every old row needs its table). `saga trace prune` runs at session start when either bound is exceeded and logs what it removed. |
-| What the user must delete manually | the harness's own transcripts (`~/.claude/projects/…`, `~/.codex/sessions/…`, `~/.gemini/tmp/…`), which trace reads but does not own; proxy body captures under `.saga/trace/proxy/` when `--store-bodies` was used (never pruned automatically, and `doctor` lists their size); exported bundles; guard snapshots under `.saga/snap/` (owned by guard, ADR 0006). `saga uninstall` removes `.saga/trace/` only when asked with `--purge` and prints the list above either way. |
+| What the user must delete manually | the harness's own transcripts (`~/.claude/projects/…`, `~/.codex/sessions/…`, `~/.gemini/tmp/…`), which trace reads but does not own; proxy body captures under `.saga/trace/proxy/` when `--store-bodies` was used (never pruned automatically, and `doctor` lists their size); exported bundles; snapshots under `.saga/snap/` and `refs/saga/snap/` (the shared `saga snapshot` store, contracts §5, guard-spec §3). `saga uninstall` removes `.saga/trace/` only when asked with `--purge` and prints the list above either way. |
 
 ---
 

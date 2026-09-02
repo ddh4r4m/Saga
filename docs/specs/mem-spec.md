@@ -146,7 +146,7 @@ Rules:
   pending/<ulid>.toml            agent proposals awaiting confirmation
   tombstones/<ulid>              empty file; deletion marker that survives merges (§7.2)
   README.md                      12 lines, generated once, explains the directory to humans
-.saga/observed/                  gitignored by `saga gate init` (gate-spec §2.1)
+.saga/observed/                  gitignored through .saga/.gitignore, written by `saga init` (contracts §2)
   mem-index.json                 derived index, rebuilt when any record hash changes (§2.5)
   mem-session-<id>.json          injection ledger for dedup and caps (§5.5), audit trail (§8)
   state-<session>.md             current state block (§4)
@@ -339,7 +339,7 @@ Content: `CONTRACT`, `CONSTRAINTS`, `DECISIONS` lines only, ≤ 1,200 bytes (300
 
 | Harness | Mechanism | Status |
 |---|---|---|
-| Claude Code | `PreToolUse` matcher `Agent` (and legacy `Task`): `hookSpecificOutput.updatedInput.prompt = preamble ‖ "\n\n" ‖ tool_input.prompt`, `permissionDecision = "allow"` | `updatedInput` is in the hook output reference; `SubagentStart` cannot add context. Install probe (§9.1) confirms the rewritten prompt reaches the sub-agent; otherwise `subagent_preamble = unavailable` |
+| Claude Code | `PreToolUse` matcher `Agent` (and legacy `Task`): `hookSpecificOutput.updatedInput.prompt = preamble ‖ "\n\n" ‖ tool_input.prompt`, `permissionDecision = "allow"`. Route sets `updatedInput.model` on the same event (route-spec §6.1); the composed hook merges the two field-wise into one `updatedInput` (contracts §1), and two layers writing the same field is a composition bug, exit 2 | `updatedInput` is in the hook output reference; `SubagentStart` cannot add context. Install probe (§9.1) confirms the rewritten prompt reaches the sub-agent; otherwise `subagent_preamble = unavailable` |
 | Codex CLI | `SubagentStart`: `additionalContext` "provided as developer context for subagent" | documented |
 | Gemini CLI | `BeforeTool` on the harness's sub-agent tool, `hookSpecificOutput.tool_input` merge | tool name unverified; probe |
 | No hook | the parent is told nothing; `mem.state --preamble` exists for agents that are instructed to call it | reported as `unavailable` |
@@ -409,7 +409,7 @@ Weights are `default`; the ordering constraint>pitfall>decision is the only evid
 | State block per injection | 600 est. tokens (§4.2) | counted separately, `mem.state` |
 | Preamble per sub-agent | 300 est. tokens (§4.6) | counted per sub-agent, `mem.preamble` |
 
-At the session cap the adapter injects nothing further and writes `mem: cap reached` to the audit file; the bench treats a cap breach as a failed run of the layer (as gate-spec §9). All counts use `ceil(bytes/4)`; the bench reports the ratio to the harness's actual token counters.
+At the session cap the adapter injects nothing further and writes `mem: cap reached` to the audit file; the bench treats a cap breach as a failed run of the layer (as gate-spec §9). The 1,200-token targeted cap is mem's share of the one per-session injected budget in contracts §7; the state block and the preamble are counted per event there, not against that share. All counts use `ceil(bytes/4)`, kept in the shared counter file `.saga/observed/session-<id>.json` next to gate's; the bench reports the ratio to the harness's actual token counters.
 
 ### 5.5 Dedup and re-injection window
 
@@ -426,7 +426,7 @@ The session ledger `mem-session-<id>.json`:
 
 ### 5.6 Placement
 
-Injection is a tool-adjacent message, never a system-prompt or tool-list rewrite. Basis: Anthropic's cache hierarchy is `tools → system → messages`, reads cost 0.1× (0.025× on Fable 5.1), writes 1.25× to 2× (doc 05 §4.2); claude-code #91514 shows a warm cache fully rewritten seconds after a ToolSearch or Skill result (doc 07 §8). The ledger exposes the cache-read ratio with and without mem (§9.2).
+Injection is a tool-adjacent message, never a system-prompt or tool-list rewrite. It is emitted by mem's step inside the composed `saga hook <harness> <event>` entry (contracts §1), which runs after guard so a denied call gets no injection, and before shape and gate. Basis: Anthropic's cache hierarchy is `tools → system → messages`, reads cost 0.1× (0.025× on Fable 5.1), writes 1.25× to 2× (doc 05 §4.2); claude-code #91514 shows a warm cache fully rewritten seconds after a ToolSearch or Skill result (doc 07 §8). The ledger exposes the cache-read ratio with and without mem (§9.2).
 
 | Harness | Primary placement | Fallback | Fact |
 |---|---|---|---|
@@ -530,9 +530,9 @@ saga mem install  --harness <claude-code|codex|gemini> [--shared] | uninstall
 | `add`, `propose`, `confirm`, `drop`, `discover --write` | never | record files, tombstones |
 | `check`, `list`, `get`, `inject`, `state` (without `--write`) | never; metadata calls only | nothing (index rebuild is a cache) |
 | `state --write` | never | `.saga/observed/state-<session>.md` |
-| `install` | never | hook config with the managed marker (gate-spec §8, hook install row) |
+| `install` | never | alias: adds mem to `.saga/manifest.json` and re-runs `saga install --harness <h>`, which writes the composed hook entries (contracts §1, §9) |
 
-Exit codes follow gate-spec §7.1: 0 ok; 1 stale or pending records present under `check --strict`; 2 usage or record parse failure; 6 environment refusal (symlinked store, record outside repo root, unreadable). `--json` everywhere; `inject --json`:
+Exit codes follow the uniform table of contracts §4: 0 ok; 1 stale or pending records present under `check --strict`; 2 usage or record parse failure; 3 write refused because masking fired (§8); 6 environment refusal (symlinked store, record outside repo root, unreadable). `--json` everywhere; `inject --json`:
 
 ```json
 {"schema": "saga.mem.inject/1", "session_id": "…", "turn": 41,
@@ -624,7 +624,7 @@ Run under bench-spec's clean room, paired arms, control-arm blocking (`dir-deny:
 | M-full | both |
 | M-standing (control for #303) | the same records as a static section in the instruction file, re-sent every turn by a `UserPromptSubmit` hook |
 
-Metrics, all with bench-spec §5.5 statistics:
+Metrics, all with bench-spec §5.5 statistics (report keys are the mem row of bench-spec §5.11):
 
 | Metric | Definition | Reported for |
 |---|---|---|

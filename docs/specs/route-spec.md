@@ -72,7 +72,7 @@ Every signal is deterministic and is recorded in the decision record (§7.3) so 
 | `gates_failing_at_start` | Runnable gates whose `CHECK` currently fails (a failing gate before any edit is the debug signature) | integer |
 | `red_control` | Any gate with `RED: control` | bool |
 | `tool_allow` | The tool set the sub-agent is spawned with (Claude Code `tools:` frontmatter or Agent tool input; Codex sandbox policy `ReadOnly`) | set |
-| `tool_mix_recent` | Over the last 20 tool calls in the trace: fraction that are read-class (guard-spec §2.4 classification `read-only`) | 0..1 |
+| `tool_mix_recent` | Over the last 20 tool calls in the trace: fraction that are read-class (guard-spec §2.4 classification `read`) | 0..1 |
 | `subagent_prompt_len` | Bytes of the sub-agent prompt (never its content) | integer |
 | `explicit_class` | `saga route plan --class`, or a `[override]` row keyed by contract slug (§3.1) | class or `null` |
 | `regime` | index-spec §1.3 `off`, `lite`, `full` | enum |
@@ -102,7 +102,7 @@ R10 scope_files >= 5  or  impact_size == null
 R11 otherwise                                               -> unknown
 ```
 
-`READ_TOOLS` is the harness-specific set of tools guard classifies as read-only (Read, Grep, Glob, `saga index *`, `trace_*`, Bash restricted by an allow-list of read patterns; guard-spec §2.5). The thresholds `4`, `5` and `2 ×` are priors aligned to the bench size classes S/M (≤ 4 files) versus L (5 to 12) in bench-spec §2.3; §8.1 measures their precision.
+`READ_TOOLS` is the harness-specific set of tools guard classifies as `read` (guard-spec §2.4: Read, Grep, Glob, `saga index *`, `trace_*`, Bash restricted by an allow-list of read patterns; guard-spec §2.5). The thresholds `4`, `5` and `2 ×` are priors aligned to the bench size classes S/M (≤ 4 files) versus L (5 to 12) in bench-spec §2.3; §8.1 measures their precision.
 
 ### 2.4 `unknown` handling
 
@@ -117,8 +117,8 @@ R11 otherwise                                               -> unknown
 Precedence, highest first: hard rules in §7 (never removable) > user global `~/.saga/route.toml` > repo `.saga/route.toml` > shipped defaults. A repo policy may pick cheaper tiers and lower caps; it may **not** add a provider to `allowed_providers`, remove a `[security]` pattern, or change `unknown` handling. Repo policies are honoured only after `saga route policy trust` records their hash, the guard-spec §2.5 mechanism, because a cloned repo must not be able to route a session's code to a provider the user excluded.
 
 ```toml
-# .saga/route.toml   schema = "saga.route/1"
-version = 1
+# .saga/route.toml
+schema = "saga.route.policy/1"
 
 [tiers]                       # ordered, cheapest last; ids must exist in the trace price table (trace-spec §3.3)
 frontier = ["claude-fable-5.1", "claude-opus-5", "gpt-5.6-sol"]
@@ -209,7 +209,7 @@ Every default row above is derived from doc 06 D.1 as condensed in doc 09 §4.2 
 | security-flagged | primary | Opus 5 | primary | doc 06 D.1 row 6 | no |
 | local tier (air-gapped) | local | DeepSeek V4-Pro-0813 ($0.435/$0.87), Qwen3.6-27B, Devstral Small 2 ($0.10/$0.30) | n/a | doc 06 A.4, A.6, A.8; vendor scores unreplicated | no |
 
-Rows expire: the price table is hash-pinned (trace-spec §3.3) and a `saga.route/1` file whose `source` dates are older than the price table's `observed` date by more than 90 days prints `stale defaults` from `policy show`.
+Rows expire: the price table is hash-pinned (trace-spec §3.3) and a `saga.route.policy/1` file whose `source` dates are older than the price table's `observed` date by more than 90 days prints `stale defaults` from `policy show`.
 
 ### 3.3 Delegation ladder
 
@@ -294,11 +294,11 @@ Reuses trace-spec §3.6 mechanisms verbatim; route only supplies the third scope
 | hard (100%) | class cap | sub-agent: deny its next tool call, return what it has; the parent receives `route: sub-agent <id> hit cost cap <x>/<cap>; partial summary attached` | PreToolUse deny in the sub-agent's session |
 | hard (100%) | task, session | trace-spec §3.6 hard action, plus the §5.4 prompt when `hard_action = "ask"` | PreToolUse deny + Stop block |
 
-Budget messages count against the gate-spec §9 per-session injected cap of 1,000 estimated tokens and are attributed to `route` in the ledger.
+Budget messages are route's 200-token share of the one per-session injected budget (contracts §7) and are attributed to `route` in the ledger.
 
 ### 5.4 The user-facing prompt
 
-Fixed wording, printed by the CLI or the harness's ask channel; an agent cannot answer it (the Bash matcher denies `saga route budget --raise` and `saga trace budget --raise`, mirroring trace-spec §3.6).
+Fixed wording, printed by the CLI or the harness's ask channel; an agent cannot answer it (`saga route budget --raise`, `saga route policy trust`, `saga route validate --write` and `saga trace budget --raise` are on the agent-forbidden command list of contracts §8, denied by the composed PreToolUse hook).
 
 ```
 saga route: task "ts-0031-retry-jitter" (class debug, claude-opus-5 @ high) reached its cap
@@ -325,13 +325,13 @@ Verification follows gate-spec §6: cells marked *probe* are confirmed by the ad
 
 | Harness | Primary model | Effort | Per-sub-agent model | Route's mechanism | Status |
 |---|---|---|---|---|---|
-| Claude Code | settings `model`, `/model` | settings effort value | sub-agent frontmatter `model:` in `.claude/agents/*.md`; Agent tool `model` input field | PreToolUse on `Agent`: `hookSpecificOutput.updatedInput.model = <tier model>` alongside mem-spec §4.6's `updatedInput.prompt`, `permissionDecision: "allow"`; generated agent files carry `model:` from the policy | `updatedInput` documented (mem-spec §4.6); `model` field acceptance *probe* |
+| Claude Code | settings `model`, `/model` | settings effort value | sub-agent frontmatter `model:` in `.claude/agents/*.md`; Agent tool `model` input field | PreToolUse on `Agent`: route's step in the composed hook (contracts §1) sets `updatedInput.model = <tier model>`; mem's step sets `updatedInput.prompt` (mem-spec §4.6); the composed hook merges them field-wise into one `updatedInput` with `permissionDecision: "allow"`, never clobbering either; generated agent files carry `model:` from the policy | `updatedInput` documented (mem-spec §4.6); `model` field acceptance *probe* |
 | Codex CLI | `model` in `config.toml` or `[profiles.<name>]`, `--profile` | `model_reasoning_effort` per profile | **none**: codex #31814 (doc 06 A.2) | route writes `[profiles.saga-<class>]` tables and the launcher picks `--profile` per task; sub-agents inherit the primary; ladder capped at L0 for sub-agents, L2 via a separate `codex exec` run | documented for profiles; sub-agent limit is a known gap |
 | Gemini CLI / Antigravity CLI | settings `model`, `-m` | *probe* | *probe* | per-session only; fallback banner parsed by trace (trace-spec §9.3) and enforced by §4.3 | enterprise API-key users only (doc 06 Part B) |
 | `bare` adapter | request | request | request | exact | exact |
 | Cursor, OpenCode, Cline, Kilo | model picker | varies | varies | M6; read-only `route.plan` advice only until an adapter exists | not before M6 |
 
-When a harness cannot honour a tier for a sub-agent, the plan says `applied: false, reason: "harness_no_subagent_model"` and the sub-agent runs on the primary; route never pretends a decision was applied. Trace confirms application by comparing `model_served` on the sub-agent's first call with the plan; a mismatch is a `route_unapplied` event, counted in §8.1.
+When a harness cannot honour a tier for a sub-agent, the plan says `applied: false, reason: "harness_no_subagent_model"` and the sub-agent runs on the primary; route never pretends a decision was applied. Trace confirms application by comparing `model_served` on the sub-agent's first call with the plan; a mismatch is a `route_decision` event with `outcome: "unapplied"` (§7.3), counted as `route_unapplied_rate` in §8.1.
 
 ### 6.2 CLI
 
@@ -342,7 +342,7 @@ saga route policy    show | init | validate [--file f] | trust [--file f] | diff
 saga route validate  --against bench <manifest-hash> [--epsilon 0.05] [--write] [--json]
 ```
 
-Exit codes follow gate-spec §7.1 where the meaning matches: 0 ok, 1 finding (refused plan, stale defaults, unapplied decision), 2 usage or schema (invalid policy, repo policy touching a fixed table), 3 budget (estimate exceeds the smallest binding cap), 4 environment (no trace, no price table), 5 integrity (policy hash not trusted).
+Exit codes follow the uniform table of contracts §4: 0 ok, 1 finding (refused plan, stale defaults, unapplied decision), 2 usage or schema (invalid policy, repo policy touching a fixed table), 3 refusal on budget (estimate exceeds the smallest binding cap), 4 trust required (repo policy hash not trusted), 6 environment (no trace, no price table).
 
 `saga route plan --json` emits `saga.route.plan/1`:
 
@@ -390,7 +390,7 @@ A model is routable only if its vendor is in `[privacy] allowed_providers` **and
 
 ### 7.3 Audit
 
-Every decision, refusal and unapplied plan is a trace event `route_decision` (an addition to trace-spec §2.2's event list, `component: "route"`), body = the `saga.route.plan/1` object plus `outcome ∈ {applied, unapplied, refused, user_answered}` and, for §5.4, the option chosen with `ack: "user"`. The ledger's `attribution` gains a `route` key for budget messages. Nothing route writes is readable by the model except the ≤ 60-token budget lines and the sub-agent's cap notice.
+Every decision, refusal and unapplied plan is the trace event `route_decision` (trace-spec §2.2, `component: "route"`), body = the `saga.route.plan/1` object plus `outcome ∈ {applied, unapplied, refused, user_answered}` and, for §5.4, the option chosen with `ack: "user"`. The ledger's `attribution` carries the `route` key (trace-spec §3.2) for budget messages. Nothing route writes is readable by the model except the ≤ 60-token budget lines and the sub-agent's cap notice.
 
 ---
 
@@ -404,7 +404,7 @@ Every decision, refusal and unapplied plan is a trace event `route_decision` (an
 | Classification precision | 300 hand-labelled units from the M0 task set traces (bench-spec §2.6), labels by two people, disagreements dropped | per-class precision ≥ 0.85; `unknown` rate ≤ 20% |
 | Policy parser fails closed | 40 malformed policies (repo policy touching `[class.unknown]`, adding a provider, unknown model id) | exit 2 every time; no plan emitted |
 | Refusal on fallback | trace fixture with `model.served ≠ requested` (gemini-cli #28859 shape) | `status: refused`, event id quoted |
-| Application probe per harness | scripted fake harness echoing the sub-agent's first request | served model equals the plan; else `route_unapplied` recorded, never silent |
+| Application probe per harness | scripted fake harness echoing the sub-agent's first request | served model equals the plan; else `route_decision` with `outcome: unapplied` recorded, never silent |
 | Estimate error | 100 completed contracts with ledgers | median absolute error ≤ 30% for `bench` and `ledger` sources; `estimated` printed with `~` |
 | Budget prompt blocks | headless run hitting a class cap | no tool call after the cap until a CLI answer; agent attempt to run `--raise` denied and logged |
 | Cache ordering | proxy-captured session with one L1 delegation | primary's `cache_write` on the turn after delegation ≤ its median (no prefix re-write caused by route) |
@@ -471,5 +471,5 @@ Cell values: `yes` (validated, with manifest hash), `no` (prior only, delegation
 | 5 | **Effort as the stronger variable.** Doc 09 §7 item 4 says effort outranks model choice for Claude models; HAL says higher effort can hurt | R1e vs R1 per class; publish the per-class effort curve before any model default is revised |
 | 6 | **Architect/editor at repo scale.** Only Exercism-scale evidence (doc 03 §1.2) | R3 at `publish` tier on L tasks only; ships as a default only under the §8.2 rule on two pairs |
 | 7 | **Sub-agent model selection on Codex.** codex #31814 | tracked as an upstream dependency; ladder capped at L0 for Codex sub-agents until the adapter probe passes |
-| 8 | **Local-tier validation.** Vendor numbers for DeepSeek, Qwen, Kimi unreplicated (doc 06 A.4 to A.6) | `user`-tier bench on the user's own repo is the only path; `schema_repair` effect measured as a separate arm (guard-spec §11.5) |
-| 9 | **Estimate drift.** Prices and cache TTLs change server-side (#46829, #46917) | estimate error tracked per session (§8.1); a median error above 30% for 7 days raises a `route` canary verdict and the plan switches to the `ledger` source |
+| 8 | **Local-tier validation.** Vendor numbers for DeepSeek, Qwen, Kimi unreplicated (doc 06 A.4 to A.6) | `user`-tier bench on the user's own repo is the only path; `schema_repair` effect measured as a separate arm (guard-spec §12, deferred to M5) |
+| 9 | **Estimate drift.** Prices and cache TTLs change server-side (#46829, #46917) | estimate error tracked per session (§8.1); a median error above 30% for 7 days writes a trace `budget` event with `metric: "estimate_error"`, `action: "warn"` and the plan switches to the `ledger` source (the canary verdict set of trace-spec §4.4 stays closed) |
