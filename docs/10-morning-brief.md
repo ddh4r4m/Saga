@@ -27,7 +27,13 @@ Saga is one local binary with three surfaces (CLI, MCP, thin per-harness hooks) 
 
 Six research agents (Opus-class general-purpose), then Fable agents for every specification and for two review passes, with an Opus draft of the gate spec that Fable then reviewed and reworked. Every agent wrote to disk and returned a summary; the orchestrator only read the four earliest reports in full. Two operational incidents cost about two hours: teammates spawned from inside a nested git workspace hang silently on a trust prompt (bug reports filed via /feedback), and the usage limit was hit twice (21:20 and 02:20 resets).
 
+## Read the red-team review before deciding anything
+
+An adversarial review by a separate Fable agent (docs/11-red-team-review.md) argues the thesis is plausible but the eight-layer scope is not, and recommends an eight-week, one-hook experiment instead: bare harness versus bare plus gate on 40 tasks with hidden oracles, K=5, one model, primary metric false-done rate, budget under $3k, with a pre-registered kill rule. It also corrects several numbers in the proposal: the publish-tier bench is closer to $12k than the spec's $500 to $2,000, the M0 task set cannot detect a 5 pp effect, and eight headline rows in docs/09 §1 rest on secondary or unverified sources. The orchestrator did not act on the scope cut; that is decision 0 below.
+
 ## Decisions that need you
+
+0. **Scope.** Accept the red-team scope cut (bench for TS and Python, trace ledger and pins, gate Stop with claim verification, guard shell classifier and git-tree snapshots, minimal doctor, Claude Code only; defer mem, index, shape, MCP gateway, Windows, masking; drop route), or keep the full eight-layer roadmap with the red-team's ship conditions as gates.
 
 From docs/specs/REVIEW-LOG.md and docs/09 §7:
 

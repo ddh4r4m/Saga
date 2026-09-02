@@ -12,6 +12,7 @@
 | 08 | [Reference repo review](08-reference-repo-review.md) | mattpocock/skills and unlazy in depth: mechanisms, evidence, token cost, gaps |
 | 09 | [Proposal and roadmap](09-proposal-and-roadmap.md) | Evidence-backed architecture, per-model and per-harness gap maps, milestones, open questions |
 | 10 | [Morning brief](10-morning-brief.md) | What was produced overnight, decisions needed, next steps |
+| 11 | [Red-team review](11-red-team-review.md) | Adversarial review: five failure arguments, overstated claims, recommended scope cut and ship conditions |
 
 ## Layer specifications
 
