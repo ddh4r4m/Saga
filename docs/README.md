@@ -11,6 +11,7 @@
 | 07 | [GitHub issue mining](07-github-issue-mining.md) | 32 repos: what harnesses and tooling have and have not solved, design lessons, tooling-repo mistakes |
 | 08 | [Reference repo review](08-reference-repo-review.md) | mattpocock/skills and unlazy in depth: mechanisms, evidence, token cost, gaps |
 | 09 | [Proposal and roadmap](09-proposal-and-roadmap.md) | Evidence-backed architecture, per-model and per-harness gap maps, milestones, open questions |
+| 10 | [Morning brief](10-morning-brief.md) | What was produced overnight, decisions needed, next steps |
 
 ## Layer specifications
 
