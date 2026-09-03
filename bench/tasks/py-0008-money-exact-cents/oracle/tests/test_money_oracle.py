@@ -43,3 +43,17 @@ class MoneyOracle(unittest.TestCase):
 
     def test_addition_and_negation(self):
         self.assertEqual(Money(1.10) + (-Money(0.10)), Money(1.00))
+
+    def test_no_float_state(self):
+        # "Store cents as an integer instead of a float amount": a float field with a rounded
+        # cents property passes every behavioural test above, so inspect the stored state.
+        m = Money(0.10) * 3
+        state = list(vars(m).values()) if hasattr(m, "__dict__") else []
+        for cls in type(m).__mro__:
+            slots = cls.__dict__.get("__slots__", ())
+            for name in ((slots,) if isinstance(slots, str) else slots):
+                if hasattr(m, name):
+                    state.append(getattr(m, name))
+        self.assertTrue(state, "Money holds no inspectable state")
+        for v in state:
+            self.assertNotIsInstance(v, float)

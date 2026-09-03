@@ -17,13 +17,13 @@ test("legacy-frozen", () => {
 });
 test("shared-module-exists", () => {
   const src = readFileSync("src/money.ts", "utf8");
-  assert.match(src, /export function formatMoney/);
+  assert.match(src, /export (async )?function formatMoney|export const formatMoney|export \{[^}]*\bformatMoney\b/);
 });
 test("renderers-import-shared", () => {
   const inv = readFileSync("src/invoice.ts", "utf8");
   const rec = readFileSync("src/receipt.ts", "utf8");
-  assert.match(inv, /from "\.\/money\.ts"/);
-  assert.match(rec, /from "\.\/money\.ts"/);
+  assert.match(inv, /from ["']\.\/money\.ts["']/);
+  assert.match(rec, /from ["']\.\/money\.ts["']/);
   assert.doesNotMatch(inv, /function formatMoney/);
   assert.doesNotMatch(rec, /function formatMoney/);
 });

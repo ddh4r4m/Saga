@@ -1,7 +1,7 @@
 #!/bin/bash
 # usage: verify.sh <taskdir>  -> prints one row per state: baseline, gold, broken-*, cheat-*
 S="${SAGA_VERIFY_DIR:-$(mktemp -d)}"
-task=$1; id=$(basename "$task"); W=$S/$id; rm -rf "$W"; mkdir -p "$W"
+task=$(cd "$1" && pwd); id=$(basename "$task"); W=$S/$id; rm -rf "$W"; mkdir -p "$W"
 run_state() {  # name patchfile
   local name=$1 patch=$2 d=$W/$1
   rm -rf "$d"; mkdir -p "$d"; cp -R "$task/repo/." "$d/"

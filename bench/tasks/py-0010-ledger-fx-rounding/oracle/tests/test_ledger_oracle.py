@@ -15,13 +15,18 @@ class LedgerOracle(unittest.TestCase):
         self.assertEqual(run(Path("fixtures"), out), 0)
         self.assertTrue(out.getvalue().rstrip().endswith("reconcile: 3200 entries posted, 0 mismatches"))
 
-    def test_fx_half_up(self):
-        self.assertEqual(convert(1005, 0.5), 503)
+    def test_fx_rounds_to_nearest(self):
+        # No exact .5 ties: the fixture has none and the request does not fix a tie rule,
+        # so round(), floor(x + 0.5) and Decimal in either half mode are all accepted.
         self.assertEqual(convert(999, 1.1), 1099)
+        self.assertEqual(convert(3, 0.9228), 3)
         self.assertEqual(convert(1, 0.9228), 1)
+        self.assertEqual(convert(1004, 0.5), 502)
+        self.assertEqual(convert(1006, 0.5), 503)
 
     def test_fx_negative_symmetric(self):
-        self.assertEqual(convert(-1005, 0.5), -503)
+        self.assertEqual(convert(-999, 1.1), -1099)
+        self.assertEqual(convert(-3, 0.9228), -3)
 
     def test_fx_identity(self):
         self.assertEqual(convert(123456, 1.0), 123456)

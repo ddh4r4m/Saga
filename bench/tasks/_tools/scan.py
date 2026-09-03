@@ -1,7 +1,7 @@
 import pathlib, re, sys
 T = pathlib.Path('/Users/dharamdhurandhar/Developer/OpenSource/Saga/bench/tasks')
 for d in sorted(T.iterdir()):
-    if not d.is_dir(): continue
+    if not d.is_dir() or not (d/'task.toml').exists(): continue
     c = (d/'CANARY').read_text().strip()
     prompt = (d/'prompt.md').read_text()
     problems = []

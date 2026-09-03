@@ -16,4 +16,4 @@ OUT: .github/**, .env.example
 - [ ] G3: quoted values survive, including a hash inside quotes
     CHECK: node -e "import('./src/config.ts').then(m=>{const c=m.loadConfig(require('fs').readFileSync('.env.example','utf8'));console.log(c.appName+'|'+c.motd)})"
     EXPECT: /^Order Service\|hello # not a comment$/m
-    FROM: R4 "Quoted values in .env.example like APP_NAME=\"Order Service\" and the MOTD line with a hash inside the quotes have to come through intact"
+    FROM: R4 "the MOTD line with a hash inside the quotes have to come through intact"

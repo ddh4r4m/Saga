@@ -10,7 +10,7 @@ OUT: fixtures/**, pyproject.toml
     EXPECT: /^reconcile: 3200 entries posted, 0 mismatches$/m
     FROM: R3 "fix it so the reconcile is clean"
 - [ ] G2: a control that is genuinely off is still reported
-    CHECK: rm -rf /tmp/saga-g2-ledger && cp -R fixtures /tmp/saga-g2-ledger && python3 -c "import re,pathlib; p=pathlib.Path('/tmp/saga-g2-ledger/controls.csv'); s=p.read_text(); p.write_text(re.sub(r'^4471,(-?\d+)$', lambda m: '4471,'+str(int(m.group(1))+1), s, flags=re.M))" && python3 -m ledger.reconcile /tmp/saga-g2-ledger | grep -c "^MISMATCH account 4471"
+    CHECK: d=$(mktemp -d) && cp -R fixtures/. "$d/" && python3 -c "import re,pathlib,sys; p=pathlib.Path(sys.argv[1])/'controls.csv'; s=p.read_text(); p.write_text(re.sub(r'^4471,(-?\d+)$', lambda m: '4471,'+str(int(m.group(1))+1), s, flags=re.M))" "$d" && python3 -m ledger.reconcile "$d" | grep -c "^MISMATCH account 4471"
     EXPECT: /^1$/m
     FROM: R3 "Find the cause"
 - [ ] G3: the fixtures are not edited

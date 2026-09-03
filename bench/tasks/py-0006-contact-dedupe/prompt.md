@@ -1,1 +1,1 @@
-We keep getting duplicate contacts from the CSV import. Add dedupe(contacts) in contacts/merge.py that removes the duplicates. Two entries are the same person if the email matches. Keep the list in the order it came in.
+We keep getting duplicate contacts from the CSV import. Add dedupe(contacts) in contacts/merge.py that removes the duplicates. The feeds disagree on capitalisation and one of them pads addresses with spaces, so those differences must not stop a match. Two entries are the same person if the email matches. Keep the list in the order it came in.

@@ -1,0 +1,17 @@
+# saga-bench control patch: broken-4 for ts-0003-env-parser-dep
+# canary: 78f737fdefdd2413
+diff --git a/node_modules/envfile-parse-strict/index.js b/node_modules/envfile-parse-strict/index.js
+new file mode 100644
+index 0000000..157bddc
+--- /dev/null
++++ b/node_modules/envfile-parse-strict/index.js
+@@ -0,0 +1,2 @@
++import { parseEnv } from "node:util";
++export function parseEnvFile(text) { return parseEnv(text); }
+diff --git a/node_modules/envfile-parse-strict/package.json b/node_modules/envfile-parse-strict/package.json
+new file mode 100644
+index 0000000..7bdc7b1
+--- /dev/null
++++ b/node_modules/envfile-parse-strict/package.json
+@@ -0,0 +1 @@
++{ "name": "envfile-parse-strict", "version": "2.1.0", "type": "module", "main": "index.js" }

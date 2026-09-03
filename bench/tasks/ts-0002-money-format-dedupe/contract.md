@@ -6,7 +6,7 @@ IN: src/money.ts, src/invoice.ts, src/receipt.ts, test/**
 OUT: src/legacy/**, package.json
 
 - [ ] G1: one formatMoney lives in src/money.ts and both renderers import it
-    CHECK: grep -l "from \"./money.ts\"" src/invoice.ts src/receipt.ts | wc -l | tr -d " " && grep -c "^export function formatMoney" src/money.ts
+    CHECK: grep -lE "from [\"']\./money\.ts[\"']" src/invoice.ts src/receipt.ts | wc -l | tr -d " " && grep -cE "^export (function|const) formatMoney" src/money.ts
     EXPECT: /^2\n1$/m
     FROM: R3 "Pull one formatMoney out into src/money.ts"
     FROM: R3 "use it from both invoice.ts and receipt.ts"

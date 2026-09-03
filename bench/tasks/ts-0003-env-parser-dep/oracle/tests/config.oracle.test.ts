@@ -15,7 +15,8 @@ test("env-defaults", () => {
 test("env-double-quoted-spaces", () => assert.equal(loadConfig('APP_NAME="Order Service"\n').appName, "Order Service"));
 test("env-single-quoted-hash", () => assert.equal(loadConfig("MOTD='hello # not a comment'\n").motd, "hello # not a comment"));
 test("env-comment-lines", () => assert.equal(loadConfig("# PORT=1\nPORT=7000\n").port, 7000));
-test("env-export-prefix", () => assert.equal(loadConfig("export HOST=exported.host\n").host, "exported.host"));
+test("env-double-quoted-hash", () => assert.equal(loadConfig('MOTD="build #42 # ok"\n').motd, "build #42 # ok"));
+test("env-single-quoted-hash-other", () => assert.equal(loadConfig("MOTD='#1 pick'\n").motd, "#1 pick"));
 test("env-example-file", () => {
   const cfg = loadConfig(readFileSync(".env.example", "utf8"));
   assert.equal(cfg.port, 8080); assert.equal(cfg.host, "0.0.0.0"); assert.equal(cfg.appName, "Order Service"); assert.equal(cfg.motd, "hello # not a comment");

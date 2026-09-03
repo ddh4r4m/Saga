@@ -4,7 +4,9 @@
 O="$(cd "$(dirname "$0")" && pwd)"; WS="${WORKSPACE:-$PWD}"; cd "$WS"
 PY=$(command -v python3.12 || command -v python3)
 rc=0
-if [ "$(shasum -a 256 intervals.py | cut -c1-64)" = "$(head -1 "$O/source.sha256")" ]; then echo "source-untouched PASS"; else echo "source-untouched FAIL"; rc=1; fi
+if [ "$("$PY" -c "import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" intervals.py)" = "$(head -1 "$O/source.sha256")" ]; then echo "source-untouched PASS"; else echo "source-untouched FAIL"; rc=1; fi
+# A test that pins the source text (hash, getsource, bytecode) kills every mutant without testing behaviour.
+if grep -qE 'inspect|getsource|hashlib|__file__|open\(|read_text|read_bytes|importlib|\bast\b|sys\.modules|__code__|co_code|\bdis\b|linecache' tests/*.py tests/**/*.py 2>/dev/null; then echo "no-source-introspection FAIL"; rc=1; else echo "no-source-introspection PASS"; fi
 run_tests() {  # dir -> prints "ran N rc R"
   ( cd "$1" && "$PY" -m unittest discover -s tests -t . > .saga-out.txt 2>&1; r=$?; n=$(sed -nE 's/^Ran ([0-9]+) tests?.*/\1/p' .saga-out.txt | head -1); echo "ran ${n:-0} rc $r" )
 }
