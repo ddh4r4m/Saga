@@ -1,0 +1,73 @@
+{
+  "type": "object",
+  "properties": {
+    "phase": {
+      "enum": [
+        "user",
+        "assistant_end"
+      ]
+    },
+    "prompt_hash": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "prompt_bytes": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "prompt_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "final_message_hash": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "final_message_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "final_message_bytes": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "claimed_done": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "claimed_done_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "harness_turn_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "phase"
+  ],
+  "$id": "https://saga.dev/schema/trace/1/turn",
+  "title": "saga.trace/1 body for type turn"
+}

@@ -1,0 +1,65 @@
+{
+  "type": "object",
+  "properties": {
+    "tool": {
+      "type": "string"
+    },
+    "args_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "args_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "args_inline": {
+      "type": [
+        "object",
+        "string",
+        "null"
+      ]
+    },
+    "component": {
+      "type": "string"
+    },
+    "cwd_rel": {
+      "type": "string"
+    },
+    "index_version": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "tool_use_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "decision": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "decision_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "tool",
+    "args_hash",
+    "component",
+    "cwd_rel",
+    "index_version"
+  ],
+  "$id": "https://saga.dev/schema/trace/1/tool_call",
+  "title": "saga.trace/1 body for type tool_call"
+}

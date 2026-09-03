@@ -1,0 +1,30 @@
+{
+  "type": "object",
+  "properties": {
+    "signal": {
+      "type": "string"
+    },
+    "window": {
+      "type": "integer"
+    },
+    "drift_index": {
+      "type": "number"
+    },
+    "action": {
+      "type": "string"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "signal",
+    "action"
+  ],
+  "$id": "https://saga.dev/schema/trace/1/drift",
+  "title": "saga.trace/1 body for type drift"
+}

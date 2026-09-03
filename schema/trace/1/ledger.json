@@ -1,0 +1,281 @@
+{
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "saga.trace.ledger/1"
+    },
+    "session": {
+      "type": "string"
+    },
+    "turn": {
+      "type": "integer"
+    },
+    "seq": {
+      "type": "integer"
+    },
+    "model": {
+      "type": "string"
+    },
+    "usage": {
+      "type": "object",
+      "properties": {
+        "input_fresh": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "cache_read": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "cache_write_5m": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "cache_write_1h": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "output": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "reasoning": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "reasoning_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "split_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source": {
+          "enum": [
+            "transcript",
+            "stream-json",
+            "proxy",
+            "estimated"
+          ]
+        },
+        "raw": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "input_fresh",
+        "cache_read",
+        "cache_write_5m",
+        "cache_write_1h",
+        "output",
+        "reasoning",
+        "source"
+      ]
+    },
+    "price_table": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "usd": {
+      "type": "object",
+      "properties": {
+        "input": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "cache_read": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "cache_write": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "output": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "total": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "input",
+        "cache_read",
+        "cache_write",
+        "output",
+        "total"
+      ]
+    },
+    "usd_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "context_tokens": {
+      "type": "integer"
+    },
+    "context_delta": {
+      "type": "integer"
+    },
+    "tool_output_bytes_turn": {
+      "type": "integer"
+    },
+    "tool_output_bytes_raw_turn": {
+      "type": "integer"
+    },
+    "attribution": {
+      "type": "object",
+      "properties": {
+        "harness": {
+          "type": "number"
+        },
+        "user": {
+          "type": "number"
+        },
+        "tool_results": {
+          "type": "number"
+        },
+        "index": {
+          "type": "number"
+        },
+        "mem.state": {
+          "type": "number"
+        },
+        "mem.targeted": {
+          "type": "number"
+        },
+        "mem.preamble": {
+          "type": "number"
+        },
+        "mem.query": {
+          "type": "number"
+        },
+        "shape": {
+          "type": "number"
+        },
+        "gate": {
+          "type": "number"
+        },
+        "guard": {
+          "type": "number"
+        },
+        "trace": {
+          "type": "number"
+        },
+        "route": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "harness",
+        "user",
+        "tool_results",
+        "index",
+        "mem.state",
+        "mem.targeted",
+        "mem.preamble",
+        "mem.query",
+        "shape",
+        "gate",
+        "guard",
+        "trace",
+        "route"
+      ],
+      "patternProperties": {
+        "^mcp:.+$": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "resident_tokens": {
+      "type": "object",
+      "properties": {
+        "index": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "index"
+      ]
+    },
+    "cache_hit_ratio": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "ttl_inferred": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "cum_usd": {
+      "type": "number"
+    },
+    "mixed_price_tables": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "session",
+    "turn",
+    "seq",
+    "model",
+    "usage",
+    "price_table",
+    "usd",
+    "context_tokens",
+    "context_delta",
+    "tool_output_bytes_turn",
+    "tool_output_bytes_raw_turn",
+    "attribution",
+    "resident_tokens",
+    "cache_hit_ratio",
+    "ttl_inferred",
+    "cum_usd"
+  ],
+  "$id": "https://saga.dev/schema/trace/1/ledger"
+}

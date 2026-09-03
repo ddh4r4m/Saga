@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "enum": [
+        "classify",
+        "deny",
+        "snapshot",
+        "mask",
+        "deps",
+        "mcp",
+        "undo"
+      ]
+    }
+  },
+  "additionalProperties": true,
+  "required": [
+    "kind"
+  ],
+  "$id": "https://saga.dev/schema/trace/1/guard",
+  "title": "saga.trace/1 body for type guard"
+}

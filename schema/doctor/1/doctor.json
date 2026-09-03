@@ -1,0 +1,126 @@
+{
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "saga.doctor/1"
+    },
+    "ts": {
+      "type": "string"
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "fix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "ok",
+          "detail",
+          "fix"
+        ]
+      }
+    },
+    "binary": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sha256_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "go": {
+          "type": "string"
+        },
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "go"
+      ]
+    },
+    "pins": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "cache": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "drift_7d": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "budget": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "canary": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "incidents": {
+      "type": "array"
+    },
+    "precision": {
+      "type": [
+        "object",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "ts",
+    "ok",
+    "checks",
+    "binary"
+  ],
+  "$id": "https://saga.dev/schema/doctor/1"
+}

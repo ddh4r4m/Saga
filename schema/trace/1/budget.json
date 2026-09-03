@@ -1,0 +1,46 @@
+{
+  "type": "object",
+  "properties": {
+    "scope": {
+      "enum": [
+        "session",
+        "task",
+        "turn"
+      ]
+    },
+    "metric": {
+      "type": "string"
+    },
+    "limit": {
+      "type": "number"
+    },
+    "value": {
+      "type": "number"
+    },
+    "action": {
+      "enum": [
+        "warn",
+        "compact",
+        "stop",
+        "none"
+      ]
+    },
+    "ack": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "scope",
+    "metric",
+    "limit",
+    "value",
+    "action",
+    "ack"
+  ],
+  "$id": "https://saga.dev/schema/trace/1/budget",
+  "title": "saga.trace/1 body for type budget"
+}

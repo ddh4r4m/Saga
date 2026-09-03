@@ -1,0 +1,43 @@
+{
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string"
+    },
+    "before_hash": {
+      "type": "string"
+    },
+    "after_hash": {
+      "type": "string"
+    },
+    "hunks": {
+      "type": "integer"
+    },
+    "added": {
+      "type": "integer"
+    },
+    "removed": {
+      "type": "integer"
+    },
+    "by_tool": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "in_scope": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "path",
+    "before_hash",
+    "after_hash"
+  ],
+  "$id": "https://saga.dev/schema/trace/1/edit",
+  "title": "saga.trace/1 body for type edit"
+}

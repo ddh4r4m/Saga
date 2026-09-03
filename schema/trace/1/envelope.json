@@ -1,0 +1,92 @@
+{
+  "$id": "https://saga.dev/schema/trace/1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "saga.trace/1 event envelope (trace-spec section 2.1, 2.8)",
+  "type": "object",
+  "required": [
+    "schema",
+    "seq",
+    "ts",
+    "mono_ns",
+    "session",
+    "turn",
+    "agent",
+    "type",
+    "source",
+    "body",
+    "prev",
+    "hash"
+  ],
+  "properties": {
+    "schema": {
+      "const": "saga.trace/1"
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "ts": {
+      "type": "string"
+    },
+    "mono_ns": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "session": {
+      "type": "string",
+      "minLength": 1
+    },
+    "turn": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "agent": {
+      "type": "string",
+      "minLength": 1
+    },
+    "type": {
+      "enum": [
+        "session",
+        "turn",
+        "model_call",
+        "tool_call",
+        "tool_result",
+        "edit",
+        "gate",
+        "guard",
+        "mem_inject",
+        "compaction",
+        "subagent",
+        "budget",
+        "drift",
+        "checkpoint",
+        "canary",
+        "route_decision"
+      ]
+    },
+    "source": {
+      "type": "string",
+      "pattern": "^(hook:[A-Za-z]+|transcript|stream-json|proxy|cli|derived)$"
+    },
+    "body": {
+      "type": "object"
+    },
+    "prev": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$|^sha256:genesis$"
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "masked_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "merged_into": {
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  "additionalProperties": false
+}

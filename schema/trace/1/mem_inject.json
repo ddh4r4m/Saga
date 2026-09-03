@@ -1,0 +1,29 @@
+{
+  "type": "object",
+  "properties": {
+    "record_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "bytes": {
+      "type": "integer"
+    },
+    "tokens_est": {
+      "type": "integer"
+    },
+    "trigger": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "record_ids",
+    "bytes",
+    "tokens_est",
+    "trigger"
+  ],
+  "$id": "https://saga.dev/schema/trace/1/mem_inject",
+  "title": "saga.trace/1 body for type mem_inject"
+}

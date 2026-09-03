@@ -1,0 +1,34 @@
+{
+  "type": "object",
+  "properties": {
+    "checkpoint_id": {
+      "type": "string"
+    },
+    "snapshot_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "context_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "open_gates": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ledger_cum": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "checkpoint_id",
+    "context_hash"
+  ],
+  "$id": "https://saga.dev/schema/trace/1/checkpoint",
+  "title": "saga.trace/1 body for type checkpoint"
+}

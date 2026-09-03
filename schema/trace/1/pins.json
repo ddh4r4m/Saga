@@ -1,0 +1,226 @@
+{
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "saga.trace.pins/1"
+    },
+    "harness": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "binary_sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "binary_sha256_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "settings_hash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "hooks_hash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ]
+    },
+    "model": {
+      "type": "object",
+      "properties": {
+        "requested": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "requested_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "served": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "served_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fingerprint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fingerprint_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "effort": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "value_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_hash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "system_prompt": {
+      "type": "object",
+      "properties": {
+        "sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sha256_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "tools": {
+      "type": "object",
+      "properties": {
+        "sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sha256_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "count": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "cache": {
+      "type": "object",
+      "properties": {
+        "ttl_pinned": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ttl_observed": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "observed_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "price_table": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "saga": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "components"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "harness",
+    "saga"
+  ],
+  "$id": "https://saga.dev/schema/trace/1/pins"
+}

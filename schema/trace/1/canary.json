@@ -1,0 +1,40 @@
+{
+  "type": "object",
+  "properties": {
+    "run_id": {
+      "type": "string"
+    },
+    "task_set_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "baseline_hash": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "metrics": {
+      "type": "object"
+    },
+    "verdict": {
+      "enum": [
+        "pass",
+        "cost_regression",
+        "cache_regression",
+        "outcome_regression_suspected",
+        "outcome_regression",
+        "billing_mismatch",
+        "non_comparable"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "run_id",
+    "verdict"
+  ],
+  "$id": "https://saga.dev/schema/trace/1/canary",
+  "title": "saga.trace/1 body for type canary"
+}

@@ -1,0 +1,70 @@
+{
+  "type": "object",
+  "properties": {
+    "for_seq": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "exit": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "error": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "result_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "result_bytes": {
+      "type": "integer"
+    },
+    "result_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "wall_ms": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "served": {
+      "enum": [
+        "live",
+        "cache"
+      ]
+    },
+    "shaped": {
+      "type": [
+        "object",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "for_seq",
+    "exit",
+    "error",
+    "result_hash",
+    "result_bytes",
+    "truncated",
+    "wall_ms",
+    "served"
+  ],
+  "$id": "https://saga.dev/schema/trace/1/tool_result",
+  "title": "saga.trace/1 body for type tool_result"
+}

@@ -1,0 +1,287 @@
+{
+  "type": "object",
+  "properties": {
+    "model_requested": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "model_requested_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "model_served": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "request_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "request_id_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "fingerprint": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "fingerprint_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "effort": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "effort_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "usage": {
+      "type": "object",
+      "properties": {
+        "input_fresh": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "cache_read": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "cache_write_5m": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "cache_write_1h": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "output": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "reasoning": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "reasoning_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "split_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source": {
+          "enum": [
+            "transcript",
+            "stream-json",
+            "proxy",
+            "estimated"
+          ]
+        },
+        "raw": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "input_fresh",
+        "cache_read",
+        "cache_write_5m",
+        "cache_write_1h",
+        "output",
+        "reasoning",
+        "source"
+      ]
+    },
+    "call_key": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "call_key_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "system_hash": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "system_hash_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "tools_hash": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "tools_hash_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "context_tokens_est": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "latency_ms": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "latency_ms_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "stop_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "status": {
+      "enum": [
+        "ok",
+        "429",
+        "5xx",
+        "timeout",
+        null
+      ]
+    },
+    "attribution": {
+      "type": "object",
+      "properties": {
+        "harness": {
+          "type": "number"
+        },
+        "user": {
+          "type": "number"
+        },
+        "tool_results": {
+          "type": "number"
+        },
+        "index": {
+          "type": "number"
+        },
+        "mem.state": {
+          "type": "number"
+        },
+        "mem.targeted": {
+          "type": "number"
+        },
+        "mem.preamble": {
+          "type": "number"
+        },
+        "mem.query": {
+          "type": "number"
+        },
+        "shape": {
+          "type": "number"
+        },
+        "gate": {
+          "type": "number"
+        },
+        "guard": {
+          "type": "number"
+        },
+        "trace": {
+          "type": "number"
+        },
+        "route": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "harness",
+        "user",
+        "tool_results",
+        "index",
+        "mem.state",
+        "mem.targeted",
+        "mem.preamble",
+        "mem.query",
+        "shape",
+        "gate",
+        "guard",
+        "trace",
+        "route"
+      ],
+      "patternProperties": {
+        "^mcp:.+$": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "message_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "model_served",
+    "usage",
+    "attribution"
+  ],
+  "$id": "https://saga.dev/schema/trace/1/model_call",
+  "title": "saga.trace/1 body for type model_call"
+}

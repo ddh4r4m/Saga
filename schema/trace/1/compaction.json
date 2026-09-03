@@ -1,0 +1,56 @@
+{
+  "type": "object",
+  "properties": {
+    "phase": {
+      "enum": [
+        "pre",
+        "post"
+      ]
+    },
+    "context_tokens_before": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "context_tokens_after": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "state_block_hash": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "trigger": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "summary_hash": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "summary_bytes": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "phase",
+    "trigger"
+  ],
+  "$id": "https://saga.dev/schema/trace/1/compaction",
+  "title": "saga.trace/1 body for type compaction"
+}

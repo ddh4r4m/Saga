@@ -1,0 +1,35 @@
+{
+  "type": "object",
+  "properties": {
+    "plan": {
+      "type": "object"
+    },
+    "outcome": {
+      "enum": [
+        "applied",
+        "unapplied",
+        "refused",
+        "user_answered"
+      ]
+    },
+    "option": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ack": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "plan",
+    "outcome"
+  ],
+  "$id": "https://saga.dev/schema/trace/1/route_decision",
+  "title": "saga.trace/1 body for type route_decision"
+}
