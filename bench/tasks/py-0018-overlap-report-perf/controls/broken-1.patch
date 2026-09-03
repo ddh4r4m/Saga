@@ -1,0 +1,30 @@
+# saga-bench control patch: broken-1 for py-0018-overlap-report-perf
+# canary: a484b8078f4bf66c
+diff --git a/overlaps/core.py b/overlaps/core.py
+index 89d84e0..515c280 100644
+--- a/overlaps/core.py
++++ b/overlaps/core.py
+@@ -23,11 +23,17 @@ def find_overlaps(bookings: list[Booking]) -> list[tuple[str, str]]:
+     a booking that ends exactly when another starts does not.
+     """
+     pairs: list[tuple[str, str]] = []
+-    for i in range(len(bookings)):
+-        a = bookings[i]
+-        for j in range(i + 1, len(bookings)):
+-            b = bookings[j]
+-            if overlaps(a, b):
+-                pairs.append((a.id, b.id) if a.id < b.id else (b.id, a.id))
++    # Only same-room bookings can clash, so compare within each room.
++    by_room: dict[str, list[Booking]] = {}
++    for b in bookings:
++        by_room.setdefault(b.room, []).append(b)
++    for items in by_room.values():
++        for i in range(len(items)):
++            a = items[i]
++            a_start, a_end = a.start, a.end
++            for j in range(i + 1, len(items)):
++                b = items[j]
++                if a_start < b.end and b.start < a_end:
++                    pairs.append((a.id, b.id) if a.id < b.id else (b.id, a.id))
+     pairs.sort()
+     return pairs

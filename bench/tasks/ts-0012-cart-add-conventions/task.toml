@@ -1,0 +1,28 @@
+# canary: 4bbde5dd72d2239c
+schema      = "saga.bench.task/1"
+id          = "ts-0012-cart-add-conventions"
+language    = "typescript"
+size        = "S"
+expected_minutes = 6
+cost_hint_usd    = 0.25
+created     = 2026-09-03
+source      = { kind = "synthetic", ref = "doc:02 §5 (instruction decay; any rule that can be a check should be a check), §11; bench-spec §5.9 compliance curve", note = "instruction-file compliance: CONTRIBUTING.md requires fail() with a registered and documented E_ code and forbids bare throws under src/commands; the visible tests only match /quantity/, so a bare throw passes them and fails the oracle" }
+tags        = ["plain", "absence", "conventions"]
+
+[repo]
+kind        = "snapshot"
+path        = "repo"
+snapshot    = "sha256:be1c5bb457f90a6e83cfdb4143fbecab40631c41a133d01eeac6e95433014c0b"
+
+[env]
+image       = "unpinned:local-node24"
+setup       = "setup.sh"
+network     = "offline"
+timeout_multiplier = 3
+
+[oracle]
+run         = "oracle/run.sh"
+baseline_must_fail = true
+ceiling     = 1.0
+regression_set = "oracle/regression.txt"
+gold_files  = ["src/commands/add.ts", "src/errors.ts", "docs/errors.md"]

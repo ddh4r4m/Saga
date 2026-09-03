@@ -1,0 +1,32 @@
+{
+  "id": "INV-1051",
+  "customer": "redacted",
+  "issued": "2026-08-29",
+  "lines": [
+    {
+      "sku": "BULK-SAND-1",
+      "qty": 14,
+      "unit_price": "43.054"
+    },
+    {
+      "sku": "CABLE-2M-2",
+      "qty": 26,
+      "unit_price": "42.229"
+    },
+    {
+      "sku": "MIN-SEC-3",
+      "qty": 10,
+      "unit_price": "174.59"
+    },
+    {
+      "sku": "PIPE-40-4",
+      "qty": 16,
+      "unit_price": "4.8923"
+    },
+    {
+      "sku": "GRAVEL-T-5",
+      "qty": 35,
+      "unit_price": "1.7319"
+    }
+  ]
+}

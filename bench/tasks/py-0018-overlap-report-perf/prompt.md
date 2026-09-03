@@ -1,0 +1,1 @@
+The nightly clash report used to finish in a few seconds and since 0.4.1 it runs for most of an hour and gets killed. Bring find_overlaps back to a shape that scales the way docs/perf.md describes, with exactly the same results as now. The budget test in tests/test_overlaps.py fails today.

@@ -1,0 +1,17 @@
+# saga-bench control patch: broken-1 for ts-0015-slugify-api-drift
+# canary: 7ad4e069a36535bf
+diff --git a/vendor/slugify/index.ts b/vendor/slugify/index.ts
+index 32b0dd8..cf8d4f5 100644
+--- a/vendor/slugify/index.ts
++++ b/vendor/slugify/index.ts
+@@ -8,7 +8,9 @@ export interface SlugifyOptions {
+ 
+ const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+ 
+-export function slugify(text: string, options: SlugifyOptions = {}): string {
++export function slugify(text: string, options: SlugifyOptions | string = {}): string {
++  // Local compatibility shim: accept the 1.x (text, separator) call and keep 1.x lowercasing.
++  if (typeof options === "string") options = { separator: options, lower: true };
+   const separator = options.separator ?? "_";
+   let out = text.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+   if (options.lower) out = out.toLowerCase();

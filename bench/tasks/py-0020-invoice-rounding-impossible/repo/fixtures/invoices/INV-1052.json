@@ -1,0 +1,37 @@
+{
+  "id": "INV-1052",
+  "customer": "redacted",
+  "issued": "2026-08-29",
+  "lines": [
+    {
+      "sku": "CABLE-2M-1",
+      "qty": 58,
+      "unit_price": "38.342"
+    },
+    {
+      "sku": "MIN-SEC-2",
+      "qty": 24,
+      "unit_price": "144.73"
+    },
+    {
+      "sku": "PIPE-40-3",
+      "qty": 33,
+      "unit_price": "324.43"
+    },
+    {
+      "sku": "GRAVEL-T-4",
+      "qty": 49,
+      "unit_price": "31.87"
+    },
+    {
+      "sku": "LUBE-5W-5",
+      "qty": 10,
+      "unit_price": "412.2"
+    },
+    {
+      "sku": "FILTER-A-6",
+      "qty": 51,
+      "unit_price": "44.696"
+    }
+  ]
+}

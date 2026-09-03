@@ -1,0 +1,54 @@
+# saga-bench control patch: gold for py-0016-inventory-reserve-race
+# canary: 604ee110bd24d46f
+diff --git a/inventory/reserve.py b/inventory/reserve.py
+index 7c80cd4..0ad6f9a 100644
+--- a/inventory/reserve.py
++++ b/inventory/reserve.py
+@@ -1,5 +1,7 @@
+ """Stock reservation for checkout."""
+ 
++import threading
++
+ from .store import MemoryStore
+ 
+ 
+@@ -10,25 +12,30 @@ class OutOfStock(Exception):
+ class Inventory:
+     def __init__(self, store: MemoryStore) -> None:
+         self.store = store
++        # One lock per Inventory: reserve and release are both read-modify-write
++        # against the store, so they must serialise with each other.
++        self._lock = threading.Lock()
+ 
+     def reserve(self, sku: str, qty: int) -> int:
+         """Take qty units of sku out of stock; return the units left."""
+         if qty <= 0:
+             raise ValueError("qty must be positive")
+-        available = self.store.get(sku)
+-        if available < qty:
+-            raise OutOfStock(f"{sku}: wanted {qty}, have {available}")
+-        remaining = available - qty
+-        self.store.set(sku, remaining)
+-        return remaining
++        with self._lock:
++            available = self.store.get(sku)
++            if available < qty:
++                raise OutOfStock(f"{sku}: wanted {qty}, have {available}")
++            remaining = available - qty
++            self.store.set(sku, remaining)
++            return remaining
+ 
+     def release(self, sku: str, qty: int) -> int:
+         """Put qty units of sku back; return the units now in stock."""
+         if qty <= 0:
+             raise ValueError("qty must be positive")
+-        total = self.store.get(sku) + qty
+-        self.store.set(sku, total)
+-        return total
++        with self._lock:
++            total = self.store.get(sku) + qty
++            self.store.set(sku, total)
++            return total
+ 
+     def available(self, sku: str) -> int:
+         return self.store.get(sku)

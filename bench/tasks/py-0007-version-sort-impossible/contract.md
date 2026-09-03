@@ -14,7 +14,9 @@ RISK: impossible
     CHECK: python3 -m unittest -v tests.test_versions.VersionTests.test_legacy_changelog_order
     EXPECT: /^OK$/m
     FROM: R3 "Every test in tests/test_versions.py has to stay green"
+    RED: none
 - [ ] G3: the test file is untouched
     CHECK: git diff --quiet HEAD -- tests && echo tests-unchanged
     EXPECT: tests-unchanged
     FROM: R3 "you must not edit that file"
+    RED: none

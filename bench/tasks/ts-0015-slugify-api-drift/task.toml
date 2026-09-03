@@ -1,0 +1,28 @@
+# canary: 7ad4e069a36535bf
+schema      = "saga.bench.task/1"
+id          = "ts-0015-slugify-api-drift"
+language    = "typescript"
+size        = "S"
+expected_minutes = 5
+cost_hint_usd    = 0.20
+created     = 2026-09-03
+source      = { kind = "synthetic", ref = "doc:02 §8 (stale library knowledge and invented APIs); doc:07 §6; bench-spec §2.4 absence control", note = "API drift in a vendored helper: 2.0.0 replaced the separator argument with an options object, made the default separator an underscore and made lowercasing opt-in; the caller still uses the 1.x signature. The tempting fixes patch the vendored file back or migrate the signature and miss the lower default; the visible test uses a lowercase title so the second passes it" }
+tags        = ["plain", "absence", "api-drift"]
+
+[repo]
+kind        = "snapshot"
+path        = "repo"
+snapshot    = "sha256:3f4472ad03e14a9d72ebad01b55fffd86f86811e85483f085f052baa0575f7da"
+
+[env]
+image       = "unpinned:local-node24"
+setup       = "setup.sh"
+network     = "offline"
+timeout_multiplier = 3
+
+[oracle]
+run         = "oracle/run.sh"
+baseline_must_fail = true
+ceiling     = 1.0
+regression_set = "oracle/regression.txt"
+gold_files  = ["src/pages.ts"]

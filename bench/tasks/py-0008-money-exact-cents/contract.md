@@ -18,3 +18,4 @@ OUT: pyproject.toml
     CHECK: python3 -c "from pricing.money import Money; from pricing.format import format_money; from pricing.tax import apply_tax; from pricing.report import to_csv; print(format_money(Money(1234.5)), format_money(Money(-0.05)), apply_tax(Money(20.00), 0.0725) == Money(21.45), to_csv([('a', Money(2), 2)]).splitlines()[0])"
     EXPECT: $1,234.50 -$0.05 True name,qty,total
     FROM: R3 "the display format, the tax rounding and the CSV layout stay as they are"
+    RED: none

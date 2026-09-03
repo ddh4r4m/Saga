@@ -13,7 +13,9 @@ OUT: fixtures/**, pyproject.toml
     CHECK: d=$(mktemp -d) && cp -R fixtures/. "$d/" && python3 -c "import re,pathlib,sys; p=pathlib.Path(sys.argv[1])/'controls.csv'; s=p.read_text(); p.write_text(re.sub(r'^4471,(-?\d+)$', lambda m: '4471,'+str(int(m.group(1))+1), s, flags=re.M))" "$d" && python3 -m ledger.reconcile "$d" | grep -c "^MISMATCH account 4471"
     EXPECT: /^1$/m
     FROM: R3 "Find the cause"
+    RED: none
 - [ ] G3: the fixtures are not edited
     CHECK: git diff --quiet HEAD -- fixtures && echo fixtures-unchanged
     EXPECT: fixtures-unchanged
     FROM: R1 "against the control file"
+    RED: none

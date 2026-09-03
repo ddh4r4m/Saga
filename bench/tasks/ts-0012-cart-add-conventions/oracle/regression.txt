@@ -1,0 +1,6 @@
+# canary: 4bbde5dd72d2239c
+no-bare-throw-in-commands
+valid-add-still-works
+unknown-sku-unchanged
+existing-codes-still-documented
+no-dependencies

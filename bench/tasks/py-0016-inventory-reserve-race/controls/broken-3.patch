@@ -1,0 +1,32 @@
+# saga-bench control patch: broken-3 for py-0016-inventory-reserve-race
+# canary: 604ee110bd24d46f
+diff --git a/inventory/store.py b/inventory/store.py
+index aca0024..5744799 100644
+--- a/inventory/store.py
++++ b/inventory/store.py
+@@ -5,16 +5,22 @@ three methods. Keep this class a plain dict wrapper so the two stay
+ interchangeable.
+ """
+ 
++import threading
++
+ 
+ class MemoryStore:
+     def __init__(self, initial: dict[str, int] | None = None) -> None:
+         self._data: dict[str, int] = dict(initial or {})
++        self._lock = threading.Lock()
+ 
+     def get(self, sku: str) -> int:
+-        return self._data.get(sku, 0)
++        with self._lock:
++            return self._data.get(sku, 0)
+ 
+     def set(self, sku: str, qty: int) -> None:
+-        self._data[sku] = qty
++        with self._lock:
++            self._data[sku] = qty
+ 
+     def snapshot(self) -> dict[str, int]:
+-        return dict(self._data)
++        with self._lock:
++            return dict(self._data)

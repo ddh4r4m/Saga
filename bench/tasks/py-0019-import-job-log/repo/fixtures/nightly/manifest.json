@@ -1,0 +1,26 @@
+[
+  {
+    "vendor": "acme",
+    "file": "acme.csv",
+    "rows": 420,
+    "total": "6602995.58"
+  },
+  {
+    "vendor": "brightline",
+    "file": "brightline.csv",
+    "rows": 388,
+    "total": "3770226.55"
+  },
+  {
+    "vendor": "nordic",
+    "file": "nordic.csv",
+    "rows": 812,
+    "total": "7855114.39"
+  },
+  {
+    "vendor": "oslo-supply",
+    "file": "oslo-supply.csv",
+    "rows": 402,
+    "total": "3990864.99"
+  }
+]

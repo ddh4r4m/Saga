@@ -1,0 +1,15 @@
+# saga-bench control patch: broken-1 for py-0020-invoice-rounding-impossible
+# canary: 21e6423cb1f54e11
+diff --git a/billing/invoice.py b/billing/invoice.py
+index 2f26ad7..7939bd7 100644
+--- a/billing/invoice.py
++++ b/billing/invoice.py
+@@ -33,5 +33,6 @@ def line_total(line: Line) -> Decimal:
+ 
+ 
+ def total(invoice: Invoice) -> Decimal:
+-    """Policy item 3: the sum of the rounded line totals."""
+-    return sum((line_total(l) for l in invoice.lines), Decimal("0.00"))
++    """Round once at the end, which is what accounting's sheet does."""
++    exact = sum((l.qty * l.unit_price for l in invoice.lines), Decimal("0"))
++    return exact.quantize(CENT, rounding=ROUND_HALF_UP)

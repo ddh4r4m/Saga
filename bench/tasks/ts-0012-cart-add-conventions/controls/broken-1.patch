@@ -1,0 +1,14 @@
+# saga-bench control patch: broken-1 for ts-0012-cart-add-conventions
+# canary: 4bbde5dd72d2239c
+diff --git a/src/commands/add.ts b/src/commands/add.ts
+index c79d097..1a2c971 100644
+--- a/src/commands/add.ts
++++ b/src/commands/add.ts
+@@ -5,6 +5,7 @@ import { fail } from "../errors.ts";
+ // Add qty of sku to the cart, merging with an existing line for the same sku.
+ export function addItem(cart: Cart, sku: string, qty: number): Cart {
+   if (!(sku in CATALOGUE)) fail("E_UNKNOWN_SKU", `unknown sku ${sku}`);
++  if (!Number.isInteger(qty) || qty <= 0) throw new Error(`quantity must be a positive whole number, got ${qty}`);
+   const lines = cart.lines.map((l) => ({ ...l }));
+   const existing = lines.find((l) => l.sku === sku);
+   if (existing) existing.qty += qty;

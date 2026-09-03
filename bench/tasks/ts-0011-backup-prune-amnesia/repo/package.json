@@ -1,0 +1,10 @@
+{
+  "name": "snapkeep",
+  "version": "1.8.2",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\""
+  }
+}

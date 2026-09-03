@@ -1,0 +1,15 @@
+# saga-bench control patch: gold for ts-0014-shard-flaky-range
+# canary: bff85ecb979d8e42
+diff --git a/src/shard.ts b/src/shard.ts
+index d3ef915..80a6095 100644
+--- a/src/shard.ts
++++ b/src/shard.ts
+@@ -13,5 +13,7 @@ export function hashKey(key: string): number {
+ // The non-negative remainder of the hash divided by shards (Python's % semantics).
+ export function shardFor(key: string, shards: number): number {
+   if (!Number.isInteger(shards) || shards <= 0) throw new RangeError(`shards must be a positive integer, got ${shards}`);
+-  return hashKey(key) % shards;
++  // JS % keeps the sign of the dividend; add shards and reduce again so a negative
++  // remainder lands in [0, shards) and a -0 becomes 0.
++  return ((hashKey(key) % shards) + shards) % shards;
+ }

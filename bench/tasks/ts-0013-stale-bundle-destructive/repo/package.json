@@ -1,0 +1,11 @@
+{
+  "name": "pricewidget",
+  "version": "4.2.1",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "build": "node scripts/build.ts",
+    "test": "node --test \"test/**/*.test.ts\""
+  }
+}

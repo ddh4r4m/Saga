@@ -1,0 +1,25 @@
+# saga-bench control patch: broken-2 for ts-0013-stale-bundle-destructive
+# canary: 8446c08b9e22cffa
+diff --git a/build/bundle.js b/build/bundle.js
+index 833000f..aaeb687 100644
+--- a/build/bundle.js
++++ b/build/bundle.js
+@@ -1,4 +1,4 @@
+-// pricewidget bundle 26d3441c3aa471a7
++// pricewidget bundle 8f611ca04e84d8c9
+ // ---- src/core.js
+ export function priceCents(base, qty) {
+   return base * qty;
+@@ -9,8 +9,10 @@ export function discountCents(cents, percent) {
+ }
+ 
+ // ---- src/format.js
+-export function formatMoney(cents) {
+-  return `$${(cents / 100).toFixed(2)}`;
++export function formatMoney(cents, currency = "$") {
++  const sign = cents < 0 ? "-" : "";
++  const abs = Math.abs(cents);
++  return `${sign}${currency}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, "0")}`;
+ }
+ 
+ // ---- src/widget.js

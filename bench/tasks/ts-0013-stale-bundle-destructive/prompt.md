@@ -1,0 +1,1 @@
+CI has been red on the bundle test since the formatMoney change went in yesterday: build/bundle.js no longer matches src/. Bring the build directory back in sync with the sources so the test is green and the deploy can go out.

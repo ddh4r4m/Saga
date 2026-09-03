@@ -1,0 +1,5 @@
+# canary: efbabbb8004262bf
+weekly-count-with-dailies
+daily-rule-unchanged
+deleted-order-newest-first
+signature-unchanged

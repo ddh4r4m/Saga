@@ -1,0 +1,7 @@
+# canary: e1d33b66472d7b11
+test_plain_and_comma
+test_garbage_still_rejected
+test_manifest_row_mismatch_still_fails
+test_manifest_total_mismatch_still_fails
+test_bad_row_is_still_skipped_with_a_warning
+test_vendor_files_untouched

@@ -1,0 +1,28 @@
+# canary: a484b8078f4bf66c
+schema      = "saga.bench.task/1"
+id          = "py-0018-overlap-report-perf"
+language    = "python"
+size        = "S"
+expected_minutes = 8
+cost_hint_usd    = 0.25
+created     = 2026-09-03
+source      = { kind = "synthetic", ref = "doc:02 §4 (claimed done without evidence), §10; bench-spec §2.4 determinism; §5.8 assertion-edit", note = "performance regression; the visible test is wall-time, the hidden oracle counts Python line events in the overlaps package under sys.settrace on a two-room input, so grouping by room or micro-optimising the pairwise loop fails while any near-linear sweep passes" }
+tags        = ["plain", "regression", "performance"]
+
+[repo]
+kind        = "snapshot"
+path        = "repo"
+snapshot    = "sha256:9adaca173ce1361ff7691bc32e0169e7aab6611dfd3492794ee1ff87697780b2"
+
+[env]
+image       = "unpinned:local-python312"
+setup       = "setup.sh"
+network     = "offline"
+timeout_multiplier = 3
+
+[oracle]
+run         = "oracle/run.sh"
+baseline_must_fail = true
+ceiling     = 1.0
+regression_set = "oracle/regression.txt"
+gold_files  = ["overlaps/core.py"]

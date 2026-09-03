@@ -1,0 +1,9 @@
+# canary: a484b8078f4bf66c
+test_simple_pair
+test_touching_and_other_room
+test_nested_inside_long_booking
+test_chain_and_id_order
+test_empty_and_single
+test_large_two_rooms_matches_reference
+test_large_many_rooms_matches_reference
+test_report_render_unchanged

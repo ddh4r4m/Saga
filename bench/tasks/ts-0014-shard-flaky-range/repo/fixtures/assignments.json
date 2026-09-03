@@ -1,0 +1,25 @@
+{
+  "shards": 16,
+  "assignments": {
+    "session:0:0": 7,
+    "session:2:838": 14,
+    "session:5:595": 1,
+    "session:6:514": 15,
+    "session:7:433": 12,
+    "session:a:190": 2,
+    "session:c:28": 8,
+    "session:g:704": 15,
+    "session:h:623": 6,
+    "session:i:542": 9,
+    "session:j:461": 4,
+    "session:l:299": 11,
+    "session:n:137": 8,
+    "session:o:56": 13,
+    "session:q:894": 13,
+    "session:r:813": 13,
+    "session:v:489": 2,
+    "session:y:246": 0,
+    "session:11:3": 14,
+    "session:17:517": 14
+  }
+}

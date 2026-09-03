@@ -1,0 +1,7 @@
+# canary: 604ee110bd24d46f
+test_reserve_basic
+test_reserve_refuses
+test_invalid_qty
+test_release_adds
+test_store_untouched
+test_public_signatures

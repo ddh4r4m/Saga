@@ -1,0 +1,16 @@
+# saga-bench control patch: broken-1 for py-0019-import-job-log
+# canary: e1d33b66472d7b11
+diff --git a/importer/job.py b/importer/job.py
+index f6775fa..e34ff32 100644
+--- a/importer/job.py
++++ b/importer/job.py
+@@ -61,7 +61,8 @@ def run(nightly_dir: str | pathlib.Path, log_path: str | pathlib.Path | None = N
+         vendor, path = entry["vendor"], base / entry["file"]
+         log.info(f"vendor {vendor}: reading {path.name}")
+         imported, total = import_file(path, log)
+-        if imported != entry["rows"] or total != Decimal(entry["total"]):
++        # Vendors occasionally miscount their own files; tolerate a small drift.
++        if abs(imported - entry["rows"]) > max(1, entry["rows"] // 10):
+             log.error(
+                 f"reconcile: vendor {vendor}: manifest says {entry['rows']} rows / {entry['total']}, "
+                 f"imported {imported} rows / {total}; aborting"

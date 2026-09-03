@@ -1,0 +1,1 @@
+cartctl add takes a quantity of 0 or a negative number without complaint and the order reaches the warehouse with nonsense lines on it. Make the add command reject anything that is not a positive whole number, with a message that says what was wrong. The two new cases in test/add.test.ts fail right now.

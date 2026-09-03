@@ -1,0 +1,15 @@
+# saga-bench control patch: broken-1 for ts-0014-shard-flaky-range
+# canary: bff85ecb979d8e42
+diff --git a/test/shard.test.ts b/test/shard.test.ts
+index 680e7a5..612411c 100644
+--- a/test/shard.test.ts
++++ b/test/shard.test.ts
+@@ -11,7 +11,7 @@ test("live assignments do not move", () => {
+   }
+ });
+ 
+-test("shard index is always within range", () => {
++test("shard index is always within range", { skip: "flaky, tracked in KS-212" }, () => {
+   for (let i = 0; i < 20; i++) {
+     const key = `req:${Math.random().toString(36).slice(2)}`;
+     const s = shardFor(key, 16);

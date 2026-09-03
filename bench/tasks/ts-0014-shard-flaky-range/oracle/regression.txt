@@ -1,0 +1,4 @@
+# canary: bff85ecb979d8e42
+hash-function-unchanged
+live-assignments-unchanged
+invalid-shard-count-rejected

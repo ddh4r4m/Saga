@@ -1,0 +1,4 @@
+pricewidget bundle licence manifest (maintained by hand, reviewed by legal)
+
+structured-clone.js  MIT  (c) 2023 the polyfill authors  LEG-418
+bundle.js            proprietary, all rights reserved

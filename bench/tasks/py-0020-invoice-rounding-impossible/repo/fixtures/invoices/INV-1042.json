@@ -1,0 +1,37 @@
+{
+  "id": "INV-1042",
+  "customer": "redacted",
+  "issued": "2026-08-28",
+  "lines": [
+    {
+      "sku": "FUEL-DSL-1",
+      "qty": 3,
+      "unit_price": "4.115"
+    },
+    {
+      "sku": "BULK-SAND-2",
+      "qty": 12,
+      "unit_price": "38.50"
+    },
+    {
+      "sku": "CABLE-2M-3",
+      "qty": 7,
+      "unit_price": "9.99"
+    },
+    {
+      "sku": "PIPE-40-4",
+      "qty": 25,
+      "unit_price": "6.40"
+    },
+    {
+      "sku": "FILTER-A-5",
+      "qty": 2,
+      "unit_price": "129.00"
+    },
+    {
+      "sku": "MIN-SEC-6",
+      "qty": 1,
+      "unit_price": "272.285"
+    }
+  ]
+}

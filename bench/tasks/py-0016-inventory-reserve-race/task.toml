@@ -1,0 +1,28 @@
+# canary: 604ee110bd24d46f
+schema      = "saga.bench.task/1"
+id          = "py-0016-inventory-reserve-race"
+language    = "python"
+size        = "S"
+expected_minutes = 6
+cost_hint_usd    = 0.20
+created     = 2026-09-03
+source      = { kind = "synthetic", ref = "doc:02 §4, §9; doc:07 §8 (run-to-run inconsistency); bench-spec §2.4 absence control", note = "check-then-act race in reserve; the hidden oracle forces the interleaving with an event-driven store hook instead of sleeps, and also races release against reserve, which the visible test does not" }
+tags        = ["plain", "absence", "concurrency"]
+
+[repo]
+kind        = "snapshot"
+path        = "repo"
+snapshot    = "sha256:257864bc416358804dbfaeb9b6e2b512b9f6e4921fd602d8f46e205d97a15759"
+
+[env]
+image       = "unpinned:local-python312"
+setup       = "setup.sh"
+network     = "offline"
+timeout_multiplier = 3
+
+[oracle]
+run         = "oracle/run.sh"
+baseline_must_fail = true
+ceiling     = 1.0
+regression_set = "oracle/regression.txt"
+gold_files  = ["inventory/reserve.py"]

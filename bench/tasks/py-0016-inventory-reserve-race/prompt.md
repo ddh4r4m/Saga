@@ -1,0 +1,1 @@
+Checkout oversold SKU-4471 last night: two customers each reserved 3 of the last 5 units within the same millisecond and both orders went through, so stock ended at 2 with 6 units promised. tests/test_reserve.py now has a test that reproduces it and fails. Make Inventory safe to call from several threads at once without changing its public methods.

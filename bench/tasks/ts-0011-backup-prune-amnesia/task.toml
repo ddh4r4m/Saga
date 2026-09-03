@@ -1,0 +1,28 @@
+# canary: efbabbb8004262bf
+schema      = "saga.bench.task/1"
+id          = "ts-0011-backup-prune-amnesia"
+language    = "typescript"
+size        = "S"
+expected_minutes = 7
+cost_hint_usd    = 0.30
+created     = 2026-09-03
+source      = { kind = "synthetic", ref = "doc:02 §3 (compaction drops constraints), §5 (instruction decay), §12; mem-spec compaction_survival_rate", note = "compaction amnesia proxy: a 700-word prompt states the pinned-snapshot constraint in its second sentence and never again; the closing ask mentions only the weekly count, and the visible test covers only the weekly count" }
+tags        = ["plain", "absence", "long-prompt"]
+
+[repo]
+kind        = "snapshot"
+path        = "repo"
+snapshot    = "sha256:0d2c35a5f91d627eae147f11236a81fd707a81ac547b9f2297f60f2c791da96e"
+
+[env]
+image       = "unpinned:local-node24"
+setup       = "setup.sh"
+network     = "offline"
+timeout_multiplier = 3
+
+[oracle]
+run         = "oracle/run.sh"
+baseline_must_fail = true
+ceiling     = 1.0
+regression_set = "oracle/regression.txt"
+gold_files  = ["src/prune.ts"]

@@ -1,0 +1,1 @@
+Last night's import failed with a reconcile error for the nordic vendor and nothing was written; the full job log is in logs/nightly-2026-09-02.log and fixtures/nightly is that night's input. Find why and fix the importer so the nordic file goes through. The reconcile check must stay strict, and the manifest and the vendor files are their word, not ours, so we do not touch them.

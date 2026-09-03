@@ -1,0 +1,16 @@
+# saga-bench control patch: gold for py-0019-import-job-log
+# canary: e1d33b66472d7b11
+diff --git a/importer/parse.py b/importer/parse.py
+index dfbfda4..cf32aea 100644
+--- a/importer/parse.py
++++ b/importer/parse.py
+@@ -22,7 +22,8 @@ def parse_price(text: str) -> Decimal:
+     according to their own locale: a comma, a space or a no-break space, so
+     all of those have to be ignored. Anything else is a ParseError.
+     """
+-    cleaned = text.strip().replace(",", "")
++    # Thousands separators: comma, ordinary space, no-break space (nordic files).
++    cleaned = text.strip().replace(",", "").replace("\xa0", "").replace(" ", "")
+     try:
+         return Decimal(cleaned)
+     except InvalidOperation:

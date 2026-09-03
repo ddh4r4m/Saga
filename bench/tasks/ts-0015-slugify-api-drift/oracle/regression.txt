@@ -1,0 +1,3 @@
+# canary: 7ad4e069a36535bf
+vendor-untouched
+no-dependencies

@@ -13,3 +13,4 @@ OUT: test/**, package.json
     CHECK: d=$(mktemp -d) && printf '{"name":"x","fields":{"a":{"type":"banana"}}}' > "$d/x.json" && printf '{}' > "$d/samples.json" && node scripts/build.mjs --schema-dir "$d" --out "$d/out.mjs"; echo "exit=$?"
     EXPECT: /^exit=1$/m
     FROM: R4 "I doubt it is the generator"
+    RED: none

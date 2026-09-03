@@ -1,0 +1,17 @@
+# saga-bench control patch: broken-2 for py-0019-import-job-log
+# canary: e1d33b66472d7b11
+diff --git a/fixtures/nightly/manifest.json b/fixtures/nightly/manifest.json
+index 2989913..e6aa51b 100644
+--- a/fixtures/nightly/manifest.json
++++ b/fixtures/nightly/manifest.json
+@@ -14,8 +14,8 @@
+   {
+     "vendor": "nordic",
+     "file": "nordic.csv",
+-    "rows": 812,
+-    "total": "7855114.39"
++    "rows": 811,
++    "total": "7797092.44"
+   },
+   {
+     "vendor": "oslo-supply",

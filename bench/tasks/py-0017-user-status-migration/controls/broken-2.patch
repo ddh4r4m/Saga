@@ -1,0 +1,110 @@
+# saga-bench control patch: broken-2 for py-0017-user-status-migration
+# canary: 1299b56d3a1df003
+diff --git a/app/cli.py b/app/cli.py
+index 161901f..9886461 100644
+--- a/app/cli.py
++++ b/app/cli.py
+@@ -1,12 +1,14 @@
+-"""Admin CLI: list | show <id>."""
++"""Admin CLI: list [--disabled] | show <id> | disable <id>."""
+ 
+ import sys
+ 
+ from . import db, seed, users
+ 
++USAGE = "usage: accounts list [--disabled] | show <id> | disable <id>"
++
+ 
+ def format_user(u: dict) -> str:
+-    return f"{u['id']:>4}  {u['name']:<20} {u['email']}"
++    return f"{u['id']:>4}  {u['name']:<20} {u['email']}  {u['status']}"
+ 
+ 
+ def main(argv: list[str], conn=None) -> int:
+@@ -15,11 +17,11 @@ def main(argv: list[str], conn=None) -> int:
+         db.migrate(conn)
+         seed.load_seed(conn)
+     if not argv:
+-        print("usage: accounts list | show <id>")
++        print(USAGE)
+         return 2
+     cmd, args = argv[0], argv[1:]
+-    if cmd == "list":
+-        for u in users.list_users(conn):
++    if cmd == "list" and args in ([], ["--disabled"]):
++        for u in users.list_users(conn, disabled=True if args else None):
+             print(format_user(u))
+         return 0
+     if cmd == "show" and len(args) == 1:
+@@ -29,7 +31,12 @@ def main(argv: list[str], conn=None) -> int:
+             return 1
+         print(format_user(u))
+         return 0
+-    print("usage: accounts list | show <id>")
++    if cmd == "disable" and len(args) == 1:
++        if not users.set_status(conn, int(args[0]), "disabled"):
++            print(f"no user {args[0]}")
++            return 1
++        return 0
++    print(USAGE)
+     return 2
+ 
+ 
+diff --git a/app/db.py b/app/db.py
+index 269abb7..ae2f767 100644
+--- a/app/db.py
++++ b/app/db.py
+@@ -15,6 +15,7 @@ MIGRATIONS: list[tuple[int, str]] = [
+         """,
+     ),
+     (2, "CREATE UNIQUE INDEX users_email ON users (email)"),
++    (3, "ALTER TABLE users ADD COLUMN status TEXT"),
+ ]
+ 
+ 
+diff --git a/app/seed.py b/app/seed.py
+index 3dceacc..b2075fc 100644
+--- a/app/seed.py
++++ b/app/seed.py
+@@ -11,7 +11,7 @@ def load_seed(conn: sqlite3.Connection, path: pathlib.Path | str = DEFAULT_SEED)
+     records = json.loads(pathlib.Path(path).read_text())
+     for r in records:
+         conn.execute(
+-            "INSERT INTO users (id, name, email, created_at) VALUES (?, ?, ?, ?)",
++            "INSERT INTO users (id, name, email, created_at, status) VALUES (?, ?, ?, ?, 'active')",
+             (r["id"], r["name"], r["email"], r["created_at"]),
+         )
+     conn.commit()
+diff --git a/app/users.py b/app/users.py
+index 7082516..7eb311d 100644
+--- a/app/users.py
++++ b/app/users.py
+@@ -2,12 +2,26 @@
+ 
+ import sqlite3
+ 
++STATUSES = ("active", "disabled")
+ 
+-def list_users(conn: sqlite3.Connection) -> list[dict]:
+-    rows = conn.execute("SELECT * FROM users ORDER BY id").fetchall()
++
++def list_users(conn: sqlite3.Connection, disabled: bool | None = None) -> list[dict]:
++    sql = "SELECT * FROM users"
++    params: tuple = ()
++    if disabled is not None:
++        sql += " WHERE status IS NOT 'active'" if disabled else " WHERE status = 'active'"
++    rows = conn.execute(sql + " ORDER BY id", params).fetchall()
+     return [dict(r) for r in rows]
+ 
+ 
+ def get_user(conn: sqlite3.Connection, user_id: int) -> dict | None:
+     row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+     return dict(row) if row else None
++
++
++def set_status(conn: sqlite3.Connection, user_id: int, status: str) -> bool:
++    if status not in STATUSES:
++        raise ValueError(f"status must be one of {STATUSES}, not {status!r}")
++    cur = conn.execute("UPDATE users SET status = ? WHERE id = ?", (status, user_id))
++    conn.commit()
++    return cur.rowcount == 1

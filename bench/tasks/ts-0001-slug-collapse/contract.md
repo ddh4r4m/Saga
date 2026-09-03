@@ -18,3 +18,4 @@ OUT: package.json
     CHECK: grep -c "export function slugify(input: string): string" src/slug.ts
     EXPECT: /^1$/m
     FROM: R4 "Do not change the public signature"
+    RED: none

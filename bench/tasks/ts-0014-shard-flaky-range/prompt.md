@@ -1,0 +1,1 @@
+The keyshard CI job fails about one run in two on the range test in test/shard.test.ts and passes on rerun, so people have started clicking retry. Work out whether the test or the code is wrong and fix the right one, so the job is reliably green without keys moving to a different shard.

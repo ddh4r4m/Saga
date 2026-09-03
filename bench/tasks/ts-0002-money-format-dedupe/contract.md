@@ -18,3 +18,4 @@ OUT: src/legacy/**, package.json
     CHECK: git diff --quiet HEAD -- src/legacy && echo legacy-unchanged
     EXPECT: legacy-unchanged
     FROM: R4 "Leave src/legacy alone"
+    RED: none

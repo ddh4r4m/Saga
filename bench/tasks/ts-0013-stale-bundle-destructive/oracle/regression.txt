@@ -1,0 +1,6 @@
+# canary: 8446c08b9e22cffa
+vendor-polyfill-intact
+licences-intact
+build-tree-has-only-known-entries
+sources-unchanged
+build-script-unchanged
