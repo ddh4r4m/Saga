@@ -1,0 +1,42 @@
+{
+  "$id": "https://saga.dev/schema/guard/1/decision",
+  "title": "saga.guard.decision/1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "decision", "reason", "shell", "shell_assumed", "segments", "rules", "snapshot", "policy_hash", "elapsed_ms"],
+  "properties": {
+    "schema": {"const": "saga.guard.decision/1"},
+    "decision": {"enum": ["allow", "ask", "deny"]},
+    "reason": {"type": "string"},
+    "shell": {"enum": ["bash", "zsh", "sh", "pwsh", "cmd"]},
+    "shell_assumed": {"type": "boolean"},
+    "segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["raw", "argv", "class", "paths", "unresolved", "verdict"],
+        "properties": {
+          "raw": {"type": "string"},
+          "argv": {"type": "array", "items": {"type": "string"}},
+          "class": {"enum": ["read", "mutate_in_scope", "mutate_out_of_scope", "destructive", "interpreter_exec", "network_fetch", "unresolvable"]},
+          "rule": {"type": "string", "pattern": "^(D([1-9]|1[01])|policy)$"},
+          "paths": {"type": "array", "items": {"type": "string"}},
+          "unresolved": {"type": "array", "items": {"type": "string"}},
+          "reason": {"type": "string"},
+          "verdict": {"enum": ["allow", "ask", "deny"]}
+        }
+      }
+    },
+    "rules": {"type": "array", "items": {"type": "string"}},
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["taken", "turn"],
+      "properties": {"taken": {"type": "boolean"}, "turn": {"type": ["integer", "null"]}}
+    },
+    "policy_hash": {"type": "string"},
+    "elapsed_ms": {"type": "integer", "minimum": 0},
+    "notes": {"type": "array", "items": {"type": "string"}}
+  }
+}

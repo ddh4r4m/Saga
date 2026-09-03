@@ -43,6 +43,7 @@ usage: saga <command> [flags]
   bench verify-task|run|report|compare  the measurement harness (saga bench -h)
   gate init|status|check|reverify|attest|approve|lint|guard-diff
                                         contracts, evidence, red proof, diff guards (saga gate -h)
+  guard check-cmd|policy                post-expansion command classification (saga guard -h)
   version
 
 exit codes (contracts section 4): 0 ok, 1 finding, 2 usage, 3 refusal, 4 approval, 5 integrity, 6 environment, 7 contamination
@@ -98,6 +99,8 @@ func (a *App) run(args []string) error {
 		return a.cmdBench(args[1:])
 	case "gate":
 		return a.cmdGate(args[1:])
+	case "guard":
+		return a.cmdGuard(args[1:])
 	}
 	fmt.Fprint(a.Stderr, usage)
 	return cli.Errorf(cli.ExitUsage, "unknown command %q", args[0])

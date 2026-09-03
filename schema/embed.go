@@ -8,5 +8,5 @@ import "embed"
 // FS holds every schema file, addressed as "<layer>/<major>/<name>.json".
 //
 //go:embed trace/1/*.json doctor/1/*.json gate/1/*.json
-//go:embed bench/1/*.json
+//go:embed bench/1/*.json guard/1/*.json
 var FS embed.FS

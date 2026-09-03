@@ -1,0 +1,31 @@
+{
+  "$id": "https://saga.dev/schema/guard/1/policy",
+  "title": "saga.guard.policy/1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {"const": "saga.guard.policy/1"},
+    "shell": {"enum": ["auto", "bash", "zsh", "sh", "pwsh", "cmd", ""]},
+    "net": {"type": "object", "additionalProperties": false, "properties": {"fetch": {"type": ["boolean", "null"]}}},
+    "scope": {"type": "object", "additionalProperties": false, "properties": {
+      "extra": {"type": ["array", "null"], "items": {"type": "string"}},
+      "ignored_is_in_scope": {"type": ["boolean", "null"]}}},
+    "allow": {"type": "object", "additionalProperties": false, "properties": {
+      "read": {"type": ["array", "null"], "items": {"type": "string"}},
+      "mutate_in_scope": {"type": ["array", "null"], "items": {"type": "string"}},
+      "mutate_out_of_scope": {"type": ["array", "null"], "items": {"type": "string"}}}},
+    "deny": {"type": "object", "additionalProperties": false, "properties": {"extra": {"type": ["array", "null"], "items": {"type": "string"}}}},
+    "ask": {"type": "object", "additionalProperties": false, "properties": {
+      "interpreter_exec_untracked": {"type": ["boolean", "null"]},
+      "unresolvable": {"type": ["boolean", "null"]},
+      "sudo": {"type": ["boolean", "null"]}}},
+    "git": {"type": "object", "additionalProperties": false, "properties": {"protected": {"type": ["array", "null"], "items": {"type": "string"}}}},
+    "credentials": {"type": "object", "additionalProperties": false, "properties": {
+      "paths_extra": {"type": ["array", "null"], "items": {"type": "string"}},
+      "allow_read": {"type": ["array", "null"], "items": {"type": "string"}}}},
+    "snapshot": {"type": "object"},
+    "mask": {"type": "object"},
+    "deps": {"type": "object"},
+    "mcp": {"type": "object"}
+  }
+}
