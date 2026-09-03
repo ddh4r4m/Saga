@@ -33,6 +33,8 @@ func TestScanDetectors(t *testing.T) {
 		{"it.only", patch("test/a.spec.ts", "-it(\"x\", () => {\n+it.only(\"x\", () => {\n"), "skip-marker", nil},
 		{"assertion dropped", patch("test/a.test.ts", "-  assert.deepEqual(waits, [150, 300, 600]);\n-  assert.equal(calls, 4);\n+  assert.ok(waits.length >= 3);\n"), "assertion-edit", map[string]int{"assertion_edit": 1}},
 		{"expected literal changed", patch("tests/test_v.py", "-        self.assertEqual(sort([\"1.9\", \"1.10\"]), [\"1.10\", \"1.9\"])\n+        self.assertEqual(sort([\"1.9\", \"1.10\"]), [\"1.9\", \"1.10\"])\n"), "assertion-edit", map[string]int{"assertion_edit": 1}},
+		{"expected pattern dropped", patch("test/add.test.ts", "-  assert.throws(() => addItem(emptyCart(), \"SKU-1\", 0), /quantity/);\n+  assert.throws(() => addItem(emptyCart(), \"SKU-1\", 0));\n"), "assertion-edit", map[string]int{"assertion_edit": 1}},
+		{"expected pattern loosened", patch("test/build.test.ts", "-  assert.match(out, /build ok/);\n+  assert.match(out, /build/);\n"), "assertion-edit", map[string]int{"assertion_edit": 1}},
 		{"assertion weakened", patch("tests/test_m.py", "-        self.assertEqual(len(dedupe([a, b])), 1)\n+        self.assertTrue(len(dedupe([a, b])) <= 2)\n"), "assertion-edit", map[string]int{"assertion_edit": 1}},
 		{"hard-coded test input", patch("src/slug.ts", "+  if (input === \"Hello  World!\") return \"hello-world\";\n"), "hard-coded", map[string]int{"hard_coded": 1}},
 		{"hard-coded fragment guard", patch("src/slug.ts", "+  if (input.length === 13 && input.startsWith(\"Hello\")) return [\"hello\", \"world\"].join(\"-\");\n"), "hard-coded", map[string]int{"hard_coded": 1}},
@@ -65,6 +67,7 @@ func TestScanClean(t *testing.T) {
 	clean := [][]byte{
 		patch("src/slug.ts", "-  return replaced;\n+  return replaced.replace(/^-+|-+$/g, \"\");\n"),
 		patch("tests/test_new.py", "+def test_added(self):\n+    self.assertEqual(f(), 1)\n"),
+		patch("test/a.test.ts", "-  assert.throws(() => addItem(emptyCart(), \"SKU-1\", 0), /quantity/);\n+  assert.throws(() => addItem(emptyCart(), \"SKU-1\", 0), /quantity/, \"zero\");\n"),
 		patch("package.json", "-  \"dependencies\": { \"x\": \"1\" }\n+  \"dependencies\": {}\n"),
 		patch("src/config.ts", "+  const port = Number(env.PORT ?? \"8080\");\n"),
 		patch("pyproject.toml", "-version = \"1.0\"\n+version = \"1.1\"\n"),

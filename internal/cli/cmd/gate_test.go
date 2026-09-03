@@ -119,8 +119,16 @@ func TestEndToEndBenchTasks(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(ws, ".saga", "contract.md"), raw, 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if out, errs, code := runIn(t, ws, "", "gate", "lint", "--strict"); code != cli.ExitOK {
+			// The regression gates declare RED: none, a lint warning (gate-spec
+			// section 2.6): exit 0 without --strict, and nothing but L-RED-NONE.
+			out, errs, code = runIn(t, ws, "", "gate", "lint", "--json")
+			if code != cli.ExitOK {
 				t.Fatalf("lint: %d %s %s", code, out, errs)
+			}
+			for _, w := range statusJSON(t, out)["warnings"].([]any) {
+				if rule := w.(map[string]any)["rule"]; rule != "L-RED-NONE" {
+					t.Fatalf("lint warning %v: %s", rule, out)
+				}
 			}
 			// Status never executes: no evidence appears.
 			if _, _, code := runIn(t, ws, "", "gate", "status"); code == cli.ExitOK {

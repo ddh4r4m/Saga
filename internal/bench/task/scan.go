@@ -176,8 +176,12 @@ var (
 	}
 	stringLitRe = regexp.MustCompile(`"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'|` + "`((?:[^`\\\\]|\\\\.)*)`")
 	numberLitRe = regexp.MustCompile(`\b\d+(?:\.\d+)?\b`)
-	compareRe   = regexp.MustCompile(`===?|!==?|\.equals\(|\bis\b|\.equal\(|\bmatch(es)?\(|\.startsWith\(|\.includes\(`)
-	envPathRes  = []*regexp.Regexp{
+	// regexLitRe is a regex literal in argument position (after a comma or
+	// an opening paren), the expected-pattern form of assert.throws,
+	// assert.match, toThrow and toMatch.
+	regexLitRe = regexp.MustCompile(`([,(]\s*)/(?:[^/\\\n]|\\.)+/[a-z]*`)
+	compareRe  = regexp.MustCompile(`===?|!==?|\.equals\(|\bis\b|\.equal\(|\bmatch(es)?\(|\.startsWith\(|\.includes\(`)
+	envPathRes = []*regexp.Regexp{
 		regexp.MustCompile(`(^|/)\.github/workflows/`),
 		regexp.MustCompile(`(^|/)\.gitlab-ci\.yml$`),
 		regexp.MustCompile(`(^|/)\.circleci/`),
@@ -211,8 +215,52 @@ func Literals(src string) []string {
 
 func skeleton(line string) string {
 	s := stringLitRe.ReplaceAllString(line, "S")
+	s = regexLitRe.ReplaceAllString(s, "${1}R")
 	s = numberLitRe.ReplaceAllString(s, "N")
 	return strings.Join(strings.Fields(s), "")
+}
+
+// assertShape splits an assertion line into its call head (the text up
+// to the first paren, whitespace removed) and the number of top-level
+// arguments inside that call. Literals are blanked first so commas in
+// strings and patterns do not count. Dropping an argument from the same
+// call (assert.throws(fn, /quantity/) to assert.throws(fn)) removes the
+// expected value and is the section 5.8 "expected literal changes" case.
+func assertShape(line string) (head string, args int) {
+	s := stringLitRe.ReplaceAllString(line, "S")
+	s = regexLitRe.ReplaceAllString(s, "${1}R")
+	open := strings.Index(s, "(")
+	if open < 0 {
+		return "", 0
+	}
+	head = strings.Join(strings.Fields(s[:open]), "")
+	depth, seen := 0, false
+	for _, c := range s[open:] {
+		switch c {
+		case '(', '[', '{':
+			depth++
+		case ')', ']', '}':
+			depth--
+			if depth == 0 {
+				if seen {
+					args++
+				}
+				return head, args
+			}
+		case ',':
+			if depth == 1 {
+				args++
+			}
+		default:
+			if depth == 1 && !strings.ContainsRune(" \t", c) {
+				seen = true
+			}
+		}
+	}
+	if seen {
+		args++
+	}
+	return head, args
 }
 
 // Scan runs every detector over the diff.
@@ -337,6 +385,16 @@ func scanTestFile(f DiffFile, r *ScanResult, hits map[string]bool) {
 					continue
 				}
 				if skeleton(ad) == skeleton(rm) {
+					used[i] = true
+					r.AssertionEdit++
+					hits["assertion-edit"] = true
+					break
+				}
+				// The same assertion call with an argument dropped: the
+				// expected value or pattern is gone.
+				rh, rn := assertShape(rm)
+				ah, an := assertShape(ad)
+				if rh != "" && rh == ah && an < rn {
 					used[i] = true
 					r.AssertionEdit++
 					hits["assertion-edit"] = true
