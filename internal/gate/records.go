@@ -122,9 +122,33 @@ func evidencePath(s *store.Store, slug, id string) string {
 
 func redPath(s *store.Store, slug, id string) string { return s.Path("red", slug, id+".json") }
 
+// checkDirChain applies the hostile-shape rule to every directory from
+// the store root down to the record's directory: a symlinked
+// `.saga/evidence` would send the checker's writes (and the ledger it
+// then trusts) somewhere else.
+func checkDirChain(path string) error {
+	dir := filepath.Dir(path)
+	var chain []string
+	for d := dir; ; d = filepath.Dir(d) {
+		chain = append(chain, d)
+		if filepath.Base(d) == store.Dir || filepath.Dir(d) == d {
+			break
+		}
+	}
+	for i := len(chain) - 1; i >= 0; i-- {
+		if err := store.CheckShape(chain[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // writeRecord writes v as canonical JSON (so the file bytes hash to the
 // record hash every reference carries) and returns that hash.
 func writeRecord(path string, v any) (string, error) {
+	if err := checkDirChain(path); err != nil {
+		return "", err
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return "", err
 	}
@@ -142,6 +166,9 @@ func writeRecord(path string, v any) (string, error) {
 // readRecord reads a record file through the shape check and returns the
 // bytes and their hash.
 func readRecord(path string) ([]byte, string, error) {
+	if err := checkDirChain(path); err != nil {
+		return nil, "", err
+	}
 	if err := store.CheckShape(path); err != nil {
 		return nil, "", err
 	}

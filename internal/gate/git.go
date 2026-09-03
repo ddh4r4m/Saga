@@ -74,6 +74,26 @@ type DiffEntry struct {
 	Status  string // A, M, D, R, T (untracked files are A)
 	Path    string
 	OldPath string // for renames
+	// Untracked marks an untracked-not-ignored file (never in the base):
+	// work for the guards, but not a tracked change for the baseline
+	// red-proof condition.
+	Untracked bool
+}
+
+// TrackedDiffEmpty reports whether no tracked change in entries touches an
+// IN: glob (the baseline condition of section 3.2 over a cached diff).
+func TrackedDiffEmpty(entries []DiffEntry, globs []string, fold bool) bool {
+	for _, e := range entries {
+		if e.Untracked {
+			continue
+		}
+		for _, p := range []string{e.OldPath, e.Path} {
+			if p != "" && MatchAny(globs, p, fold) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // DiffPaths lists changed paths against base: `git diff --find-renames
@@ -122,7 +142,7 @@ func DiffPaths(root, base string, pathspec ...string) ([]DiffEntry, error) {
 	}
 	for _, p := range strings.Split(string(out), "\x00") {
 		if p != "" {
-			entries = append(entries, DiffEntry{Status: "A", Path: p})
+			entries = append(entries, DiffEntry{Status: "A", Path: p, Untracked: true})
 		}
 	}
 	return entries, nil

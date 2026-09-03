@@ -41,6 +41,11 @@ func newRepo(t *testing.T) *repo {
 	for _, m := range AgentShellMarkers {
 		t.Setenv(m, "")
 	}
+	// The suite itself may run under a harness; stand the parent-chain
+	// detector down so the human-act tests exercise the other signals.
+	prev := ParentHarness
+	ParentHarness = func() string { return "" }
+	t.Cleanup(func() { ParentHarness = prev })
 	return r
 }
 

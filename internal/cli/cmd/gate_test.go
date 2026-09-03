@@ -68,6 +68,11 @@ func humanEnv(t *testing.T) {
 	for _, m := range gate.AgentShellMarkers {
 		t.Setenv(m, "")
 	}
+	// The suite may itself run under a harness; stand the parent-chain
+	// detector down for the human steps.
+	prev := gate.ParentHarness
+	gate.ParentHarness = func() string { return "" }
+	t.Cleanup(func() { gate.ParentHarness = prev })
 }
 
 func statusJSON(t *testing.T, out string) map[string]any {

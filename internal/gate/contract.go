@@ -163,6 +163,9 @@ var (
 	reHunk    = regexp.MustCompile(`^[0-9a-f]{12}$`)
 	reSHA     = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 	reSlug    = regexp.MustCompile(`[^a-z0-9]+`)
+	// reSlugValue is the closed alphabet of CONTRACT: (the evidence
+	// namespace and the prefix of every qualified id).
+	reSlugValue = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,63}$`)
 )
 
 // Parse parses contract bytes under the section 2.2 grammar and the
@@ -295,7 +298,7 @@ func Parse(raw []byte) (*Contract, error) {
 			cur = nil
 			continue
 		}
-		if lead > 4 {
+		if lead < 2 || lead > 4 {
 			return nil, perr(5, n, "%s: indented %d spaces; attributes are indented 2 to 4", am[1], lead)
 		}
 		if cur == nil {
@@ -323,6 +326,13 @@ func (c *Contract) setHeader(key, v string, n int) error {
 	case "CONTRACT":
 		if c.ContractHeader != "" {
 			return perr(0, n, "CONTRACT: repeated")
+		}
+		// The slug names a directory under .saga/evidence and .saga/red and
+		// is echoed in every qualified id, so it is a closed alphabet: a
+		// path separator, `..` or a control character here would escape
+		// the store or reach a hook message.
+		if !reSlugValue.MatchString(v) {
+			return perr(0, n, "CONTRACT: %q is not a slug ([a-z0-9][a-z0-9-]*, at most 64 characters)", canon.CleanText(v))
 		}
 		c.ContractHeader = v
 	case "REQUEST":

@@ -51,6 +51,23 @@ type Loaded struct {
 	// TrackedAtHead reports a contract tracked at HEAD (the hook's
 	// "contract deleted" case).
 	TrackedAtHead bool
+
+	diff     []DiffEntry
+	diffDone bool
+}
+
+// Diff returns the working-tree diff against Base (tracked changes plus
+// untracked-not-ignored files), computed once per load: every working-
+// tree scan costs about a `git status` on a large repository.
+func (l *Loaded) Diff() []DiffEntry {
+	if !l.diffDone {
+		l.diff, _ = DiffPaths(l.Root, l.Base)
+		if l.diff == nil {
+			l.diff = []DiffEntry{}
+		}
+		l.diffDone = true
+	}
+	return l.diff
 }
 
 // Load reads and verifies the contract and computes the tree hash.
@@ -298,7 +315,15 @@ func Status(l *Loaded, opts StatusOptions) (*Report, error) {
 	c := l.Contract
 	r := &Report{Schema: StatusSchema, Contract: c.Slug, ContractHash: c.Hash(), Base: ShortRev(l.Base), Head: l.Head, TreeHash: strp(l.TreeHash), Mode: l.Mode, Risk: strp(c.Risk), RiskRemoved: l.RiskRemoved, Guards: []Finding{}, Handoff: []Handoff{}, Budget: Budget{Ceiling: 400}}
 	tc := CurrentToolchain(l.Config.Shell)
-	approvalDir, _ := ApprovalDir(l.Root)
+	// status writes nothing (section 7): consult the store only when it
+	// already exists rather than creating ~/.saga/approved as a side
+	// effect of a read.
+	approvalDir := ""
+	if d, _, err := ApprovalDirPath(); err == nil {
+		if _, err := os.Lstat(d); err == nil {
+			approvalDir, _ = ApprovalDir(l.Root)
+		}
+	}
 	for _, g := range c.Gates {
 		gs := &GateStatus{ID: c.Qualified(g.ID), Outcome: canon.CleanText(g.Outcome), Runnable: g.Runnable(), From: []FromRef{}, Approval: "n/a", Red: RedStatus{Mode: g.RedMode()}, gate: g}
 		for _, f := range g.From {
@@ -349,7 +374,7 @@ func Status(l *Loaded, opts StatusOptions) (*Report, error) {
 		r.Gates = append(r.Gates, gs)
 	}
 	if !opts.SkipGuards {
-		findings, err := GuardDiff(GuardInput{Root: l.Root, Store: l.Store, Base: l.Base, Contract: c, Config: l.Config, Advisory: opts.Advisory})
+		findings, err := GuardDiff(GuardInput{Root: l.Root, Store: l.Store, Base: l.Base, Contract: c, Config: l.Config, Advisory: opts.Advisory, Entries: l.Diff()})
 		if err != nil {
 			return r, cli.Wrap(cli.ExitEnvironment, "guards", err)
 		}
@@ -371,7 +396,11 @@ func redStatus(l *Loaded, g *Gate, rec *RedRecord, b RedBinding) RedStatus {
 	if rec == nil {
 		switch g.RedMode() {
 		case RedBaseline:
-			if empty, err := DiffEmpty(l.Root, l.Base, l.Contract.In, FoldCase()); err == nil && !empty {
+			// Missed once the diff is non-empty, or once a check has run on
+			// the empty diff and found the oracle green (no red to record).
+			if !TrackedDiffEmpty(l.Diff(), l.Contract.In, FoldCase()) {
+				rs.Reason = strp(ReasonBaselineMissed)
+			} else if ev, _, _ := LoadEvidence(l.Store, l.Contract.Slug, g.ID); ev != nil {
 				rs.Reason = strp(ReasonBaselineMissed)
 			}
 		case RedMutation:
@@ -469,11 +498,12 @@ func (r *Report) render() []string {
 		label := strings.ToUpper(gs.State)
 		switch gs.State {
 		case StateUnproven:
-			label = "MET (UNPROVEN"
-			if gs.Red.Reason != nil {
-				label += ": " + *gs.Red.Reason
+			label = unprovenLabel(gs)
+		case StateMet:
+			// require_red off: still say so (section 3.1), exit is unchanged.
+			if gs.Runnable && !gs.Red.Valid {
+				label = unprovenLabel(gs)
 			}
-			label += ")"
 		case StateUnmet:
 			if gs.Failure != nil {
 				label += " (" + *gs.Failure + ")"
@@ -514,6 +544,14 @@ func (r *Report) render() []string {
 		lines = append(lines, fmt.Sprintf("%d unmet, %d unproven, %d manual, %d guard findings", r.Summary.Unmet, r.Summary.Unproven, r.Summary.Manual, len(r.Guards)))
 	}
 	return lines
+}
+
+func unprovenLabel(gs *GateStatus) string {
+	label := "MET (UNPROVEN"
+	if gs.Red.Reason != nil {
+		label += ": " + *gs.Red.Reason
+	}
+	return label + ")"
 }
 
 // StopReason is the ids-only Stop block text of section 9, capped at the

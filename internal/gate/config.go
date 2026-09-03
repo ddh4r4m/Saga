@@ -37,7 +37,8 @@ var DefaultTestGlobs = []string{
 	"**/*.test.*", "**/*.spec.*", "**/__tests__/**",
 	"**/test_*.py", "**/*_test.py",
 	"**/*_test.go",
-	"**/*Test.java", "**/*Spec.kt", "**/src/test/**",
+	"**/*Test.java", "**/*Test.kt", "**/*Spec.kt", "**/src/test/**",
+	"**/*Tests.swift", "**/*Test.swift",
 	"**/*_test.dart", "**/test/**",
 	"**/tests/**",
 }

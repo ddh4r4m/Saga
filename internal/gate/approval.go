@@ -28,35 +28,31 @@ type Approval struct {
 // ApprovalEnv names the environment override for the store location.
 const ApprovalEnv = "SAGA_APPROVAL_DIR"
 
-// AgentShellMarkers are environment variables a harness sets in the
-// agent's shell. approve and attest refuse to run under any of them
-// (contracts section 8): those commands are a human act.
-var AgentShellMarkers = []string{"SAGA_AGENT_SHELL", "CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CODEX_SANDBOX", "CODEX_CI", "GEMINI_CLI", "CURSOR_AGENT"}
-
-// AgentShell returns the marker that identifies this process as running
-// inside an agent's shell, or "".
-func AgentShell() string {
-	for _, m := range AgentShellMarkers {
-		if os.Getenv(m) != "" {
-			return m
-		}
+// ApprovalDirPath is the store location before any check: SAGA_APPROVAL_DIR
+// when set, else ~/.saga/approved. It creates nothing; explicit reports
+// whether the environment named it.
+func ApprovalDirPath() (dir string, explicit bool, err error) {
+	dir = os.Getenv(ApprovalEnv)
+	if dir != "" {
+		return dir, true, nil
 	}
-	return ""
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", false, fmt.Errorf("approval store: no home directory: %w", err)
+	}
+	return filepath.Join(home, ".saga", "approved"), false, nil
 }
 
 // ApprovalDir resolves and validates the approval store: ~/.saga/approved
 // by default; SAGA_APPROVAL_DIR only when it is a real, owner-private
-// directory whose canonical target is outside the canonical repo root.
-// Failures are environment refusals (exit 6).
+// directory owned by the invoking user whose canonical target is outside
+// the canonical repo root. The default store is created on first use;
+// an explicit one must exist. Failures are environment refusals (exit
+// 6).
 func ApprovalDir(repoRoot string) (string, error) {
-	dir := os.Getenv(ApprovalEnv)
-	explicit := dir != ""
-	if !explicit {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("approval store: no home directory: %w", err)
-		}
-		dir = filepath.Join(home, ".saga", "approved")
+	dir, explicit, err := ApprovalDirPath()
+	if err != nil {
+		return "", err
 	}
 	if fi, err := os.Lstat(dir); err == nil {
 		if fi.Mode()&fs.ModeSymlink != 0 {
@@ -67,6 +63,9 @@ func ApprovalDir(repoRoot string) (string, error) {
 		}
 		if fi.Mode().Perm()&0o077 != 0 {
 			return "", fmt.Errorf("approval store %s is not owner-private (mode %o)", dir, fi.Mode().Perm())
+		}
+		if !ownedByCaller(fi) {
+			return "", fmt.Errorf("approval store %s is not owned by the invoking user", dir)
 		}
 	} else if errors.Is(err, fs.ErrNotExist) {
 		if explicit {

@@ -47,6 +47,9 @@ type GuardInput struct {
 	// Paths restricts the diff to these repo-relative paths (incremental
 	// and predict modes); empty means the full diff.
 	Paths []string
+	// Entries, when non-nil, is a diff already computed for Root and Base
+	// (Loaded.Diff), so status and check scan the working tree once.
+	Entries []DiffEntry
 }
 
 func (in GuardInput) wants(id string) bool {
@@ -66,9 +69,13 @@ func hunkHash(parts ...string) string { return short12([]byte(strings.Join(parts
 // GuardDiff runs the guards over `git diff <base>` plus untracked files
 // and returns every finding, waivers applied, in a stable order.
 func GuardDiff(in GuardInput) ([]Finding, error) {
-	entries, err := DiffPaths(in.Root, in.Base, in.Paths...)
-	if err != nil {
-		return nil, err
+	entries := in.Entries
+	if entries == nil || len(in.Paths) > 0 {
+		var err error
+		entries, err = DiffPaths(in.Root, in.Base, in.Paths...)
+		if err != nil {
+			return nil, err
+		}
 	}
 	var out []Finding
 	if in.wants("G-SCOPE") {
@@ -133,6 +140,17 @@ func scopeOf(in GuardInput, status, p string) *Finding {
 	return nil
 }
 
+// contentKey binds a path-level finding to the exact working-tree bytes
+// of the path (section 5.3: a waiver never covers a later, different
+// change to the same file). A deleted path has no bytes.
+func contentKey(root, p string) string {
+	raw, err := os.ReadFile(join(root, p))
+	if err != nil {
+		return "absent"
+	}
+	return canon.SHA256(raw)
+}
+
 func guardScope(in GuardInput, entries []DiffEntry) []Finding {
 	var out []Finding
 	for _, e := range entries {
@@ -141,6 +159,7 @@ func guardScope(in GuardInput, entries []DiffEntry) []Finding {
 				continue
 			}
 			if f := scopeOf(in, e.Status, p); f != nil {
+				f.Hunk = hunkHash("G-SCOPE", e.Status, p, contentKey(in.Root, p))
 				out = append(out, *f)
 			}
 		}
@@ -182,6 +201,36 @@ var langs = map[string]*lang{
 		assert:  regexp.MustCompile(`\bt\.(?:Fatal|Fatalf|Error|Errorf)\s*\(|\b(?:require|assert)\.\w+\s*\(`),
 		funcDef: regexp.MustCompile(`(?m)^func\s+\w+`),
 	},
+	// The section 5.2 regex rows: G-SKIP and G-TESTDEL are regex-based for
+	// every language; G-ASSERT stays advisory and degraded.
+	"rust": {
+		name:    "rust",
+		testDef: regexp.MustCompile(`(?m)^\s*#\[(?:tokio::)?test\b`),
+		skip:    regexp.MustCompile(`(?m)^\s*#\[ignore\b|^\s*#\[cfg\(feature\b`),
+		assert:  regexp.MustCompile(`\b(?:assert|assert_eq|assert_ne|debug_assert)!\s*\(`),
+		funcDef: regexp.MustCompile(`(?m)^\s*(?:pub\s+)?(?:async\s+)?fn\s+\w+`),
+	},
+	"jvm": {
+		name:    "jvm",
+		testDef: regexp.MustCompile(`(?m)^\s*@(?:Test|ParameterizedTest|RepeatedTest)\b`),
+		skip:    regexp.MustCompile(`@Disabled\b|@Ignore\b|@Test\s*\(\s*enabled\s*=\s*false|\bassumeTrue\s*\(\s*false\s*\)`),
+		assert:  regexp.MustCompile(`\bassert\w+\s*\(|\bassertThat\s*\(`),
+		funcDef: regexp.MustCompile(`(?m)^\s*(?:public|private|protected|fun|void|static)\b[^;{]*\(`),
+	},
+	"swift": {
+		name:    "swift",
+		testDef: regexp.MustCompile(`(?m)^\s*func\s+test\w*\s*\(|^\s*@Test\b`),
+		skip:    regexp.MustCompile(`\bXCTSkip(?:If|Unless)?\s*\(|@Test\s*\(\s*\.disabled\b`),
+		assert:  regexp.MustCompile(`\bXCTAssert\w*\s*\(|\bXCTUnwrap\s*\(|#(?:expect|require)\s*\(`),
+		funcDef: regexp.MustCompile(`(?m)^\s*func\s+\w+`),
+	},
+	"dart": {
+		name:    "dart",
+		testDef: regexp.MustCompile(`(?m)^\s*(?:test|testWidgets)\s*\(`),
+		skip:    regexp.MustCompile(`\bskip\s*:\s*(?:true|['"])|@Skip\s*\(|\bmarkTestSkipped\s*\(|\bsolo_test\s*\(`),
+		assert:  regexp.MustCompile(`\bexpect(?:Later)?\s*\(`),
+		funcDef: regexp.MustCompile(`(?m)^\s*(?:void|Future|test|testWidgets|group)\b[^;]*\(`),
+	},
 }
 
 func langOf(p string) *lang {
@@ -192,6 +241,14 @@ func langOf(p string) *lang {
 		return langs["py"]
 	case ".go":
 		return langs["go"]
+	case ".rs":
+		return langs["rust"]
+	case ".java", ".kt", ".kts":
+		return langs["jvm"]
+	case ".swift":
+		return langs["swift"]
+	case ".dart":
+		return langs["dart"]
 	}
 	return nil
 }
@@ -235,6 +292,24 @@ func guardTestDel(in GuardInput, entries []DiffEntry) []Finding {
 					n = countAll(l.testDef, pre)
 				}
 				out = append(out, Finding{ID: "G-TESTDEL", Path: e.Path, Hunk: hunkHash("G-TESTDEL", "D", e.Path), Rule: "test-file-deleted", Pre: n})
+			}
+		case "M":
+			// A test file emptied in place (every declaration removed, or the
+			// count dropped) is a deletion that kept its name; without this
+			// `rm` plus `touch` would pass G-TESTDEL. Consolidations are
+			// waivable.
+			l := langOf(e.Path)
+			if l == nil {
+				continue
+			}
+			pre, ok := ShowAt(in.Root, in.Base, e.Path)
+			if !ok || !isTestFile(in, e.Path, pre) {
+				continue
+			}
+			post, _ := workingFile(in.Root, e.Path)
+			preN, postN := countAll(l.testDef, pre), countAll(l.testDef, post)
+			if preN > 0 && postN < preN {
+				out = append(out, Finding{ID: "G-TESTDEL", Path: e.Path, Hunk: hunkHash("G-TESTDEL", "M", e.Path, itoa(preN), itoa(postN), contentKey(in.Root, e.Path)), Rule: "test-decl-drop", Pre: preN, Post: postN})
 			}
 		case "R":
 			pre, _ := ShowAt(in.Root, in.Base, e.OldPath)

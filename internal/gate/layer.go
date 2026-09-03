@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/ddh4r4m/saga/internal/canon"
@@ -23,10 +26,56 @@ const (
 
 // ProtectedPaths are ledger paths the agent's editor tools may not touch:
 // the checker writes them (contracts section 8; gate-spec section 2.1).
-var ProtectedPaths = []string{".saga/evidence/", ".saga/red/", ".saga/request.md"}
+var ProtectedPaths = []string{".saga/evidence/", ".saga/red/", ".saga/request.md", ".saga/observed/"}
 
-// forbidden are gate's rows in the shared agent-forbidden command list.
-var forbidden = []string{"saga gate approve", "saga gate attest", "saga gate check --approve", "check --approve"}
+// forbiddenSubstrings are strings that name the approval store or its
+// override; a shell command carrying one is denied outright (contracts
+// section 8: the store is never the agent's to write or redirect).
+var forbiddenSubstrings = []string{ApprovalEnv, ".saga/approved", ".saga/observed"}
+
+// reApproveFlag matches the --approve and --ci flags in every spelling
+// the flag package accepts.
+var reApproveFlag = regexp.MustCompile(`^--?(approve|ci)(=.*)?$`)
+
+// ForbiddenCommand classifies a shell command against gate's rows of the
+// shared agent-forbidden list (contracts section 8): `saga gate approve`,
+// `saga gate attest`, `saga gate check --approve`, `saga gate reverify
+// --ci`, and any mention of the approval store. It tokenises on
+// whitespace and command separators, strips quotes, and matches the
+// `saga` word by basename, so flag order, `-approve`, quoting and a path
+// to the binary do not evade it. A variable or an alias that expands to
+// `saga` does: post-expansion classification is guard's (M1). It returns
+// the row matched, or "".
+func ForbiddenCommand(cmd string) string {
+	for _, s := range forbiddenSubstrings {
+		if strings.Contains(cmd, s) {
+			return s
+		}
+	}
+	// Split into simple commands on the shell operators, then into words.
+	for _, seg := range regexp.MustCompile(`\|\||&&|[;|&\n]`).Split(cmd, -1) {
+		words := strings.Fields(seg)
+		for i := range words {
+			words[i] = strings.Trim(words[i], `"'`+"`")
+		}
+		for i := 0; i+2 < len(words); i++ {
+			if filepath.Base(words[i]) != "saga" || words[i+1] != "gate" {
+				continue
+			}
+			switch words[i+2] {
+			case "approve", "attest":
+				return "saga gate " + words[i+2]
+			case "check", "reverify":
+				for _, w := range words[i+3:] {
+					if reApproveFlag.MatchString(w) {
+						return "saga gate " + words[i+2] + " " + w
+					}
+				}
+			}
+		}
+	}
+	return ""
+}
 
 // Layer is gate's step in the composed hook (section 6): translation of
 // `status` and `guard-diff` into the harness envelope, never executing a
@@ -51,6 +100,7 @@ func (l *Layer) Run(ctx context.Context, in *hookio.Input) (*hookio.Output, erro
 	if l.Store == nil || !l.Store.Exists() {
 		return out, nil
 	}
+	l.session(in)
 	switch in.Event {
 	case hookio.EventPreToolUse:
 		return l.preTool(in, out)
@@ -62,6 +112,50 @@ func (l *Layer) Run(ctx context.Context, in *hookio.Input) (*hookio.Output, erro
 	return out, nil
 }
 
+// session records what the human-only commands consult: the approval
+// store this (harness-inherited) environment names, and the shell tool
+// call in flight between PreToolUse and PostToolUse. Turn boundaries
+// clear a stale in-flight marker.
+func (l *Layer) session(in *hookio.Input) {
+	if in.SessionID == "" {
+		return
+	}
+	g, err := ReadGateSession(l.Store, in.SessionID)
+	if err != nil {
+		return
+	}
+	dir := os.Getenv(ApprovalEnv)
+	if dir != "" {
+		if c, err := filepath.EvalSymlinks(dir); err == nil {
+			dir = c
+		}
+	}
+	g.ApprovalDir, g.ApprovalDirSeen = dir, true
+	shell := in.ToolName == "Bash" || in.ToolName == "PowerShell"
+	switch in.Event {
+	case hookio.EventPreToolUse:
+		if shell {
+			g.ToolInFlight, g.ToolName = firstNonEmpty(in.ToolUseID, "unknown"), in.ToolName
+		}
+	case hookio.EventPostToolUse:
+		if shell || g.ToolInFlight == in.ToolUseID {
+			g.ToolInFlight, g.ToolName = "", ""
+		}
+	case hookio.EventStop, hookio.EventUserPromptSubmit, hookio.EventSessionStart, hookio.EventSessionEnd:
+		g.ToolInFlight, g.ToolName = "", ""
+	}
+	if err := WriteGateSession(l.Store, g); err != nil {
+		l.note("saga gate: session: %v", err)
+	}
+}
+
+func firstNonEmpty(a, b string) string {
+	if a != "" {
+		return a
+	}
+	return b
+}
+
 func (l *Layer) preTool(in *hookio.Input, out *hookio.Output) (*hookio.Output, error) {
 	switch in.ToolName {
 	case "Bash", "PowerShell":
@@ -69,40 +163,114 @@ func (l *Layer) preTool(in *hookio.Input, out *hookio.Output) (*hookio.Output, e
 			Command string `json:"command"`
 		}
 		_ = json.Unmarshal(in.ToolInput, &ti)
-		norm := strings.Join(strings.Fields(ti.Command), " ")
-		for _, f := range forbidden {
-			if strings.Contains(norm, f) {
-				out.Decision, out.Reason, out.Exit = hookio.DecisionDeny, "saga gate: "+f+" is a human act; ask the user to run it", int(cli.ExitRefusal)
-				return out, nil
-			}
+		if f := ForbiddenCommand(ti.Command); f != "" {
+			out.Decision, out.Reason, out.Exit = hookio.DecisionDeny, "saga gate: "+canon.CleanText(f)+" is a human act; ask the user to run it", int(cli.ExitRefusal)
+			return out, nil
 		}
 	case "Edit", "Write", "NotebookEdit", "MultiEdit":
 		var ti struct {
 			FilePath string `json:"file_path"`
 		}
 		_ = json.Unmarshal(in.ToolInput, &ti)
-		r, ok := rel(l.Store.Root, ti.FilePath)
-		if ok {
-			for _, p := range ProtectedPaths {
-				if r == strings.TrimSuffix(p, "/") || strings.HasPrefix(r, p) {
-					out.Decision, out.Reason, out.Exit = hookio.DecisionDeny, "saga gate: "+r+" is written by the checker, not by the agent", int(cli.ExitRefusal)
-					return out, nil
-				}
-			}
+		if why := l.protectedWrite(ti.FilePath); why != "" {
+			out.Decision, out.Reason, out.Exit = hookio.DecisionDeny, "saga gate: "+why, int(cli.ExitRefusal)
+			return out, nil
 		}
 		ld, err := LoadLite(l.Store.Root, l.Store)
 		if err != nil || ld.Contract == nil {
 			return out, nil
 		}
 		if f := PredictScope(GuardInput{Root: ld.Root, Contract: ld.Contract, Config: ld.Config}, ti.FilePath); f != nil {
-			msg := fmt.Sprintf("saga gate: G-SCOPE %s %s", f.Path, f.Rule)
+			msg := fmt.Sprintf("saga gate: G-SCOPE %s %s", clip(f.Path, 200), f.Rule)
 			if f.Detail != "" {
-				msg += " (" + f.Detail + ")"
+				msg += " (" + clip(f.Detail, 200) + ")"
 			}
 			out.Decision, out.Reason, out.Exit = hookio.DecisionDeny, l.cap(in, msg, CeilingPreTool), int(cli.ExitRefusal)
 		}
 	}
 	return out, nil
+}
+
+// protectedWrite names the reason an editor write to path is denied: the
+// approval store (or anything under ~/.saga), and the ledger paths the
+// checker owns. Symlinks in the existing prefix are resolved first.
+func (l *Layer) protectedWrite(path string) string {
+	if path == "" {
+		return ""
+	}
+	abs := path
+	if !filepath.IsAbs(abs) {
+		abs = filepath.Join(l.Store.Root, abs)
+	}
+	abs = resolveExisting(abs)
+	if dir, _, err := ApprovalDirPath(); err == nil {
+		if under(resolveExisting(dir), abs) {
+			return "the approval store is written by saga gate approve, never by the agent"
+		}
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		if under(resolveExisting(filepath.Join(home, ".saga")), abs) {
+			return "~/.saga is the user's store, never the agent's"
+		}
+	}
+	r, ok := rel(resolveExisting(l.Store.Root), abs)
+	if !ok {
+		r, ok = rel(l.Store.Root, abs)
+	}
+	if ok {
+		for _, p := range ProtectedPaths {
+			if r == strings.TrimSuffix(p, "/") || strings.HasPrefix(r, p) {
+				return clip(r, 200) + " is written by the checker, not by the agent"
+			}
+		}
+	}
+	return ""
+}
+
+// resolveExisting resolves symlinks in the longest existing prefix of p
+// (a dangling link included: the agent may plant the link before the
+// checker creates the target) and re-attaches the rest.
+func resolveExisting(p string) string { return resolveDepth(filepath.Clean(p), 0) }
+
+func resolveDepth(p string, depth int) string {
+	if depth > 16 {
+		return p
+	}
+	rest := ""
+	for cur := p; ; {
+		if c, err := filepath.EvalSymlinks(cur); err == nil {
+			return filepath.Join(c, rest)
+		}
+		if fi, err := os.Lstat(cur); err == nil && fi.Mode()&os.ModeSymlink != 0 {
+			if target, err := os.Readlink(cur); err == nil {
+				if !filepath.IsAbs(target) {
+					target = filepath.Join(filepath.Dir(cur), target)
+				}
+				return resolveDepth(filepath.Join(target, rest), depth+1)
+			}
+		}
+		parent := filepath.Dir(cur)
+		if parent == cur {
+			return p
+		}
+		rest = filepath.Join(filepath.Base(cur), rest)
+		cur = parent
+	}
+}
+
+func under(dir, p string) bool {
+	return p == dir || strings.HasPrefix(p, dir+string(filepath.Separator))
+}
+
+// clip bounds and cleans a text fragment bound for a hook message
+// (section 4.4: control- and bidi-stripped, capped per field).
+func clip(s string, n int) string {
+	s = canon.CleanText(s)
+	s = strings.ReplaceAll(strings.ReplaceAll(s, "\n", " "), "\r", " ")
+	if len(s) > n {
+		s = s[:n] + "..."
+	}
+	return s
 }
 
 func (l *Layer) postTool(in *hookio.Input, out *hookio.Output) (*hookio.Output, error) {
@@ -123,7 +291,7 @@ func (l *Layer) postTool(in *hookio.Input, out *hookio.Output) (*hookio.Output, 
 	var parts []string
 	for _, f := range findings {
 		if f.Blocks() {
-			parts = append(parts, fmt.Sprintf("%s %s %s %s pre=%d post=%d", f.ID, f.Path, f.Hunk, f.Rule, f.Pre, f.Post))
+			parts = append(parts, fmt.Sprintf("%s %s %s %s pre=%d post=%d", f.ID, clip(f.Path, 120), f.Hunk, f.Rule, f.Pre, f.Post))
 		}
 	}
 	if len(parts) == 0 {

@@ -2,7 +2,13 @@
 
 package gate
 
-import "os/exec"
+import (
+	"io/fs"
+	"os/exec"
+)
+
+// ownedByCaller has no portable answer off unix; the mode check stands.
+func ownedByCaller(fi fs.FileInfo) bool { return true }
 
 func setProcessGroup(cmd *exec.Cmd) {}
 

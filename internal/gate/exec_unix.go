@@ -3,9 +3,20 @@
 package gate
 
 import (
+	"io/fs"
+	"os"
 	"os/exec"
 	"syscall"
 )
+
+// ownedByCaller reports whether the file is owned by the invoking user.
+func ownedByCaller(fi fs.FileInfo) bool {
+	st, ok := fi.Sys().(*syscall.Stat_t)
+	if !ok {
+		return true
+	}
+	return int(st.Uid) == os.Getuid()
+}
 
 func setProcessGroup(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}

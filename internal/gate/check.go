@@ -44,13 +44,34 @@ func (o CheckOptions) log(format string, args ...any) {
 	}
 }
 
-// AgentShellError is the refusal when approve or attest runs from an
-// agent's shell.
-func AgentShellError(what string) error {
-	if m := AgentShell(); m != "" {
-		return cli.Errorf(cli.ExitRefusal, "saga gate %s is a human act; refused inside an agent shell (%s is set)", what, m)
+// HookSessionMaxAge bounds how recent a hook session must be for its
+// recorded environment to constrain a `check` run in this repository.
+const HookSessionMaxAge = time.Hour
+
+// approvalStoreConsistent refuses (exit 6) an explicit SAGA_APPROVAL_DIR
+// that differs from the one the hook's own environment carries for a
+// recent session of this repository: the hook inherits the harness's
+// environment, which the agent's shell cannot rewrite, so a store the
+// agent points `check` at (and could have populated itself) is refused.
+// Without a recent hook session there is nothing to compare against.
+func approvalStoreConsistent(s *store.Store, resolved string) error {
+	dir, explicit, err := ApprovalDirPath()
+	if err != nil || !explicit || s == nil {
+		return nil
 	}
-	return nil
+	seen, ok := HookApprovalDir(s, HookSessionMaxAge)
+	if !ok {
+		return nil
+	}
+	if seen != "" {
+		if c, err := filepath.EvalSymlinks(seen); err == nil {
+			seen = c
+		}
+	}
+	if seen == resolved {
+		return nil
+	}
+	return cli.Errorf(cli.ExitEnvironment, "approval store %s (%s) differs from the one the harness session sees; unset %s or restart the harness with it", dir, ApprovalEnv, ApprovalEnv)
 }
 
 type runCtx struct {
@@ -72,7 +93,15 @@ type runCtx struct {
 // proofs, rewrites the ledger lines and returns the resulting status.
 func Check(l *Loaded, opts CheckOptions) (*Report, error) {
 	if opts.Approve {
-		if err := AgentShellError("check --approve"); err != nil {
+		if err := HumanActError("check --approve", l.Store); err != nil {
+			return nil, err
+		}
+	}
+	if opts.CI {
+		// --ci executes every runnable gate without an approval store; on a
+		// developer machine that is consent by whoever holds the terminal,
+		// never the agent (section 6.4).
+		if err := HumanActError("reverify --ci", l.Store); err != nil {
 			return nil, err
 		}
 	}
@@ -90,9 +119,12 @@ func Check(l *Loaded, opts CheckOptions) (*Report, error) {
 		if err != nil {
 			return nil, cli.Wrap(cli.ExitEnvironment, "", err)
 		}
+		if err := approvalStoreConsistent(l.Store, dir); err != nil {
+			return nil, err
+		}
 		rc.approval = dir
 	}
-	findings, err := GuardDiff(GuardInput{Root: l.Root, Store: l.Store, Base: l.Base, Contract: l.Contract, Config: l.Config, Advisory: opts.Advisory})
+	findings, err := GuardDiff(GuardInput{Root: l.Root, Store: l.Store, Base: l.Base, Contract: l.Contract, Config: l.Config, Advisory: opts.Advisory, Entries: l.Diff()})
 	if err != nil {
 		return nil, cli.Wrap(cli.ExitEnvironment, "guards", err)
 	}
@@ -178,6 +210,11 @@ func (rc *runCtx) gate(g *Gate) error {
 	if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
 		return rc.record(g, o, oh, nil, false, "start-failure", "CWD: "+g.CWD+" is not a directory", approvalHash, nil)
 	}
+	if !insideRepo(l.Root, dir) {
+		// Section 2.6 row 9: a CWD: that resolves (through a symlink) to a
+		// directory outside the canonical repo root escapes the repo.
+		return rc.record(g, o, oh, nil, false, "start-failure", "CWD: "+g.CWD+" resolves outside the repository", approvalHash, nil)
+	}
 	ctx := context.Background()
 	timeout := time.Duration(o.TimeoutS) * time.Second
 	expect, _ := CompileExpect(g.Expect)
@@ -198,8 +235,7 @@ func (rc *runCtx) gate(g *Gate) error {
 	if !valid {
 		switch g.RedMode() {
 		case RedBaseline:
-			empty, err := DiffEmpty(l.Root, l.Base, l.Contract.In, FoldCase())
-			if err == nil && empty {
+			if TrackedDiffEmpty(l.Diff(), l.Contract.In, FoldCase()) {
 				main = Run(ctx, o.Shell, g.Check, dir, timeout, o.OutputCap)
 				mainMatched, _ = expect.Match(main.Output)
 				if ok, why := RealRed(main, mainMatched, l.Config); ok {
@@ -252,6 +288,20 @@ func (rc *runCtx) gate(g *Gate) error {
 		redHash = strp(h)
 	}
 	return rc.record(g, o, oh, main, mainMatched, failure, "", approvalHash, redHash)
+}
+
+// insideRepo reports whether dir, after resolving symlinks, lies inside
+// the canonical repo root.
+func insideRepo(root, dir string) bool {
+	canonRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return false
+	}
+	canonDir, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		return false
+	}
+	return canonDir == canonRoot || strings.HasPrefix(canonDir, canonRoot+string(filepath.Separator))
 }
 
 // relativize rewrites absolute paths under the repo root to repo-relative
@@ -338,7 +388,7 @@ func (rc *runCtx) tree() *TreeInfo {
 
 // Attest meets a manual gate by a human act (section 4.2).
 func Attest(l *Loaded, id, note string) (*Report, error) {
-	if err := AgentShellError("attest"); err != nil {
+	if err := HumanActError("attest", l.Store); err != nil {
 		return nil, err
 	}
 	if strings.TrimSpace(note) == "" {
@@ -386,7 +436,7 @@ func Attest(l *Loaded, id, note string) (*Report, error) {
 // Approve records (or revokes) consent for the selected runnable gates
 // and returns one line per gate naming the resolved oracle.
 func Approve(l *Loaded, only []string, revoke bool) ([]string, error) {
-	if err := AgentShellError("approve"); err != nil {
+	if err := HumanActError("approve", l.Store); err != nil {
 		return nil, err
 	}
 	dir, err := ApprovalDir(l.Root)
