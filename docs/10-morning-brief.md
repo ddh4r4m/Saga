@@ -17,7 +17,7 @@ The repository went from an empty README to a complete research and design packa
 
 ## The thesis, confirmed by evidence
 
-The research supports the original claim more strongly than expected. Among frontier models the harness explains far more outcome variance than the model, harness improvements transfer across model families, and the failure modes users report most (false "done", compaction amnesia, ignored instructions, scope creep, destructive commands, invented packages, run-to-run variance) are all attackable outside the model. Prompt-only tools, which dominate the ecosystem by stars, deliver roughly a tenth of what they advertise under independent measurement. The evidence table is in docs/09 §1.
+The research supports the original claim more strongly than expected. In one small controlled experiment (a preprint) the harness explained far more outcome variance than the model among frontier models, one further preprint shows harness improvements transferring across model families, and the failure modes users report most (false "done", compaction amnesia, ignored instructions, scope creep, destructive commands, invented packages, run-to-run variance) are all attackable outside the model. Prompt-only tools, which dominate the ecosystem by stars, deliver between a seventh and a half of what they advertise under independent measurement. The evidence table is in docs/09 §1.
 
 ## The design
 
@@ -29,7 +29,7 @@ Six research agents (Opus-class general-purpose), then Fable agents for every sp
 
 ## Read the red-team review before deciding anything
 
-An adversarial review by a separate Fable agent (docs/11-red-team-review.md) argues the thesis is plausible but the eight-layer scope is not, and recommends an eight-week, one-hook experiment instead: bare harness versus bare plus gate on 40 tasks with hidden oracles, K=5, one model, primary metric false-done rate, budget under $3k, with a pre-registered kill rule. It also corrects several numbers in the proposal: the publish-tier bench is closer to $12k than the spec's $500 to $2,000, the M0 task set cannot detect a 5 pp effect, and eight headline rows in docs/09 §1 rest on secondary or unverified sources. The orchestrator did not act on the scope cut; that is decision 0 below.
+An adversarial review by a separate Fable agent (docs/11-red-team-review.md) argues the thesis is plausible but the eight-layer scope is not, and recommends an eight-week, one-hook experiment instead: bare harness versus bare plus gate on 40 tasks with hidden oracles, K=5, one model, primary metric false-done rate, budget under $3k, with a pre-registered kill rule. It also corrects several numbers in the proposal: the publish-tier bench is $5.5k to $15k by the spec's own run counts, not the $500 to $2,000 it stated (bench-spec §4.4 and docs/09 §5 now corrected), the M0 task set cannot detect a 5 pp effect, and eight headline rows in docs/09 §1 rest on secondary or unverified sources. The orchestrator did not act on the scope cut; that is decision 0 below.
 
 ## Decisions that need you
 

@@ -237,10 +237,12 @@ Cells = |models| × |harnesses| × |arms| × |tasks| × K. The bench keeps it af
 
 | Tier | Models | Harnesses | Arms | Tasks | K | Approx. cost | Claims allowed |
 |---|---|---|---|---|---|---|---|
-| `smoke` | 1 | 1 | 2 | 10 (S/M) | 1 | ≤ $5 | None; CI sanity only |
+| `smoke` | 1 | 1 | 2 | 10 (S/M) | 1 | $5-20 | None; CI sanity only |
 | `user` | 1 | 1 | 2 | ≤ 20 | 3 | **≤ $20** | "On my repo, directionally", report only, no badge |
-| `dev` | 1 | 1 | ≤ 3 | 30/lang | 5 | $50-150 | Internal go/no-go |
-| `publish` | ≥ 2 families | ≥ 1 | ladder | ≥ 30/lang, 3 langs | 10 | $500-2,000 | Badge (§7.3) |
+| `dev` | 1 | 1 | ≤ 3 | 30/lang | 5 | $450-1,250 per language | Internal go/no-go |
+| `publish` | ≥ 2 families | ≥ 1 | ladder | ≥ 30/lang, 3 langs | 10 | $5,500-15,000 (3 arms); $13,500-36,400 (full 6-rung ladder) | Badge (§7.3) |
+
+Cost arithmetic (corrected 2026-09-03 after the red-team review; the earlier column read ≤ $5, $50-150 and $500-2,000). Runs = models × harnesses × arms × tasks × K; the low figure uses the §2.2 example `cost_hint_usd = 0.85` (an S/M task), the high figure uses doc 05 §1.2's measured $2.30 per solve for Opus 4.7 on S/M tasks; treatment arms carry the default 1.3× multiplier of §4.5. `smoke`: 20 runs, $17 to $46. `dev`: 1 × 1 × 3 × 30 × 5 = 450 runs per language, 150 × c + 300 × c × 1.3, so $459 to $1,242. `publish` minimum: 2 × 1 × 3 × 90 × 10 = 5,400 runs, 1,800 × c + 3,600 × c × 1.3, so $5,508 to $14,904; the full ladder (bare plus six rungs, 7 arms) is 12,600 runs, $13,464 to $36,432. L and XL tasks (§2.3 ratio 30/40/25/5) raise every figure; `user` is a hard cap, not an estimate. M0 replaces this column with measured dollars.
 
 ### 4.5 Budget enforcement
 

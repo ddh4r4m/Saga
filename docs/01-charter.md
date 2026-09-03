@@ -4,7 +4,7 @@
 
 ## One sentence
 
-Saga is a model-agnostic, harness-agnostic layer that turns "the agent probably got it right" into "the agent demonstrably got it right, in one run", by giving any coding agent three things training cannot give it: **knowledge of your repository, a machine-checked definition of done, and memory that survives compaction.**
+Saga is a model-agnostic, harness-agnostic layer that turns "the agent probably got it right" into "the agent demonstrably passed its declared oracles, in one run", by giving any coding agent three things training cannot give it: **knowledge of your repository, a machine-checked definition of done, and memory that survives compaction.**
 
 ## Why this exists
 
@@ -21,7 +21,7 @@ Frontier models improve every few months. The complaints from people who use the
 
 None of those is a knowledge or reasoning gap that the next training run will close. They are gaps between what the model is **asked to remember, believe, or guess** and what it could instead be **told, shown, or given**. That gap is the product.
 
-The first-person account of these failures, written by the agent itself before any external research, is in [02-agent-self-report.md](02-agent-self-report.md). The external evidence is in the research documents that follow, and the evidence table in [doc 09 §1](09-proposal-and-roadmap.md) is the summary. Two findings from the issue mining ([doc 07](07-github-issue-mining.md)) shape the charter most: every mechanism Saga proposes has already been built ad hoc by a user inside an issue thread and shipped by no harness across more than one product (§9), and most 2025-26 data-loss incidents were shell-expansion and permission-layer bugs rather than model intent ([doc 06 D.2](06-model-and-harness-gap-map.md)).
+The first-person account of these failures, written by the agent itself before any external research, is in [02-agent-self-report.md](02-agent-self-report.md). The external evidence is in the research documents that follow, and the evidence table in [doc 09 §1](09-proposal-and-roadmap.md) is the summary. Two findings from the issue mining ([doc 07](07-github-issue-mining.md)) shape the charter most: every mechanism Saga proposes has already been built ad hoc by a user inside an issue thread, each has since been shipped natively by at most one harness, and the cost ledger, canary and post-expansion command validation by none (§9; doc 06 Part B), and most 2025-26 data-loss incidents were shell-expansion and permission-layer bugs rather than model intent ([doc 06 D.2](06-model-and-harness-gap-map.md)).
 
 ## What Saga is
 
@@ -52,7 +52,7 @@ Each principle now cites the document that supports it; doc 09 §3.10 lists what
 5. **Structure survives compaction; prose does not.** Constraints and decisions live in typed records outside the transcript. Evidence: claude-code #21925, #24460, #34556 (doc 07 §4 item 4); only procedural memory shows gains (doc 05 §3).
 6. **Token cost is a first-class metric.** Every component reports what it adds to context. Prefer just-in-time retrieval to preloading. Evidence: cost opacity is the top-ranked cross-harness problem (doc 07 §6 item 1); always-on injection is the top complaint against the tooling repos (doc 07 §7).
 7. **Model-agnostic by construction.** No component may depend on a single vendor's prompt format. Adapters are thin; the core is CLI plus MCP. Evidence: harness effects transfer +5 to +10 pp across model families (doc 03 §2.1); N adapters inherit N× bugs unless the core is one executable (doc 07 §7).
-8. **Local first, private by default.** Indexes, memory, and redaction run on the user's machine. Nothing leaves without passing the guard layer. Evidence: doc 06 C.1, C.2; AI-assisted code has a ~40% higher secret-leak rate.
+8. **Local first, private by default.** Indexes, memory, and redaction run on the user's machine. Nothing leaves without passing the guard layer. Evidence: doc 06 C.1, C.2; GitGuardian's State of Secrets Sprawl 2026 measured secrets in Claude-Code-co-authored commits at about 2× the baseline rate (the 3.2% figure quoted in doc 04 §2.5).
 9. **Validate the command that will run, not the string the model wrote.** Permission decisions are made on the post-expansion, per-segment form of every shell command, and every write is preceded by a snapshot. Evidence: doc 06 D.2 item 1 and C.3 ("validators check the raw string, execution happens post-expansion"); ADR 0006.
 10. **Measure or do not claim.** Every feature ships with a benchmark or is labelled experimental. Marketing claims from other projects are treated as hypotheses. Evidence: two independent A/Bs among ~60 tools (doc 04 §5.1); ADR 0001.
 11. **Pin, record, verify, canary.** Harness version, model id, and effort are recorded per turn; changes are surfaced as events; a fixed regression subset runs on a schedule. Evidence: doc 07 §8; #42796, #46829, #46917 (doc 09 §1); ADR 0007.

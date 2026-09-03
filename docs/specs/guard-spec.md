@@ -285,7 +285,7 @@ Mode is selected per repository at `saga snapshot init`, recorded in `.saga/snap
 | `git-tree` (default) | Everything else, including APFS and NTFS | Temporary index (`GIT_INDEX_FILE=.saga/snap/index`), `git add -A --force` over tracked, untracked-not-ignored and `snapshot.include_ignored`, `git write-tree`, tree id stored at `refs/saga/snap/<session>/<turn>`; real index and HEAD untouched; non-git directories get a private repo under `.saga/snap/repo` | proportional to changed bytes |
 | `reflink` | Large binaries listed in `snapshot.include_ignored` on APFS, XFS, btrfs, ReFS | `cp -c` (clonefile) or `cp --reflink=always` into `.saga/snap/<turn>/` | constant per file |
 
-APFS volume snapshots (`tmutil localsnapshot`) are volume-wide and need admin; ADR 0006's "APFS snapshot" is implemented as clonefile reflinks plus git-tree.
+APFS volume snapshots (`tmutil localsnapshot`) are volume-wide and need admin; ADR 0006 now names git-tree as the default on every filesystem including APFS, with clonefile reflinks only for listed large binaries (see contracts §5).
 
 ### 3.2 Scope and trigger
 

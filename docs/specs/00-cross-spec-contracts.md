@@ -122,7 +122,7 @@ One primitive, `saga snapshot`, implemented in guard (guard-spec §3); no layer 
 | Take | `saga snapshot take --reason guard\|trace\|shape\|gate\|user` → `{id, tree_hash, kind, session, turn, taken}`; an unchanged tree returns the previous snapshot with `taken = false` |
 | Id | `snap:<session>:<turn>:<tree_hash[0:12]>` |
 | `tree_hash` | `tree:<oid>`: git tree id over tracked plus untracked-not-ignored plus `snapshot.include_ignored`, via a temporary index; refs under `refs/saga/snap/<session>/<turn>` |
-| Modes | `git-tree` (default, every filesystem including APFS and NTFS), `zfs`, `btrfs`, `reflink` for large ignored binaries; never an APFS volume snapshot |
+| Modes | `git-tree` (default, every filesystem including APFS and NTFS), `zfs`, `btrfs`, `reflink` for large ignored binaries; never an APFS volume snapshot. ADR 0006 and doc 09 §7 item 7 defer to this row |
 | Read, restore | `saga snapshot show <id> [-- <path>]`; `saga undo <id>` (undo snapshots first) |
 | guard | takes it in `PreToolUse` before every mutating tool |
 | trace | checkpoint at every turn end references the latest id and `tree_hash` (trace-spec §6.3) |
