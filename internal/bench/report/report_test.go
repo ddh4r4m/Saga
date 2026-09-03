@@ -85,7 +85,7 @@ func TestBuildKnownStats(t *testing.T) {
 			t.Errorf("markdown lacks %s", h)
 		}
 	}
-	if strings.Contains(md, "—") {
+	if strings.Contains(md, "\u2014") {
 		t.Error("em dash in report")
 	}
 }
