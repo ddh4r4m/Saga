@@ -1,0 +1,109 @@
+# saga.trace.prices/1 (trace-spec section 3.3). USD per million tokens.
+# Rows are seeded from docs/06-model-and-harness-gap-map.md A.1 to A.4 as
+# captured on 2026-09-02; each row names its source. A model absent from
+# this table costs null, never 0. Replace with `saga trace prices use <file>`.
+schema = "saga.trace.prices/1"
+observed = "2026-09-02"
+
+[[model]]
+id = "claude-fable-5.1"
+vendor = "anthropic"
+training_cutoff = "2026-06"
+in = 10.00
+out = 50.00
+cache_read = 0.25
+cache_write_5m = 12.50
+cache_write_1h = 20.00
+source = "https://www.anthropic.com/claude-fable-and-mythos-5-1"
+note = "doc 06 A.1: cache read -75%; write 1.25x (5m) and 2x (1h) per doc 05 section 4.2"
+
+[[model]]
+id = "claude-fable-5"
+vendor = "anthropic"
+in = 10.00
+out = 50.00
+cache_read = 1.00
+cache_write_5m = 12.50
+cache_write_1h = 20.00
+source = "doc 06 A.1"
+
+[[model]]
+id = "claude-opus-5"
+vendor = "anthropic"
+in = 5.00
+out = 25.00
+cache_read = 0.50
+cache_write_5m = 6.25
+cache_write_1h = 10.00
+source = "doc 06 A.1"
+
+[[model]]
+id = "claude-sonnet-5"
+vendor = "anthropic"
+in = 3.00
+out = 15.00
+cache_read = 0.30
+cache_write_5m = 3.75
+cache_write_1h = 6.00
+source = "doc 06 A.1"
+
+[[model]]
+id = "claude-haiku-4-5-20251001"
+vendor = "anthropic"
+in = 1.00
+out = 5.00
+cache_read = 0.10
+cache_write_5m = 1.25
+cache_write_1h = 2.00
+source = "doc 06 A.1 (Haiku 4.5 $1/$5; cache multipliers per doc 05 section 4.2)"
+
+[[model]]
+id = "gpt-5.6-sol"
+vendor = "openai"
+in = 5.00
+out = 30.00
+cache_read = 0.50
+cache_write_5m = 5.00
+source = "doc 06 A.2 (-20% since 2026-08-21; cache read -90%)"
+
+[[model]]
+id = "gpt-5.6-terra"
+vendor = "openai"
+in = 2.50
+out = 15.00
+cache_read = 0.25
+cache_write_5m = 2.50
+source = "doc 06 A.2"
+
+[[model]]
+id = "gpt-5.6-luna"
+vendor = "openai"
+in = 1.00
+out = 6.00
+cache_read = 0.10
+cache_write_5m = 1.00
+source = "doc 06 A.2"
+
+[[model]]
+id = "gemini-3.1-pro"
+vendor = "google"
+in = 2.00
+out = 12.00
+long_context = { over = 200000, in = 4.00, out = 18.00 }
+source = "doc 06 A.3"
+
+[[model]]
+id = "gemini-3-pro"
+vendor = "google"
+in = 1.25
+out = 10.00
+source = "doc 06 A.3"
+
+[[model]]
+id = "deepseek-v4-pro-0813"
+vendor = "deepseek"
+in = 0.435
+out = 0.87
+cache_read = 0.0036
+open_weight = true
+source = "doc 06 A.4 (raised 2026-08-16)"
