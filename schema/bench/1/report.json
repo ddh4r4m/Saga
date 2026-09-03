@@ -1,0 +1,106 @@
+{
+  "$comment": "saga.bench.report/1 (bench-spec section 9.4). A single-arm report carries primary = null; compare fills primary and secondary with paired deltas, each with a bootstrap CI and a Wilcoxon block.",
+  "type": "object",
+  "required": ["schema", "manifest", "tier", "arms", "primary", "secondary", "per_solved", "instability", "negative", "exclusions", "contamination", "detector_precision", "reproduce"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {"const": "saga.bench.report/1"},
+    "manifest": {"type": "string"},
+    "manifests": {"type": "object", "additionalProperties": {"type": "string"}},
+    "tier": {"enum": ["smoke", "user", "dev", "publish"]},
+    "created": {"type": ["string", "null"]},
+    "task_set_sha256": {"type": ["string", "null"]},
+    "k": {"type": "integer"},
+    "bootstrap_seed": {"type": "integer"},
+    "bootstrap_resamples": {"type": "integer"},
+    "isolation": {"type": ["string", "null"]},
+    "total_cost_usd": {"type": ["number", "null"]},
+    "arms": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["runs", "tasks", "k", "model", "harness", "pass_at_1", "pass_at_1_ci95", "clean_pass_at_1", "pass_k", "instability", "medians", "per_solved", "false_done", "false_done_reason", "regression_rate", "regression_rate_pass", "regression_rate_fail", "scope_violation_rate", "scope_files_median", "cheat_rate", "outcomes", "blocked_reach_attempts", "per_task"],
+        "additionalProperties": false,
+        "properties": {
+          "runs": {"type": "integer"},
+          "tasks": {"type": "integer"},
+          "k": {"type": "integer"},
+          "model": {"type": "string"},
+          "harness": {"type": "string"},
+          "pass_at_1": {"type": "number"},
+          "pass_at_1_ci95": {"type": "array", "items": {"type": "number"}},
+          "clean_pass_at_1": {"type": "number"},
+          "pass_k": {"type": "object", "additionalProperties": {"type": "number"}},
+          "instability": {"type": "number"},
+          "medians": {"type": "object", "additionalProperties": {"type": ["number", "null"]}},
+          "means": {"type": "object", "additionalProperties": {"type": ["number", "null"]}},
+          "per_solved": {
+            "type": "object",
+            "required": ["tokens", "usd"],
+            "additionalProperties": false,
+            "properties": {
+              "tokens": {"type": ["number", "null"]},
+              "usd": {"type": ["number", "null"]}
+            }
+          },
+          "false_done": {"type": ["number", "null"]},
+          "false_done_reason": {"type": ["string", "null"]},
+          "regression_rate": {"type": "number"},
+          "regression_rate_pass": {"type": ["number", "null"]},
+          "regression_rate_fail": {"type": ["number", "null"]},
+          "scope_violation_rate": {"type": "number"},
+          "scope_files_median": {"type": "number"},
+          "cheat_rate": {"type": ["number", "null"]},
+          "outcomes": {"type": "object", "additionalProperties": {"type": "integer"}},
+          "blocked_reach_attempts": {"type": "integer"},
+          "per_task": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["task", "n", "c", "pass_rate", "median_tokens", "median_cost_usd", "median_wall_s", "median_turns"],
+              "additionalProperties": false,
+              "properties": {
+                "task": {"type": "string"},
+                "n": {"type": "integer"},
+                "c": {"type": "integer"},
+                "pass_rate": {"type": "number"},
+                "median_tokens": {"type": "number"},
+                "median_cost_usd": {"type": ["number", "null"]},
+                "median_wall_s": {"type": "number"},
+                "median_turns": {"type": "number"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "primary": {"type": ["object", "null"]},
+    "secondary": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["metric", "arms", "A", "B", "delta", "ci95", "wilcoxon"],
+        "additionalProperties": false,
+        "properties": {
+          "metric": {"type": "string"},
+          "k": {"type": "integer"},
+          "arms": {"type": "array", "items": {"type": "string"}},
+          "A": {"type": ["number", "null"]},
+          "B": {"type": ["number", "null"]},
+          "delta": {"type": ["number", "null"]},
+          "ci95": {"type": ["array", "null"], "items": {"type": ["number", "null"]}},
+          "wilcoxon": {"type": ["object", "null"]},
+          "equivalence": {"type": ["object", "null"]}
+        }
+      }
+    },
+    "per_solved": {"type": "object", "additionalProperties": {"type": "object"}},
+    "instability": {"type": "object"},
+    "negative": {"type": "array", "items": {"type": "object"}},
+    "exploratory": {"type": "array", "items": {"type": "object"}},
+    "exclusions": {"type": "object", "additionalProperties": {"type": "integer"}},
+    "contamination": {"type": "array", "items": {"type": "object"}},
+    "detector_precision": {"type": "object", "additionalProperties": {"type": ["number", "null"]}},
+    "reproduce": {"type": "array", "items": {"type": "string"}}
+  }
+}

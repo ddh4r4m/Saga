@@ -1,0 +1,101 @@
+{
+  "$comment": "saga.bench.run/1: one row per run (bench-spec section 9.3). Usage is the contracts section 7.2 object as reported by the harness; cost is priced from the pinned table, null with a reason when unpriced.",
+  "type": "object",
+  "required": ["schema", "manifest", "task", "model", "harness", "arm", "i", "seed", "outcome", "claimed_done", "oracle", "scan", "usage", "cost_usd", "wall_s", "turns", "tool_calls", "drift", "compliance", "blocked_reach_attempts", "component_used", "tool_sequence", "artifacts"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {"const": "saga.bench.run/1"},
+    "manifest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "task": {"type": "string"},
+    "model": {"type": "string"},
+    "harness": {"type": "string"},
+    "arm": {"type": "string"},
+    "i": {"type": "integer", "minimum": 1},
+    "seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "outcome": {"enum": ["completed", "timeout", "turn_cap", "budget", "abandon", "infra"]},
+    "outcome_reason": {"type": ["string", "null"]},
+    "claimed_done": {"type": ["boolean", "null"]},
+    "claimed_done_reason": {"type": ["string", "null"]},
+    "oracle": {
+      "type": "object",
+      "required": ["exit", "tests", "pass", "regressed", "ceiling_band", "apply_error"],
+      "additionalProperties": false,
+      "properties": {
+        "exit": {"type": "integer"},
+        "tests": {"type": "object", "additionalProperties": {"enum": ["PASS", "FAIL"]}},
+        "pass": {"type": "boolean"},
+        "regressed": {"type": "array", "items": {"type": "string"}},
+        "ceiling_band": {"type": ["array", "null"], "items": {"type": "number"}},
+        "apply_error": {"type": ["string", "null"]}
+      }
+    },
+    "scan": {
+      "type": "object",
+      "required": ["assertion_edit", "skip_marker", "test_delete", "hard_coded", "oracle_touch", "env_tamper", "scope_violations", "flagged"],
+      "additionalProperties": false,
+      "properties": {
+        "assertion_edit": {"type": "integer", "minimum": 0},
+        "skip_marker": {"type": "integer", "minimum": 0},
+        "test_delete": {"type": "integer", "minimum": 0},
+        "hard_coded": {"type": "integer", "minimum": 0},
+        "oracle_touch": {"type": "boolean"},
+        "env_tamper": {"type": "boolean"},
+        "scope_violations": {"type": "array", "items": {"type": "string"}},
+        "flagged": {"type": "boolean"},
+        "detectors": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "usage": {
+      "type": "object",
+      "required": ["input_fresh", "cache_read", "cache_write_5m", "cache_write_1h", "output", "reasoning", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "input_fresh": {"type": "integer", "minimum": 0},
+        "cache_read": {"type": "integer", "minimum": 0},
+        "cache_write_5m": {"type": "integer", "minimum": 0},
+        "cache_write_1h": {"type": "integer", "minimum": 0},
+        "output": {"type": "integer", "minimum": 0},
+        "reasoning": {"type": ["integer", "null"]},
+        "reasoning_reason": {"type": ["string", "null"]},
+        "source": {"type": "string"}
+      }
+    },
+    "cost_usd": {"type": ["number", "null"]},
+    "cost_usd_reason": {"type": ["string", "null"]},
+    "wall_s": {"type": "number", "minimum": 0},
+    "turns": {"type": "integer", "minimum": 0},
+    "tool_calls": {"type": "integer", "minimum": 0},
+    "drift": {
+      "type": "object",
+      "required": ["repeat", "edit_fail_streak", "oscillation", "out_of_scope_read", "late_scope_expansion"],
+      "additionalProperties": false,
+      "properties": {
+        "repeat": {"type": "integer", "minimum": 0},
+        "edit_fail_streak": {"type": "integer", "minimum": 0},
+        "oscillation": {"type": "integer", "minimum": 0},
+        "out_of_scope_read": {"type": "integer", "minimum": 0},
+        "late_scope_expansion": {"type": "integer", "minimum": 0}
+      }
+    },
+    "compliance": {"type": "array", "items": {"type": "object"}},
+    "blocked_reach_attempts": {"type": "integer", "minimum": 0},
+    "component_used": {"type": ["boolean", "null"]},
+    "tool_sequence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tool", "args_hash", "error"],
+        "additionalProperties": false,
+        "properties": {
+          "tool": {"type": "string"},
+          "args_hash": {"type": "string"},
+          "error": {"type": "boolean"}
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+    }
+  }
+}

@@ -1,0 +1,140 @@
+{
+  "$comment": "saga.bench.harness/1: the per-run disclosure block (bench-spec section 6.2). Any field the adapter cannot determine is null with a sibling <field>_reason string.",
+  "type": "object",
+  "required": ["schema", "harness", "model", "system_prompt", "tools", "context", "permissions", "instructions", "hooks", "mcp_servers", "limits", "retries", "env_vars", "host", "blocks"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {"const": "saga.bench.harness/1"},
+    "harness": {
+      "type": "object",
+      "required": ["name", "version", "binary_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "version": {"type": ["string", "null"]},
+        "binary_sha256": {"type": ["string", "null"]}
+      },
+      "patternProperties": {"^[a-z_]+_reason$": {"type": "string"}}
+    },
+    "model": {
+      "type": "object",
+      "required": ["id", "snapshot", "fingerprint", "reasoning_effort", "temperature", "seed", "seed_supported"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": ["string", "null"]},
+        "snapshot": {"type": ["string", "null"]},
+        "fingerprint": {"type": ["string", "null"]},
+        "reasoning_effort": {"type": ["string", "null"]},
+        "temperature": {"type": ["number", "null"]},
+        "seed": {"type": ["string", "null"]},
+        "seed_supported": {"type": "boolean"}
+      },
+      "patternProperties": {"^[a-z_]+_reason$": {"type": "string"}}
+    },
+    "system_prompt": {
+      "type": "object",
+      "required": ["sha256", "verbatim_archived"],
+      "additionalProperties": false,
+      "properties": {
+        "sha256": {"type": ["string", "null"]},
+        "verbatim_archived": {"type": "boolean"}
+      },
+      "patternProperties": {"^[a-z_]+_reason$": {"type": "string"}}
+    },
+    "tools": {
+      "type": "object",
+      "required": ["sha256", "names"],
+      "additionalProperties": false,
+      "properties": {
+        "sha256": {"type": ["string", "null"]},
+        "names": {"type": "array", "items": {"type": "string"}}
+      },
+      "patternProperties": {"^[a-z_]+_reason$": {"type": "string"}}
+    },
+    "context": {
+      "type": "object",
+      "required": ["window", "compaction", "compaction_threshold", "rewind"],
+      "additionalProperties": false,
+      "properties": {
+        "window": {"type": ["integer", "null"]},
+        "compaction": {"type": ["string", "null"]},
+        "compaction_threshold": {"type": ["number", "null"]},
+        "rewind": {"type": ["boolean", "null"]}
+      },
+      "patternProperties": {"^[a-z_]+_reason$": {"type": "string"}}
+    },
+    "permissions": {
+      "type": "object",
+      "required": ["mode", "sandbox", "allow", "deny"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": {"type": ["string", "null"]},
+        "sandbox": {"type": ["string", "null"]},
+        "allow": {"type": "array", "items": {"type": "string"}},
+        "deny": {"type": "array", "items": {"type": "string"}}
+      },
+      "patternProperties": {"^[a-z_]+_reason$": {"type": "string"}}
+    },
+    "instructions": {
+      "type": "object",
+      "required": ["CLAUDE.md_sha256", "AGENTS.md_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "CLAUDE.md_sha256": {"type": ["string", "null"]},
+        "AGENTS.md_sha256": {"type": ["string", "null"]}
+      },
+      "patternProperties": {"^[A-Za-z_.]+_reason$": {"type": "string"}}
+    },
+    "hooks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["event", "script_sha256"],
+        "additionalProperties": false,
+        "properties": {
+          "event": {"type": "string"},
+          "script_sha256": {"type": ["string", "null"]},
+          "command": {"type": "string"}
+        },
+        "patternProperties": {"^[a-z_]+_reason$": {"type": "string"}}
+      }
+    },
+    "mcp_servers": {"type": "array", "items": {"type": "string"}},
+    "limits": {
+      "type": "object",
+      "required": ["max_turns", "wall_s", "usd"],
+      "additionalProperties": false,
+      "properties": {
+        "max_turns": {"type": "integer"},
+        "wall_s": {"type": "number"},
+        "usd": {"type": "number"}
+      }
+    },
+    "retries": {
+      "type": "object",
+      "required": ["policy", "count"],
+      "additionalProperties": false,
+      "properties": {
+        "policy": {"type": "string"},
+        "count": {"type": "integer"}
+      }
+    },
+    "env_vars": {"type": "object", "additionalProperties": {"type": "string"}},
+    "host": {
+      "type": "object",
+      "required": ["os", "arch", "image_digest"],
+      "additionalProperties": false,
+      "properties": {
+        "os": {"type": "string"},
+        "arch": {"type": "string"},
+        "image_digest": {"type": ["string", "null"]}
+      },
+      "patternProperties": {"^[a-z_]+_reason$": {"type": "string"}}
+    },
+    "blocks": {"type": "array", "items": {"type": "string"}},
+    "config_hash": {"type": ["string", "null"]},
+    "prompt_hash": {"type": ["string", "null"]},
+    "native_log": {"type": ["string", "null"]},
+    "transcript_path": {"type": ["string", "null"]}
+  }
+}

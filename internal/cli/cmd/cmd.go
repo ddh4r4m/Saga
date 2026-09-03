@@ -39,6 +39,7 @@ usage: saga <command> [flags]
   trace prices show | use <file>
   trace doctor [--json]                 trace's subset of saga doctor
   doctor [--json]                       environment, hooks, usage source, pins
+  bench verify-task|run|report|compare  the measurement harness (saga bench -h)
   version
 
 exit codes (contracts section 4): 0 ok, 1 finding, 2 usage, 3 refusal, 4 approval, 5 integrity, 6 environment, 7 contamination
@@ -90,6 +91,8 @@ func (a *App) run(args []string) error {
 		return a.cmdTrace(args[1:])
 	case "doctor":
 		return a.cmdDoctor(args[1:])
+	case "bench":
+		return a.cmdBench(args[1:])
 	}
 	fmt.Fprint(a.Stderr, usage)
 	return cli.Errorf(cli.ExitUsage, "unknown command %q", args[0])

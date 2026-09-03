@@ -1,0 +1,108 @@
+{
+  "$comment": "saga.bench.manifest/1 (bench-spec section 8.1). The manifest hash is sha256 of the canonical JSON; it is computed before the first run, so spent_usd is null here and lives in the report.",
+  "type": "object",
+  "required": ["schema", "created", "tier", "bench_version", "preregistration_sha256", "task_set", "arms", "models", "harnesses", "k", "run_seed", "bootstrap_seed", "price_table_sha256", "abstain_list_sha256", "isolation", "images", "host", "budget"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {"const": "saga.bench.manifest/1"},
+    "created": {"type": "string"},
+    "tier": {"enum": ["smoke", "user", "dev", "publish"]},
+    "bench_version": {
+      "type": "object",
+      "required": ["git", "binary_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "git": {"type": ["string", "null"]},
+        "binary_sha256": {"type": ["string", "null"]}
+      }
+    },
+    "preregistration_sha256": {"type": ["string", "null"]},
+    "task_set": {
+      "type": "object",
+      "required": ["sha256", "tasks"],
+      "additionalProperties": false,
+      "properties": {
+        "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "sha256", "verified_at"],
+            "additionalProperties": false,
+            "properties": {
+              "id": {"type": "string"},
+              "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+              "verified_at": {"type": ["string", "null"]}
+            }
+          }
+        }
+      }
+    },
+    "arms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "components"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string"},
+          "components": {"type": "array", "items": {"type": "string"}},
+          "blocks_in_control": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "models": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "snapshot", "training_cutoff"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string"},
+          "snapshot": {"type": ["string", "null"]},
+          "training_cutoff": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "harnesses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "version", "adapter_sha256"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string"},
+          "version": {"type": ["string", "null"]},
+          "adapter_sha256": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "k": {"type": "integer", "minimum": 1},
+    "run_seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "bootstrap_seed": {"type": "integer"},
+    "price_table_sha256": {"type": ["string", "null"]},
+    "abstain_list_sha256": {"type": "string"},
+    "isolation": {"enum": ["container", "worktree"]},
+    "images": {"type": "object", "additionalProperties": {"type": "string"}},
+    "host": {
+      "type": "object",
+      "required": ["os", "arch"],
+      "additionalProperties": false,
+      "properties": {
+        "os": {"type": "string"},
+        "arch": {"type": "string"},
+        "kernel": {"type": ["string", "null"]}
+      }
+    },
+    "budget": {
+      "type": "object",
+      "required": ["estimate_usd", "cap_usd", "spent_usd"],
+      "additionalProperties": false,
+      "properties": {
+        "estimate_usd": {"type": "number"},
+        "cap_usd": {"type": "number"},
+        "spent_usd": {"type": ["number", "null"]}
+      }
+    }
+  }
+}
