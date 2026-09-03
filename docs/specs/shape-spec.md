@@ -27,7 +27,7 @@ Shape sits between a tool's raw output and the model's context. It does four det
 | Mechanism | Failure mode | Source |
 |---|---|---|
 | Output parsers, first error with `file:line` | "40k characters, I skim, I miss the one line and fix the wrong thing" | doc 02 item 6; Anthropic "return only high-signal information", doc 03 §1.2 |
-| Head/tail truncation, never mid-line, error-aware tail | Truncated signal; harness caps are blind | Codex 256 lines / 10 KiB head+tail, OpenClaw error-aware tail, doc 05 §5; Claude Code 25k-token cap, doc 03 §1.2 |
+| Head/tail truncation, never mid-line, error-aware tail | Truncated signal; harness caps are blind | Codex 256 lines / 10 KiB head+tail, OpenClaw error-aware tail, doc 05 §5; Claude Code: MCP results capped at 25,000 tokens, Bash results inline to about 30,000 characters then a file path plus preview (harness-facts C28) |
 | 100-line read windows, ≤50 search hits, grouping | Full-file reads and iterative search lose accuracy | SWE-agent: 100-line viewer 18.0% vs full file 12.7%; ≤50 summarised hits 18.0% vs iterative 12.0%, doc 03 §1.2 |
 | Bounded per-turn output, ledger visibility | Accumulated tool output is the hidden cost driver | claude-code #16157 (724 reactions, 1,491 comments), doc 07 §6 item 1; context rot, doc 03 §2.3 |
 | Edit verification: parse check and diff echo | "old_string not found", partial applies, success reported either way | doc 02 item 7; cline #4384 ("the agent often reports success either way, so the trace is the only ground truth"), doc 07 §2 and §6 item 4; gemini-cli #5251, #6766, #2553; SWE-agent lint-on-edit +3.0 pp, doc 03 §1.2 |
@@ -171,7 +171,7 @@ Error regex (generic, used when no parser matched and for promotion): `(?i)^(.*\
 
 ### 3.2 Per-family defaults
 
-Token figures are `bytes/4` estimates. The hard caps are below Claude Code's 25k-token result cap (doc 03 §1.2) so shape, not the harness, decides what is dropped.
+Token figures are `bytes/4` estimates. The hard caps are below Claude Code's result caps (MCP 25,000 tokens via `MAX_MCP_OUTPUT_TOKENS`; Bash about 30,000 characters inline, 10,000 on a failing command, then a file path plus preview; harness-facts C28) so shape, not the harness, decides what is dropped.
 
 | Family class | Default kept | Default ceiling | Hard ceiling |
 |---|---|---|---|
@@ -327,7 +327,7 @@ Entries share `result_hash` with trace-spec §2.3, so `saga trace replay` (permi
 
 ## 6. Search and read shaping
 
-Search shaping applies to `rg`, `grep`, `git grep`, `ag`, `find`, `ls -R` output in wrapper mode and to the harness's `Grep`/`Glob` result when a hook exposes it (Gemini `AfterTool`; Claude Code `PostToolUse` exposes `tool_response` for feedback only, §7).
+Search shaping applies to `rg`, `grep`, `git grep`, `ag`, `find`, `ls -R` output in wrapper mode and to the harness's `Grep`/`Glob` result when a hook exposes it (Gemini `AfterTool`; Claude Code `PostToolUse` `updatedToolOutput` once the `Grep`/`Glob` output shape is known, §7.1).
 
 ```
 saga shape: grep  47 hits in 12 files (showing 20 in 6 files; ≤50 cap)  log 9c02be117a5d
@@ -355,17 +355,18 @@ narrow: add a path prefix or a longer literal; symbol lookup: saga index search 
 
 Adapters follow gate-spec §6: translation only, under 150 lines, recorded-fixture tested, no shaping logic. Every layer binds the same events and a harness accepts one `updatedInput` and one `reason` per event, so the installer writes a single `saga hook <harness> <event>` command per event. The normative order and merge rules are contracts §1: on PreToolUse **trace, guard, route, mem, shape, gate, trace** (deny short-circuits; `updatedInput` merged field-wise, one command rewrite; `additionalContext` and `reason` concatenated under the gate-spec §9 ceilings); on PostToolUse **trace, shape, gate, guard, mem, trace**. Shape's rows below are its contribution to that merged output, and `saga shape install` is an alias that adds shape to the manifest and re-runs `saga install`.
 
-### 7.1 Claude Code (hook facts from gate-spec §6.1 and guard-spec §8.1, verified 2026-09-02; shape-specific fields marked *probe*)
+### 7.1 Claude Code (hook facts from gate-spec §6.1 and guard-spec §8.1, verified 2026-09-03 against `harness-facts.md` §1; remaining *probe* cells are output shapes the docs do not give)
 
 | Event / matcher | Shape call | Output |
 |---|---|---|
-| `PreToolUse` / `Bash` | none | when the install probe found `updatedInput`: `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","updatedInput":{"command":"saga shape run --mask --harness claude -- <original>"}}}`; the masker inside `shape run` is guard's (§2.1), so the guard-spec §4.4 rewrite and this one are the same rewrite |
+| `PreToolUse` / `Bash\|PowerShell` | none | `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","updatedInput":{...full tool_input..., "command":"saga shape run --mask --harness claude -- <original>"}}}` (`updatedInput` verified, C3; it replaces the whole input object, so `description`, `timeout` and `run_in_background` are echoed); the masker inside `shape run` is guard's (§2.1), so the guard-spec §4.4 rewrite and this one are the same rewrite |
+| `PostToolUse` / `Bash\|PowerShell` (result path) | `parse --json` on `tool_response` | used only for a `Bash` call that ran unwrapped (rewrite refused or absent): `hookSpecificOutput.updatedToolOutput = {"stdout": <rendering>, "stderr": "", "interrupted": false, "isImage": false}`, the documented `Bash` output shape (verified, C7); emitted only when shaping changed the bytes; recorded as `replaced_via: updatedToolOutput` |
 | `PreToolUse` / `Edit\|Write\|MultiEdit\|NotebookEdit` | `edit pre --path` | `{}` (records the pre-image; never blocks) |
-| `PostToolUse` / `Edit\|Write\|MultiEdit\|NotebookEdit` | `edit post --json` with `tool_input` and `tool_response` on stdin | on a non-`applied` verdict: `{"decision":"block","reason":"<≤120 tok>"}`. **Feedback only**: PostToolUse cannot undo or replace the result (gate-spec §6.1); `reason` lands next to the tool result. When the probe finds `hookSpecificOutput.additionalContext` on PostToolUse *probe*, the diff echo goes there and `reason` holds only the verdict line |
+| `PostToolUse` / `Edit\|Write\|MultiEdit\|NotebookEdit` | `edit post --json` with `tool_input` and `tool_response` on stdin | on a non-`applied` verdict: `{"decision":"block","reason":"<≤120 tok>"}`. **Feedback**: PostToolUse cannot undo the edit, and `decision: block` leaves the original result visible ("Claude still sees the original output", C6); shape never replaces an edit result. The diff echo goes in `hookSpecificOutput.additionalContext` (verified, C8) and `reason` holds only the verdict line |
 | `PostToolUse` / `Bash` | `edit post --from-tree` | as above for files changed by the command; no output when nothing changed |
-| `PostToolUse` / `Read\|Grep\|Glob` | none | not rewritable on Claude Code; shape records `result_bytes` for the ledger from `tool_response` and emits nothing. The bench measures whether the managed-block advice to prefer `saga shape read` and `saga shape run -- rg` is followed; it is advice, not enforcement (ADR 0002), and is reported as such |
+| `PostToolUse` / `Read\|Grep\|Glob` | `parse --json` on `tool_response` *probe* | rewritable in principle via `updatedToolOutput`, but the value "must match the tool's output shape" and a mismatch is silently ignored (C7); the shapes of these three tools are undocumented, so the install probe records the shape from a fixture call and enables replacement only when a round-trip fixture passes. Until then shape records `result_bytes` for the ledger and emits nothing. The bench measures whether the managed-block advice to prefer `saga shape read` and `saga shape run -- rg` is followed; it is advice, not enforcement (ADR 0002), and is reported as such |
 
-Without `updatedInput` the Bash path degrades to accounting only and `saga doctor` reports `shape: wrapper unavailable on this Claude Code version`.
+Without `updatedInput` the Bash path degrades to the `updatedToolOutput` result path, and without both to accounting only, and `saga doctor` reports `shape: wrapper unavailable on this Claude Code version`. Hook output strings are capped at 10,000 characters (C24), so a rendering above that goes to the cache and the hook returns the `shape.more` stub.
 
 ### 7.2 Gemini CLI (gate-spec §6.2)
 
@@ -377,7 +378,7 @@ Without `updatedInput` the Bash path degrades to accounting only and `saga docto
 
 ### 7.3 Codex CLI (gate-spec §6.3)
 
-`PreToolUse` and `PostToolUse` exist; whether `PreToolUse` accepts an input rewrite and whether `PostToolUse` can replace a result are unverified and treated as configuration probed at install. Verified-absent capabilities fall back to feedback (`{"decision":"block","reason":…}`) for edits and to wrapper mode for commands. Codex hooks run outside the sandbox (guard-spec §8.3), so `shape run` inside the sandbox must be the manifest binary and the cache directory must be writable from within it (`.saga/shape/` added to the sandbox write list, guard-spec §8.4).
+Verified 2026-09-03 (harness-facts X8, X11): `PreToolUse` accepts `updatedInput` with `permissionDecision: "allow"` and a string `command`, so the Bash rewrite is the same as on Claude Code; `PostToolUse` `decision: block` "replaces the tool result with that feedback", so a shaped rendering can be delivered as the result on the Gemini pattern, emitted only when shaping changed the bytes, and edit verdicts stay feedback via `hookSpecificOutput.additionalContext` (X12) because a `block` would hide the harness's own result. Model-visible hook output is capped near 2,500 tokens (X20). Codex hooks run outside the sandbox (guard-spec §8.3), so `shape run` inside the sandbox must be the manifest binary and the cache directory must be writable from within it (`.saga/shape/` added to the sandbox write list, guard-spec §8.4).
 
 ### 7.4 Wrapper mode (every harness, CI, harnesses without hooks)
 
@@ -391,9 +392,9 @@ Runs the command with the harness's shell semantics (`bash -lc` on POSIX, `pwsh 
 
 | Capability | Claude Code | Gemini CLI | Codex CLI | Wrapper / CI |
 |---|---|---|---|---|
-| Shaped Bash results in context | via `updatedInput` rewrite (probe) | via `AfterTool` replace or `BeforeTool` rewrite (probe) | wrapper or probe | yes |
-| Shaped `Read`/`Grep` results | no (accounting only) | `AfterTool` replace | no | `shape read`, `shape run -- rg` |
-| Edit verification feedback | `reason` (+ `additionalContext` probe) | replaces result | `reason` | `shape edit post` in CI over the PR diff (parse check only) |
+| Shaped Bash results in context | via `updatedInput` rewrite (verified) or `updatedToolOutput` (verified) | via `AfterTool` replace (verified) or `BeforeTool` `tool_input` merge (verified) | via `updatedInput` rewrite (verified) or `PostToolUse` `block` replace (verified) | yes |
+| Shaped `Read`/`Grep` results | `updatedToolOutput` once the output shape probe passes; else accounting only | `AfterTool` replace | no (Codex file reads are shell commands, so they take the Bash path) | `shape read`, `shape run -- rg` |
+| Edit verification feedback | `reason` + `additionalContext` (verified) | replaces result | `additionalContext` (a `block` would replace the result) | `shape edit post` in CI over the PR diff (parse check only) |
 | Cache | yes, inside the wrapper | yes | yes | yes |
 | Per-call token accounting | yes (`tool_response` bytes) | yes | yes | yes |
 

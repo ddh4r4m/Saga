@@ -518,28 +518,29 @@ Adapters follow gate-spec §6: translation-only, under 150 lines, no guard logic
 
 | Event / matcher | Guard call | Output |
 |---|---|---|
-| `PreToolUse` / `Bash` | `check-cmd --json` then `snapshot take` if the decision is not deny | `permissionDecision: allow\|ask\|deny` with `permissionDecisionReason`; when `mask.enabled` and the install probe found `updatedInput`, `updatedInput.command = "saga guard exec --mask -- <cmd>"` |
+| `PreToolUse` / `Bash\|PowerShell` | `check-cmd --json` then `snapshot take` if the decision is not deny | `permissionDecision: allow\|ask\|deny` with `permissionDecisionReason`; when `mask.enabled`, `updatedInput` = the full original `tool_input` with `command = "saga guard exec --mask -- <cmd>"` (verified; Claude Code replaces the whole input object, harness-facts C3) |
+| `PostToolUse` / `Bash\|PowerShell` | `mask scan --output` | second masking point for output that bypassed the rewrite (a `Bash` call that ran with the original command): `hookSpecificOutput.updatedToolOutput = {stdout, stderr, interrupted, isImage}` with placeholders substituted, the documented `Bash` shape (harness-facts C7); emitted only when a secret was found |
 | `PreToolUse` / `Read` | credential-path match | `deny` with the `saga guard mask cat` hint; else allow |
 | `PreToolUse` / `Write\|Edit\|NotebookEdit\|MultiEdit` | `snapshot take`; `mask scan --content`; `unmask` placeholders in content; D11 path check on `file_path` | `deny` on a D11 path (`.saga/policy.toml`, `.saga/route.toml`, `.saga/manifest.json`, `.saga/.gitignore`, hook settings); `ask` when the write introduces a real secret; `updatedInput.content` with placeholders unmasked where §4.3 permits |
 | `PreToolUse` / `mcp__*` | `mcp check --tool --args` | `deny` when outside `caps` or not allow-listed |
 | `UserPromptSubmit` | `mask scan --prompt` | `{"decision":"block","reason":"<masked prompt>"}` |
 | `PostToolUse` / `Edit\|Write` on manifests | `deps check --manifest` | feedback only (gate-spec §6.1 fact table) |
 
-Install probes `updatedInput` support, `permissionDecision: "ask"` support and the hook timeout; without `updatedInput`, Bash output masking is unavailable on Claude Code and `saga doctor` says so.
+`updatedInput` and `permissionDecision: "ask"` are verified on Claude Code 2.1.258 (harness-facts C2, C3); the install probe still exercises them per version and, without `updatedInput`, Bash output masking on Claude Code falls back to the `PostToolUse` `updatedToolOutput` row above and `saga doctor` says so. A `PreToolUse` command hook that reaches its timeout **does not block** on Claude Code ("don't count on a stalled hook to act as a gate", C23), so guard's step honours the composed entry's deadline (contracts §1.1, default 5,000 ms) and the entry emits `deny` with `saga: deadline` rather than letting the harness time out. Hooks run outside the sandbox (C27) and `@`-referenced files never pass through `PreToolUse` `Read` (C20); credential paths are also denied by a `Read` permission rule that `saga install` writes.
 
 ### 8.2 Gemini CLI
 
-`BeforeTool` maps to the PreToolUse rows with `{"decision":"deny","reason":…}`; Gemini has no `ask`, so `ask` is emitted as `deny` naming the allow-rule to add, and the collapse is recorded. `AfterTool` replaces the result with masked output, the one native PostToolUse masking point (gate-spec §6.2). On Windows the adapter passes `shell=pwsh`.
+`BeforeTool` maps to the PreToolUse rows with `{"decision":"deny","reason":…}` and `hookSpecificOutput.tool_input` for the command rewrite (a merge, harness-facts G2). An `ask` decision exists in the Gemini source but is undocumented (G3), so `ask` is emitted as `deny` naming the allow-rule to add, the collapse is recorded, and the install probe tests `ask` per version. `AfterTool` `deny` replaces the result with `reason` (G4), which is the native PostToolUse masking point; the adapter emits it only when a secret was found. Non-JSON stdout defaults to allow (G11). On Windows the adapter passes `shell=pwsh`.
 
 ### 8.3 Codex CLI
 
-Per gate-spec §6.3; `turn_id` is the snapshot turn id, `permission_mode` maps to the §2.6 edit grant, `PermissionRequest` is bound so `ask` surfaces as a Codex approval. Codex hooks run outside the sandbox (doc 06 Part B), so guard runs unsandboxed and must be exactly the manifest's binary.
+Per gate-spec §6.3; `turn_id` is the snapshot turn id, `permission_mode` maps to the §2.6 edit grant. `permissionDecision: "ask"` on `PreToolUse` is parsed but unsupported and the call proceeds (harness-facts X10), so it is never emitted: `ask` collapses to `deny` naming the allow rule, as on Gemini. `PermissionRequest` is bound too, but it fires only when Codex would prompt anyway, so it can approve or deny an approval, not create one. `updatedInput` (with `permissionDecision: "allow"`, string `command`) is verified (X8). `PostToolUse` `decision: block` replaces the result (X11) and is the output-masking point, emitted only on a finding. Codex hooks run outside the sandbox with a cleared environment (X21), so the entry is the absolute path of the manifest binary; project hooks need workspace trust and per-hook `/hooks` trust (X3), and Codex calls tool hooks "not a complete enforcement boundary" (X19), so guard's Codex adapter is defence in depth over the sandbox and CI mode, never the boundary.
 
 ### 8.4 OS sandbox compatibility
 
 | Sandbox | Requirement for guard |
 |---|---|
-| Seatbelt via `@anthropic-ai/sandbox-runtime` (hooks inside the sandbox) | Write allow for `.saga/`, `.git/refs/saga/`, `~/.saga/`; read for the tree; network allow for registry hosts only (`deps.offline = true` otherwise); keystore access for the vault |
+| Seatbelt via `@anthropic-ai/sandbox-runtime` (Claude Code). Hooks run **outside** the sandbox (harness-facts C27); the rewritten Bash command `saga guard exec` or `saga shape run` runs **inside** it | For the in-sandbox wrapper: write allow for `.saga/`, `.git/refs/saga/`, `~/.saga/`; read for the tree; network allow for registry hosts only (`deps.offline = true` otherwise); keystore access for the vault. The sandbox itself denies writes to `.claude` settings and `.claude/hooks` from sandboxed commands, which backs D11 |
 | bubblewrap, Landlock, seccomp (Codex Linux) | Same paths; Landlock rules must include `.saga/snap/` write; `zfs`/`btrfs` modes need the snapshot capability outside the sandbox, so guard falls back to `git-tree` inside one |
 | Windows restricted tokens and Job Objects | `git-tree` only; ReFS block clone optional; DPAPI for the vault |
 | Container (OpenHands-style) | Guard runs in the container; the vault is per container unless `SAGA_VAULT_DIR` is mounted; snapshots are cheap because the container is disposable, and CI mode may turn them off |

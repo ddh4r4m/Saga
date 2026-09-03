@@ -642,21 +642,21 @@ Exit codes follow the uniform table in contracts §4: 0 ok, 1 finding (budget ex
 
 ### 9.3 Adapter hook points per harness
 
-Verification status follows gate-spec §6: hook envelopes were verified against vendor docs on 2026-09-02; the usage and transcript columns below are the fields the bench-spec §6.1 adapters already consume, and any cell marked *probe* is confirmed by the adapter conformance suite at install, never assumed.
+Verification status follows gate-spec §6: hook envelopes were verified against vendor docs and default-branch source on 2026-09-03 (`harness-facts.md`); the usage and transcript columns below are the fields the bench-spec §6.1 adapters already consume, and any cell marked *probe* is confirmed by the adapter conformance suite at install, never assumed.
 
 | Observation | Claude Code | Codex CLI | Gemini CLI / successor | `bare` | Proxy (any) |
 |---|---|---|---|---|---|
 | Tool call, args, result | `PreToolUse`/`PostToolUse` stdin (`tool_name`, `tool_input`, `tool_response`) | `PreToolUse`/`PostToolUse` (`turn_id` present) | `BeforeTool`/`AfterTool` (`tool_response` on After) | in-process | not visible (tools run client-side) |
 | Turn boundaries | `UserPromptSubmit`, `Stop` | `UserPromptSubmit`, `Stop` | `AfterAgent` (`prompt`, `prompt_response`) | in-process | request boundaries |
-| Final assistant message (claim checks, §5.5) | last assistant message in `transcript_path`, read-only, at `Stop` | `last_assistant_message` on `Stop` stdin | `AfterAgent` `prompt_response` | in-process | response body |
+| Final assistant message (claim checks, §5.5) | `last_assistant_message` on `Stop` and `SubagentStop` stdin (verified, harness-facts C12; the transcript "may lag the in-memory conversation") | `last_assistant_message` on `Stop` stdin | `AfterAgent` `prompt_response` | in-process | response body |
 | Usage per call | `transcript_path` JSONL: per assistant message `usage` with `input_tokens`, `cache_creation_input_tokens` (5m/1h split *probe*), `cache_read_input_tokens`, `output_tokens`; `-p --output-format stream-json` usage events | `codex exec --json` usage; rollout JSONL under `~/.codex/sessions` *probe* | `-p --output-format json` summary; per-call *probe* | provider response | provider response |
 | Model served | transcript message `model` field | *probe* | *probe*; fallback banner in log | response | response |
 | Effort / thinking | settings hash; per-call *probe* | config `model_reasoning_effort` | settings | request | request |
 | System prompt, tool defs | not exposed (`null`, reason) | not exposed | not exposed | exact | exact |
 | Request id, fingerprint | not exposed | not exposed | not exposed | headers | headers |
-| Compaction | `PreCompact` (+`PostCompact` *probe*) | `PreCompact`, `PostCompact` | *probe*; else inferred from a context drop > 50% | n/a | inferred |
-| Subagents | `SubagentStop`; subagent transcripts *probe* | `SubagentStop` | *probe* | n/a | separate request streams |
-| Feedback channel for warn | PostToolUse `reason`, Stop `additionalContext` | PostToolUse `reason` | AfterTool `reason` (replaces the tool result: emit only on a finding, gate-spec §6.2) | stderr | none |
+| Compaction | `PreCompact` (`trigger`), `PostCompact` (`trigger`, `compact_summary`; verified, C16; trace records the summary hash and length) | `PreCompact`, `PostCompact` (`turn_id`, `trigger`; verified, X16) | *probe*; else inferred from a context drop > 50% | n/a | inferred |
+| Subagents | `SubagentStart` (`agent_id`, `agent_type`), `SubagentStop` (`agent_transcript_path`, `last_assistant_message`; verified, C17, C18) | `SubagentStart`, `SubagentStop` (`agent_transcript_path`; verified, X17, X6) | `BeforeTool`/`AfterTool` on the sub-agent's own tool name (G10) | n/a | separate request streams |
+| Feedback channel for warn | PostToolUse `additionalContext` (`reason` under `block` is also feedback; the original result stays visible, C6), Stop `additionalContext` | PostToolUse `additionalContext` (a `block` would replace the result, X11) | AfterTool `reason` (replaces the tool result: emit only on a finding, gate-spec §6.2) | stderr | none |
 | Block channel | PreToolUse `permissionDecision: deny`, Stop `decision: block` | same | BeforeTool `deny`, AfterAgent `block` | in-process | none |
 
 Trace adapters, unlike gate adapters (gate-spec §6), do read `transcript_path`, because usage lives there; they open it read-only, never write to it, and copy nothing but the usage, model and timing fields plus hashes of content. Every event above binds through the single composed entry `saga hook <harness> <event>` (contracts §1): trace runs first (records the payload) and last (records the merged decision) in that entry, and installs no hook of its own.

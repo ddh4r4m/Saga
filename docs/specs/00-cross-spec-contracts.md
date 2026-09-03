@@ -1,6 +1,6 @@
 # Cross-spec contracts
 
-*v0.1, 2026-09-03. The contracts every layer spec depends on, in one place. Where a layer spec disagrees with this file, this file wins and the spec has a bug (log it in `REVIEW-LOG.md`). Harness facts: **verified** = checked against vendor docs on 2026-09-02 by the gate, mem and trace authors; **documented** = in vendor docs, not exercised; **probe** = confirmed per harness version by the install probe (`saga doctor`, trace-spec §7) and never assumed.*
+*v0.2, 2026-09-03 (v0.1 earlier the same day). The contracts every layer spec depends on, in one place. Where a layer spec disagrees with this file, this file wins and the spec has a bug (log it in `REVIEW-LOG.md`). Harness facts: **verified** = quoted from vendor docs or default-branch source in `harness-facts.md` (sprint of 2026-09-03; Claude Code 2.1.258, Codex rust-v0.152.1, Gemini CLI v0.58.0, OpenCode v1.18.26); **documented** = in vendor docs, not exercised; **probe** = confirmed per harness version by the install probe (`saga doctor`, trace-spec §7) and never assumed. Fact ids (C7, X11, G4, ...) refer to `harness-facts.md`.*
 
 ---
 
@@ -11,11 +11,11 @@ One binding per harness event: `saga hook <harness> <event>`, written by `saga i
 | Event (Claude Code name) | Order inside the entry | Short-circuit |
 |---|---|---|
 | `PreToolUse` | trace (record) → guard → route → mem → shape → gate → trace (record decision) | a `deny` from guard or gate ends the chain |
-| `PostToolUse` | trace → shape → gate → guard (deps) → mem (capture) → index (`update`, optional) → trace (watchdog, budget) | none; feedback only except on Gemini |
+| `PostToolUse` | trace → shape → gate → guard (deps) → mem (capture) → index (`update`, optional) → trace (watchdog, budget) | none. Every harness can replace the result (Claude Code `updatedToolOutput`, shape-validated; Codex `decision: block`; Gemini `deny`), and Codex and Gemini hide the original when they do (C7, X11, G4), so the entry emits a replacement only when a layer changed the bytes and otherwise feedback via `additionalContext` |
 | `Stop` / `AfterAgent` | trace (turn end, checkpoint) → gate (`check --status`) → trace (claim verdict, trace-spec §5.9; budget hard stop; watchdog block) → mem (pending line) | `block` wins; gate's reason first, trace's claim line second |
 | `UserPromptSubmit` / `BeforeAgent` | trace (turn) → guard (mask scan) → mem (statement capture; Gemini: state re-inject) | guard `block` ends the chain |
 | `PreCompact` / `PreCompress` | mem (`state --write`) → trace | never blocks; exit 0 always |
-| `SessionStart` / `PostCompact` | trace (session, pins) → mem (state re-inject on `compact`/`resume`) | |
+| `SessionStart` | trace (session, pins) → mem (state re-inject on `source ∈ {compact, resume, fork}`) | `PostCompact` is bound for trace only: it has no context channel on Claude Code (C16) or Codex (X16) and carries `compact_summary` |
 | `SubagentStart` / `SubagentStop` | trace | |
 
 ### 1.1 Merge rules
@@ -23,32 +23,37 @@ One binding per harness event: `saga hook <harness> <event>`, written by `saga i
 | Field | Rule |
 |---|---|
 | decision | `deny` > `block` > `ask` > `allow`; the first denying layer's reason leads |
-| `updatedInput` | field-wise union (`command`: the one rewrite below; `prompt`: mem; `model`: route; `content`: guard); two layers on one field is a composition bug, exit 2 |
+| `updatedInput` | field-wise union over the full original `tool_input`, because Claude Code replaces the entire input object with what the hook returns (C3) and Codex requires `permissionDecision: "allow"` beside it (X8); fields: `command` (the one rewrite below), `prompt` (mem, fallback only; the preamble's primary channel is `SubagentStart`, C17), `model` (route), `content` (guard); two layers on one field is a composition bug, exit 2 |
 | Bash rewrite | exactly one: `saga shape run --mask -- <cmd>` when shape is installed (its masker and unmask-in are guard's), else `saga guard exec --mask -- <cmd>` |
 | `additionalContext` | concatenated in layer order, each block prefixed `saga <layer>:` |
 | `reason` | concatenated in layer order under the gate-spec §9 per-event ceilings (pre-tool 150, post-tool 200, Stop 400 est. tokens); on Stop, trace's claim line (≤ 120, trace-spec §5.9) follows gate's text and is charged to trace's share |
 | exit code | §4 precedence over the layers' codes; exit-2-with-stderr only when the harness rejects JSON |
-| latency | whole entry p95 ≤ 300 ms with a snapshot, ≤ 20 ms without (guard-spec §11.4, trace-spec §11.1) |
+| latency | whole entry p95 ≤ 300 ms with a snapshot, ≤ 20 ms without (guard-spec §11.4, trace-spec §11.1). Harness timeouts: Claude Code 600 s (30 s on `UserPromptSubmit`), Codex 600 s, Gemini 60 s (C22, X5, G12). A timed-out `PreToolUse` entry **allows** on Claude Code (C23) and any non-JSON stdout **allows** on Gemini (G11), so the entry runs its own deadline (`hook.deadline_ms`, default 5,000) and emits `deny` with reason `saga: deadline` when a deciding layer overruns; stdout is the JSON object and nothing else |
+| output size | Claude Code caps hook strings at 10,000 characters and spills to a file (C24); Codex caps model-visible hook output at about 2,500 tokens and spills (X20). The §7.3 ceilings are below both |
 
 ### 1.2 Per-harness event matrix
 
 | Capability | Claude Code | Codex CLI | Gemini CLI |
 |---|---|---|---|
-| Pre-tool block | `PreToolUse` `permissionDecision: deny` (verified) | `PreToolUse` `decision: block` (verified) | `BeforeTool` `deny` (verified) |
-| Pre-tool ask | `permissionDecision: ask` (verified) | `PermissionRequest` (documented) | none; `ask` collapses to `deny` naming the allow rule (verified) |
-| Pre-tool input rewrite | `updatedInput` (documented; probe) | probe | `tool_input` merge (verified) |
-| Pre-tool add context | `additionalContext` (two vendor pages disagree; probe) | `additionalContext` (documented) | none (verified) |
-| Post-tool | feedback only (verified) | assume feedback only (unverified) | `block` replaces the result (verified) |
-| Post-tool add context | probe | `additionalContext` (documented) | `additionalContext` (verified) |
-| Stop block | `Stop` block; harness cap 8 consecutive (verified) | `Stop` block (verified); cap unverified | `AfterAgent` block (verified) |
-| Prompt hook | `UserPromptSubmit` block; no rewrite (verified) | `UserPromptSubmit` (documented) | `BeforeAgent` turn-scoped context (verified) |
-| Pre-compaction | `PreCompact`: no context; exit 2 blocks compaction (verified) | `PreCompact`: `continue`/`stopReason`/`systemMessage` only (documented) | `PreCompress` advisory (verified) |
-| Post-compaction context | `SessionStart` `trigger: compact` (verified); `PostCompact` (documented; probe picks one) | `SessionStart` `source: compact` (documented) | none; `BeforeAgent` next turn (verified) |
-| Sub-agent spawn | `PreToolUse` on `Agent`: `updatedInput.prompt` + `.model` (probe) | `SubagentStart` `additionalContext` (documented); no per-sub-agent model (codex #31814) | `BeforeTool` `tool_input` merge (tool name: probe) |
-| Transcript read | trace only, read-only | trace only | trace only |
-| Hooks vs sandbox | inside Seatbelt | outside the sandbox (verified) | n/a |
+| Pre-tool block | `PreToolUse` `permissionDecision: deny` (verified, C2) | `PreToolUse` `permissionDecision: deny` or `decision: block` (verified, X7) | `BeforeTool` `deny` (verified, G2) |
+| Pre-tool ask | `permissionDecision: ask` (verified, C2) | **none**: `ask` is parsed but unsupported and the tool call proceeds (verified, X10), so `ask` collapses to `deny` naming the allow rule; `PermissionRequest` fires only when Codex would prompt anyway | undocumented; present in source (G3); collapses to `deny` naming the allow rule until the install probe passes |
+| Pre-tool input rewrite | `updatedInput`, replaces the whole object (verified, C3) | `updatedInput` with `permissionDecision: allow`; `command` must be a string for `Bash` and `apply_patch` (verified, X8) | `tool_input` merge (verified, G2) |
+| Pre-tool add context | `additionalContext`, lands next to the tool result (verified, C4, C5) | `additionalContext` (verified, X9) | none (verified, G2) |
+| Post-tool replace result | `updatedToolOutput`, must match the tool's output shape; `Bash` shape documented, `Read`/`Grep`/`Glob` shapes probe (C7) | `decision: block` or `continue: false` replaces the result with the reason (verified, X11) | `deny` replaces the result with `reason` (verified, G4) |
+| Post-tool add context | `additionalContext`; original result stays visible under `decision: block` (verified, C6, C8); `PostToolBatch` `additionalContext` once per batch (documented, C9) | `additionalContext` (verified, X12) | `additionalContext` appended (verified, G4) |
+| Stop block | `Stop` `decision: block`, `reason` required; harness cap 8 consecutive (verified, C10, C11) | `Stop` `decision: block` creates a continuation prompt (verified, X13); no harness cap, verified in source (X14); `max_blocks` is the only cap | `AfterAgent` `deny` retries with `reason` as the new prompt (verified, G5); no dedicated cap, loop bound 100 turns (G6) |
+| Prompt hook | `UserPromptSubmit` block erases the prompt; no rewrite; `reason` goes to the user, `additionalContext` to the model (verified, C26) | `UserPromptSubmit` block and `additionalContext` (verified, X24) | `BeforeAgent` turn-scoped context; `deny` discards the message (verified, G7) |
+| Pre-compaction | `PreCompact`: no context channel; exit 2 or `decision: block` blocks compaction (verified, C15) | `PreCompact`: common fields only; `continue: false` stops compaction (verified, X16) | `PreCompress` advisory and asynchronous (verified, G8) |
+| Post-compaction context | `SessionStart` `source: compact` (verified, C13, C14); `PostCompact` has no context channel (verified, C16) | `SessionStart` `source: compact`, delivered to the immediate continuation mid-turn (verified, X15) | none; `BeforeAgent` next turn (verified, G9) |
+| Sub-agent context | `SubagentStart` `additionalContext` (verified, C17); fallback `PreToolUse` on `Agent` `updatedInput.prompt` | `SubagentStart` `additionalContext` (verified, X17); `spawn_agent` matches `Agent` on `PreToolUse` (X18); no per-sub-agent model (codex #31814, not re-checked) | `BeforeTool` on the sub-agent's own tool name, `tool_input` merge (verified, G10) |
+| Sub-agent model | `PreToolUse` on `Agent` `updatedInput.model`; `model` is a documented input (C19); hook-written value honoured: probe; `resolvedModel` in `PostToolUse` `tool_response` is the check | none | `BeforeModel` `llm_request.model` per call (documented, G15); not default |
+| Final message | `last_assistant_message` on `Stop` and `SubagentStop`; `transcript_path` may lag (verified, C12) | `last_assistant_message` (verified, X6) | `AfterAgent` `prompt_response` (verified, G5) |
+| Transcript read | trace only, read-only | trace only; format "isn't a stable interface" (X6) | trace only |
+| Hooks vs sandbox | outside the sandbox (verified, C27); the rewritten Bash command runs inside it | outside the sandbox with a cleared environment, verified in source (X21); entry must be an absolute path | n/a |
+| Install trust | none | project `.codex/` layer must be trusted and each hook trusted via `/hooks` by hash (verified, X3); `saga doctor` fires a canary | project hooks fingerprinted; a changed command re-prompts (verified, G14) |
+| Coverage caveat | `@`-referenced files bypass `PreToolUse` `Read` | hosted tools not hooked; "not a complete enforcement boundary" (X19) | |
 
-Other harnesses (Cursor, OpenCode, Cline, Kilo, CI) are CLI plus MCP only until M6.
+Other harnesses (Cursor, OpenCode, Cline, Kilo, CI) are CLI plus MCP only until M6. OpenCode's plugin surface (in-process TypeScript: `tool.execute.before` rewrites args or throws to block, `tool.execute.after` replaces `output.output`, `permission.ask`, `experimental.session.compacting` injects pre-compaction context; no blocking stop equivalent) is recorded in `harness-facts.md` §4 for the M6 adapter.
 
 ---
 
@@ -198,11 +203,11 @@ Denied to the agent's shell by guard D11 (post-expansion) when guard is installe
 | 2 | trace, doctor (M0) | hooks registered and fire within 10 s; usage source ≠ estimated; pins written |
 | 3 | gate (M1) | known-bad fixture fails; Stop-equivalent bound or CI fallback named; `approve`/`attest` denied |
 | 4 | guard (M1) | incident suite 0 escapes; `updatedInput` and `ask` support; snapshot mode and cost; vault reachable |
-| 5 | mem state block (M1) | `PreCompact` exit 0; re-inject placement; `Agent` `updatedInput.prompt` reaches the sub-agent |
+| 5 | mem state block (M1) | `PreCompact` exit 0; `SessionStart source=compact` re-injects once; `SubagentStart` `additionalContext` reaches the sub-agent |
 | 6 | index (M2) | regime; `tools/list` byte-stable; map block hash |
-| 7 | mem targeted (M3) | `PreToolUse` vs `PostToolUse` `additionalContext` placement |
-| 8 | shape (M4) | Bash rewrite honoured; `PostToolUse` `additionalContext`; harness result cap recorded |
-| 9 | route (M5) | `Agent` `updatedInput.model` accepted; effort knob pinned; served model observable |
+| 7 | mem targeted (M3) | placement measured (`PreToolUse` vs `PostToolUse` vs `PostToolBatch`); both fields verified (C4, C8), the probe now picks the better-performing one |
+| 8 | shape (M4) | Bash rewrite honoured; `updatedToolOutput` shape accepted for `Bash`; `Read`/`Grep`/`Glob` output shapes discovered from a fixture; harness result caps recorded (C28) |
+| 9 | route (M5) | hook-written `Agent` `updatedInput.model` honoured (checked via `resolvedModel`, C19); effort knob pinned (`effort.level` in hook input, C30); served model observable |
 | 10 | MCP gateway (M6) | MCPTox fixture set blocked |
 
 Uninstall is the reverse; `saga uninstall --dry-run` lists exactly what `saga install` wrote.

@@ -38,7 +38,7 @@ An adversarial review by a separate Fable agent (docs/11-red-team-review.md) arg
 From docs/specs/REVIEW-LOG.md and docs/09 §7:
 
 1. **Claim verification now has an owner (trace, spec v0.2 §5.5 to §5.9), with gate blocking Stop on a contradicted claim.** Three judgement calls to confirm: contradicted maps to exit 5 (integrity) rather than 3; the verdict lives inside the watchdog section; `RISK: impossible` is a full-mode contract header, not a per-gate attribute.
-2. **Harness facts still unverified.** Claude Code PreToolUse `additionalContext` is contradicted across two vendor pages; Codex PostToolUse prevention, Stop cap, and `updatedInput` are unverified. Memory placement and guard masking on Codex depend on these. A short verification sprint against live harness versions should precede M1 adapters.
+2. **Harness facts verified (sprint done 2026-09-03, `docs/specs/harness-facts.md`).** Every hook fact the adapters rely on was checked against live vendor docs and default-branch source for Claude Code 2.1.258, Codex rust-v0.152.1, Gemini CLI v0.58.0 and OpenCode v1.18.26, with quotes. Both open items closed in Saga's favour: Claude Code `PreToolUse` `additionalContext` works (the two pages described plain stdout versus the JSON field); Codex `updatedInput` works and `PostToolUse` `block` replaces the result. Five spec statements were contradicted and fixed: Claude Code `PostToolUse` can replace results, `PostCompact` cannot add context, `SubagentStart` can (mem's preamble now uses it, removing the `updatedInput.prompt` collision with route), hooks run outside the sandbox on Claude Code and Codex, and `ask` is unsupported on Codex `PreToolUse`. Four fail-open modes were found (hook timeout on Claude Code, non-JSON stdout on Gemini, `ask` on Codex, untrusted hooks on Codex); contracts §1.1 now requires an entry-side deadline and a trust canary. Nothing further for you to decide; REVIEW-LOG risk 9 lists what remains a probe.
 3. **Token budget of 3,800 injected tokens per session** is a sum of priors. Accept as the M0 starting value to be tuned by bench, or set a different ceiling.
 4. **Snapshot cost on monorepos** now sits inside every PreToolUse call. Accept `on_budget = "ask"` prompts, or default snapshots to per-turn rather than per-tool-call on large trees.
 5. **Language order.** M0 is TypeScript, Python, Go. Given your own work is Swift and Flutter, decide whether Swift or Dart should displace Go in M0.
@@ -56,6 +56,6 @@ From docs/specs/REVIEW-LOG.md and docs/09 §7:
 
 - All numbers in the research docs are as of 2026-09-02 and many come from preprints; the provenance headers say so.
 - Research reports 03 to 08 were written by agents and reviewed only through their summaries; spot-check any number before quoting it externally.
-- Open risks 1, 7 and 8 in docs/specs/REVIEW-LOG.md were closed overnight; risks 2 to 6 remain and are the decisions above.
+- Open risks 1, 2, 3, 7 and 8 in docs/specs/REVIEW-LOG.md are closed (2 and 3 by the harness-facts sprint); risks 4 to 6 remain and are decisions 3 to 4 above; risk 9 is informational.
 - The em-dash style rule was applied mechanically across all docs after the fact (558 replacements); a few sentences may read slightly oddly.
 - Nothing has been pushed to GitHub.

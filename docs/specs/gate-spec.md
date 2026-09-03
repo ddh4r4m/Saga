@@ -488,7 +488,7 @@ Common algorithm, every harness:
 
 **The Stop-equivalent adapter never executes `CHECK:`.** It reports ledger state. Execution happens in `check`, run by the agent or by CI.
 
-### 6.1 Claude Code (verified against code.claude.com/docs/en/hooks, 2026-09-02)
+### 6.1 Claude Code (verified against code.claude.com/docs/en/hooks, 2026-09-03 sprint, `harness-facts.md` §1; Claude Code 2.1.258)
 
 Hook input is JSON on stdin; output is exit code and optional JSON on stdout. Settings: `.claude/settings.local.json` (default) or `.claude/settings.json` (`--shared`).
 
@@ -496,8 +496,8 @@ Hook input is JSON on stdin; output is exit code and optional JSON on stdout. Se
 |---|---|---|---|
 | `PreToolUse` / `Edit\|Write\|NotebookEdit` | `tool_input.file_path`, `cwd` | `guard-diff --predict --path <p> --json` (G-SCOPE only) | `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"<≤150 tok>"}}` |
 | `PreToolUse` / `Bash` | `tool_input.command` | none (string match) | deny when the command invokes `saga gate approve`, `saga gate attest`, or `check --approve`; these three strings are gate's rows in the shared agent-forbidden command list (contracts §8), which guard's post-expansion classifier enforces when guard is installed and the composed hook enforces by string match otherwise |
-| `PostToolUse` / `Edit\|Write\|NotebookEdit\|Bash` | `tool_name`, `tool_input` | `guard-diff --incremental --json` | `{"decision":"block","reason":"<≤200 tok>"}`. **Feedback only**: Claude Code's PostToolUse cannot prevent anything, the tool already ran; `reason` is attached next to the tool result. Refusal is at Stop and in CI. |
-| `Stop` | `session_id`, `stop_hook_active` | `check --status --json` | `{"decision":"block","reason":"<≤400 tok>"}` (top-level fields, `reason` required); the composed entry appends trace's claim line (≤ 120, trace-spec §5.9) after gate's text |
+| `PostToolUse` / `Edit\|Write\|NotebookEdit\|Bash` | `tool_name`, `tool_input` | `guard-diff --incremental --json` | `{"decision":"block","reason":"<≤200 tok>"}`. **Feedback only for gate**: the tool already ran and cannot be undone; `decision: block` "adds the `reason` next to the tool result. Claude still sees the original output" (C6). The harness can replace the result with `updatedToolOutput` (C7); gate never does, because hiding a diff result teaches nothing. Refusal is at Stop and in CI. |
+| `Stop` | `session_id`, `stop_hook_active`, `last_assistant_message` | `check --status --json` | `{"decision":"block","reason":"<≤400 tok>"}` (top-level fields, `reason` required); the composed entry appends trace's claim line (≤ 120, trace-spec §5.9) after gate's text |
 
 Facts that shaped the table:
 
@@ -505,11 +505,15 @@ Facts that shaped the table:
 |---|---|
 | `PostToolUse` on `Edit\|Write` does not fire when a `Bash` command rewrites the file | the `Bash` matcher is included; the incremental diff is cheap (`git diff --name-only`) |
 | `PreToolUse` cannot see a `Bash` edit's target path | scope prediction covers editor tools only; Bash edits are caught post-hoc |
-| Claude Code ends the turn after 8 consecutive Stop blocks | `max_blocks` must stay ≤ 8; default 6 |
+| Claude Code ends the turn after 8 consecutive Stop blocks ("Claude Code overrides the hook and ends the turn after 8 consecutive blocks", C10); `hookSpecificOutput.additionalContext` on Stop shares the same cap (C11) | `max_blocks` must stay ≤ 8; default 6 |
 | Exit 2 on `Stop` blocks with stderr as the reason | fallback when JSON is rejected; JSON is preferred because `reason` is then attributable in `saga trace` |
-| Also available, unused: `hookSpecificOutput.additionalContext` on Stop (non-error feedback), `FileChanged` event, `permissionDecision: "ask"` | candidates for M2; not needed for enforcement |
+| A timed-out `PreToolUse` command hook does not block: "don't count on a stalled hook to act as a gate" (C23); default timeout 600 s | the composed entry runs its own deadline and emits `deny` on overrun (contracts §1.1) |
+| Hook output strings are capped at 10,000 characters and spilled to a file (C24) | the §9 ceilings are far below; never rely on a longer `reason` |
+| `SessionStart` input field is `source` with values `startup`, `resume`, `clear`, `compact`, `fork` (C13) | adapters match on `source`, never `trigger` |
+| Hooks run outside the Bash sandbox (C27) | the entry needs no sandbox allowances; the rewritten Bash command does (guard-spec §8.4) |
+| Also available, unused: `hookSpecificOutput.additionalContext` on Stop (non-error feedback), `PostToolBatch` (once per batch), `FileChanged` event, `permissionDecision: "ask"` | candidates for M2; not needed for enforcement |
 
-### 6.2 Gemini CLI (verified against geminicli.com/docs/hooks, 2026-09-02)
+### 6.2 Gemini CLI (verified against `docs/hooks/reference.md` at `main`, 2026-09-03 sprint, `harness-facts.md` §3; Gemini CLI v0.58.0)
 
 Settings: `.gemini/settings.json`, key `hooks`. Events used: `BeforeTool`, `AfterTool`, `AfterAgent`. Common stdin fields: `session_id`, `transcript_path`, `cwd`, `hook_event_name`, `timestamp`; tool events add `tool_name`, `tool_input` (`AfterTool` adds `tool_response`); `AfterAgent` adds `prompt`, `prompt_response`, `stop_hook_active`. Output: top-level `decision` (`"deny"` or `"block"`, equivalent) and `reason`; exit 2 with stderr is the system-block fallback.
 
@@ -517,21 +521,21 @@ Settings: `.gemini/settings.json`, key `hooks`. Events used: `BeforeTool`, `Afte
 |---|---|---|---|
 | `BeforeTool` | `guard-diff --predict` | `{"decision":"deny","reason":…}` | prevents the tool, same as PreToolUse |
 | `AfterTool` | `guard-diff --incremental` | `{"decision":"block","reason":…}` | **hides the tool result and replaces it with `reason`**; the adapter therefore only blocks on a guard finding and otherwise emits nothing, so ordinary results are untouched |
-| `AfterAgent` | `check --status` | `{"decision":"block","reason":…}` | triggers a retry with `reason` as feedback; `stop_hook_active` is honoured identically |
+| `AfterAgent` | `check --status` | `{"decision":"block","reason":…}` | triggers a retry with `reason` "sent to the agent as a new prompt" (G5); `stop_hook_active` is honoured identically; there is no harness cap on consecutive retries (loop bound 100 turns, G6), so `max_blocks` is the only cap |
 
-The adapter probes the installed version at install and records which events it bound. If `AfterAgent` is missing, install fails closed: *"no stop-equivalent event on this version; enable the CI fallback (§6.4)"*.
+The adapter probes the installed version at install and records which events it bound. If `AfterAgent` is missing, install fails closed: *"no stop-equivalent event on this version; enable the CI fallback (§6.4)"*. Any non-JSON byte on stdout makes Gemini "default to Allow" (G11), so the entry writes exactly one JSON object; the default hook timeout is 60 s (G12).
 
-### 6.3 Codex CLI (verified against the Codex config and hooks reference, 2026-09-02)
+### 6.3 Codex CLI (verified against learn.chatgpt.com/docs/hooks and the `openai/codex` source at `main`, 2026-09-03 sprint, `harness-facts.md` §2; Codex rust-v0.152.1)
 
-Codex now ships a hooks system; the old `notify` program (post-turn, cannot block) is superseded for this purpose. Hooks are discovered in `~/.codex/hooks.json`, `~/.codex/config.toml` (`[hooks]`), `<repo>/.codex/hooks.json`, `<repo>/.codex/config.toml`; enabled by default, disabled by `[features] hooks = false`. Events include `PreToolUse`, `PostToolUse`, `Stop`, `SubagentStop`, `UserPromptSubmit`, `SessionStart`, `SessionEnd`, `PreCompact`, `PostCompact`, `PermissionRequest`. Stdin fields include `session_id`, `cwd`, `hook_event_name`, `turn_id`, `tool_name`, `tool_input`, `permission_mode`, `stop_hook_active`, `last_assistant_message`.
+Codex ships a hooks system; the `notify` program still exists but is post-turn and has no decision channel (X22), so it is not used. Hooks are discovered in `~/.codex/hooks.json`, `~/.codex/config.toml` (`[hooks]`), `<repo>/.codex/hooks.json`, `<repo>/.codex/config.toml`; enabled by default, disabled by `[features] hooks = false`. Events: `PreToolUse`, `PermissionRequest`, `PostToolUse`, `PreCompact`, `PostCompact`, `UserPromptSubmit`, `SubagentStop`, `Stop`, `Interrupt`, `SessionStart`, `SubagentStart`, `SessionEnd` (X1). Stdin fields include `session_id`, `transcript_path`, `cwd`, `hook_event_name`, `model`, `turn_id`, `tool_name`, `tool_use_id`, `tool_input`, `permission_mode`, `stop_hook_active`, `last_assistant_message` (X6). Matching hooks run concurrently (X4), which is one more reason for the single composed entry.
 
 | Event | Output accepted | Saga call |
 |---|---|---|
 | `PreToolUse` | `{"decision":"block","reason":…}` or `{"hookSpecificOutput":{"permissionDecision":"deny","permissionDecisionReason":…}}`; exit 2 + stderr | `guard-diff --predict` |
-| `PostToolUse` | `{"decision":"block","reason":…}`; exit 2 + stderr | `guard-diff --incremental` |
+| `PostToolUse` | `{"decision":"block","reason":…}`; exit 2 + stderr. **Replaces the tool result**: Codex "records the feedback, replaces the tool result with that feedback, and continues the model from the hook-provided message" (X11), so the adapter emits it only on a guard finding, as on Gemini, and otherwise emits nothing | `guard-diff --incremental` |
 | `Stop` | `{"decision":"block","reason":…}` ("tells Codex to continue and creates a continuation prompt") | `check --status` |
 
-The adapter writes `<repo>/.codex/hooks.json`, probes the installed version, and records which events bound. Unverified and therefore treated as configuration, not constants: whether `PostToolUse` can prevent anything (assume feedback-only, as in Claude Code); the Codex-side cap on consecutive Stop blocks (assume none; `max_blocks` applies); whether `.codex/hooks.json` requires workspace trust. On a Codex build without hooks the adapter installs nothing and prints the CI-fallback message.
+The adapter writes `<repo>/.codex/hooks.json`, probes the installed version, and records which events bound. Settled by the sprint: `PostToolUse` cannot undo side effects but does replace the result (above); Codex has no cap on consecutive Stop blocks (the turn loop sets `stop_hook_active` and continues without a counter, X14), so `max_blocks` is the only cap; project-local hooks load only when the `.codex/` layer is trusted **and** each hook has been reviewed and trusted by hash via `/hooks`, a changed hook being "skipped until trusted" (X3), so `saga install` prints the `/hooks` instruction and `saga doctor` fires a canary hook and reports `codex: hook entry untrusted, enforcement inactive` when it does not fire. `permissionDecision: "ask"` is parsed but unsupported and the tool call proceeds (X10): the adapter never emits it. Hooks run with a cleared environment (X21), so the entry is the absolute path of the manifest binary. Codex states that tool hooks are "a useful guardrail, not a complete enforcement boundary" (X19); the CI fallback (§6.4) stays normative. On a Codex build without hooks the adapter installs nothing and prints the CI-fallback message.
 
 ### 6.4 CI fallback (normative for every harness)
 
