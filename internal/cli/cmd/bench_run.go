@@ -1,0 +1,191 @@
+package cmd
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/ddh4r4m/saga/internal/bench/adapter"
+	"github.com/ddh4r4m/saga/internal/bench/report"
+	"github.com/ddh4r4m/saga/internal/bench/run"
+	"github.com/ddh4r4m/saga/internal/bench/task"
+	"github.com/ddh4r4m/saga/internal/cli"
+	"github.com/ddh4r4m/saga/internal/store"
+	"github.com/ddh4r4m/saga/internal/trace"
+)
+
+func (a *App) abs(p string) string {
+	if filepath.IsAbs(p) {
+		return p
+	}
+	return filepath.Join(a.Cwd, p)
+}
+
+func (a *App) benchRun(args []string) error {
+	fs := a.flags("bench run")
+	tasksGlob := fs.String("tasks", "", "task directory glob (bench/tasks/*)")
+	adapterName := fs.String("adapter", "", "bare | replay | claude-code")
+	k := fs.Int("k", 1, "runs per task")
+	out := fs.String("out", "", "archive directory")
+	arm := fs.String("arm", "A", "arm id")
+	model := fs.String("model", "", "model id (claude-code --model; labels the cell)")
+	seed := fs.String("seed", "", "64-hex run seed (drawn and recorded when empty)")
+	replayPatch := fs.String("replay", "gold", "replay adapter: control name, comma list cycling by run, path, none or abandon")
+	budget := fs.Float64("budget", 0, "refuse when the estimate exceeds this many usd")
+	tier := fs.String("tier", "user", "smoke | user | dev | publish")
+	claudeBin := fs.String("claude-bin", "claude", "claude executable")
+	sagaBin := fs.String("saga-bin", "", "saga executable the hooks call (default: this binary)")
+	noVerify := fs.Bool("no-verify", false, "skip verify-task before the run (tests only)")
+	keep := fs.Bool("keep", false, "keep the temporary workspaces")
+	noReport := fs.Bool("no-report", false, "do not write report.json and report.md")
+	if err := parseFlags(fs, args); err != nil {
+		return err
+	}
+	if *tasksGlob == "" || *adapterName == "" || *out == "" {
+		return cli.Errorf(cli.ExitUsage, "usage: saga bench run --tasks <glob> --adapter <name> --k <n> --out <dir>")
+	}
+	dirs, err := task.Find(a.abs(*tasksGlob))
+	if err != nil || len(dirs) == 0 {
+		return cli.Errorf(cli.ExitUsage, "run: no tasks match %s", *tasksGlob)
+	}
+	var tasks []*task.Task
+	for _, d := range dirs {
+		t, err := task.Load(d)
+		if err != nil {
+			return err
+		}
+		tasks = append(tasks, t)
+	}
+	if *sagaBin == "" {
+		if exe, err := os.Executable(); err == nil {
+			*sagaBin = exe
+		}
+	}
+	var ad adapter.Adapter
+	switch *adapterName {
+	case "replay":
+		ad = &adapter.Replay{Patch: *replayPatch}
+	case "claude-code":
+		ad = &adapter.ClaudeCode{Binary: *claudeBin, SagaBinary: *sagaBin, Model: *model}
+	case "bare":
+		return cli.Errorf(cli.ExitEnvironment, "run: the bare adapter is not implemented yet (bench-spec 6.1); use replay or claude-code")
+	default:
+		return cli.Errorf(cli.ExitUsage, "run: unknown adapter %q", *adapterName)
+	}
+	prices := trace.DefaultPrices()
+	if s, err := store.Find(a.Cwd); err == nil && s.Exists() {
+		if p, err := trace.LoadPrices(s); err == nil {
+			prices = p
+		}
+	}
+	ctx, cancel := signalContext()
+	defer cancel()
+	outDir := a.abs(*out)
+	res, err := run.Run(ctx, run.Options{
+		Tasks: tasks, Adapter: ad, K: *k, Out: outDir, Arm: *arm, Tier: *tier, Seed: *seed, Model: *model,
+		Prices: prices, SagaBinary: *sagaBin, Version: a.Version, Budget: *budget, Verify: !*noVerify, Keep: *keep, Log: a.Stderr,
+	})
+	if res != nil && len(res.Rows) > 0 && !*noReport {
+		if rerr := a.writeReport(outDir, false); rerr != nil && err == nil {
+			err = rerr
+		}
+	}
+	if res != nil {
+		fmt.Fprintf(a.Stdout, "manifest %s: %d runs, %d not run, spent %.4f usd, archive %s\n", res.ManifestHash, len(res.Rows), res.NotRun, res.SpentUSD, outDir)
+	}
+	return err
+}
+
+func (a *App) writeReport(dir string, print bool) error {
+	arch, err := report.Load(dir)
+	if err != nil {
+		return err
+	}
+	rep := report.Build(arch.Manifest, arch.Hash, arch.Rows, dir)
+	if err := rep.Validate(); err != nil {
+		return cli.Wrap(cli.ExitUsage, "report schema", err)
+	}
+	js, err := rep.JSON()
+	if err != nil {
+		return err
+	}
+	md := rep.Markdown()
+	if err := os.WriteFile(filepath.Join(dir, "report.json"), js, 0o644); err != nil {
+		return cli.Wrap(cli.ExitEnvironment, "report", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "report.md"), []byte(md), 0o644); err != nil {
+		return cli.Wrap(cli.ExitEnvironment, "report", err)
+	}
+	if print {
+		fmt.Fprint(a.Stdout, md)
+	}
+	return nil
+}
+
+func (a *App) benchReport(args []string) error {
+	fs := a.flags("bench report")
+	asJSON := fs.Bool("json", false, "print report.json instead of report.md")
+	if err := parseFlags(fs, args); err != nil {
+		return err
+	}
+	dir := positional(fs)
+	if dir == "" {
+		return cli.Errorf(cli.ExitUsage, "usage: saga bench report <run-dir> [--json]")
+	}
+	dir = a.abs(dir)
+	if err := a.writeReport(dir, !*asJSON); err != nil {
+		return err
+	}
+	if *asJSON {
+		raw, _ := os.ReadFile(filepath.Join(dir, "report.json"))
+		a.Stdout.Write(raw)
+	}
+	return nil
+}
+
+func (a *App) benchCompare(args []string) error {
+	fs := a.flags("bench compare")
+	epsilon := fs.Float64("epsilon", 0, "equivalence bound for the TOST-style check")
+	asJSON := fs.Bool("json", false, "print JSON instead of markdown")
+	outFlag := fs.String("out", "", "write compare.json and compare.md here (default: the second run dir)")
+	if err := parseFlags(fs, args); err != nil {
+		return err
+	}
+	pos := positionals[fs]
+	if len(pos) != 2 {
+		return cli.Errorf(cli.ExitUsage, "usage: saga bench compare <run-dir-a> <run-dir-b>")
+	}
+	ra, err := report.Load(a.abs(pos[0]))
+	if err != nil {
+		return err
+	}
+	rb, err := report.Load(a.abs(pos[1]))
+	if err != nil {
+		return err
+	}
+	rep, err := report.Compare(ra, rb, *epsilon)
+	if err != nil {
+		return err
+	}
+	if err := rep.Validate(); err != nil {
+		return cli.Wrap(cli.ExitUsage, "report schema", err)
+	}
+	js, err := rep.JSON()
+	if err != nil {
+		return err
+	}
+	md := rep.Markdown()
+	dir := a.abs(pos[1])
+	if *outFlag != "" {
+		dir = a.abs(*outFlag)
+		os.MkdirAll(dir, 0o755)
+	}
+	os.WriteFile(filepath.Join(dir, "compare.json"), js, 0o644)
+	os.WriteFile(filepath.Join(dir, "compare.md"), []byte(md), 0o644)
+	if *asJSON {
+		a.Stdout.Write(js)
+	} else {
+		fmt.Fprint(a.Stdout, md)
+	}
+	return nil
+}

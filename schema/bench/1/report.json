@@ -90,7 +90,8 @@
           "delta": {"type": ["number", "null"]},
           "ci95": {"type": ["array", "null"], "items": {"type": ["number", "null"]}},
           "wilcoxon": {"type": ["object", "null"]},
-          "equivalence": {"type": ["object", "null"]}
+          "equivalence": {"type": ["object", "null"]},
+          "supported": {"type": ["boolean", "null"]}
         }
       }
     },

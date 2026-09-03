@@ -2,17 +2,34 @@ package task
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 )
 
-// corpus is bench/tasks relative to this package.
+// corpus is the committed bench/tasks set: tasks still being authored
+// in the working tree (untracked) are not part of the red proof yet.
 func corpus(t *testing.T) []string {
 	t.Helper()
-	dirs, err := Find(filepath.Join("..", "..", "..", "bench", "tasks"))
+	root := filepath.Join("..", "..", "..", "bench", "tasks")
+	dirs, err := Find(root)
 	if err != nil || len(dirs) == 0 {
 		t.Skip("bench/tasks not found")
+	}
+	if out, err := exec.Command("git", "-C", root, "ls-tree", "--name-only", "HEAD", ".").Output(); err == nil {
+		tracked := map[string]bool{}
+		for _, l := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+			tracked[filepath.Base(l)] = true
+		}
+		kept := dirs[:0]
+		for _, d := range dirs {
+			if tracked[filepath.Base(d)] {
+				kept = append(kept, d)
+			}
+		}
+		dirs = kept
 	}
 	sort.Strings(dirs)
 	return dirs

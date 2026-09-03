@@ -14,7 +14,7 @@
         "version": {"type": ["string", "null"]},
         "binary_sha256": {"type": ["string", "null"]}
       },
-      "patternProperties": {"^[a-z_]+_reason$": {"type": "string"}}
+      "patternProperties": {"^[a-z0-9_]+_reason$": {"type": "string"}}
     },
     "model": {
       "type": "object",
@@ -29,7 +29,7 @@
         "seed": {"type": ["string", "null"]},
         "seed_supported": {"type": "boolean"}
       },
-      "patternProperties": {"^[a-z_]+_reason$": {"type": "string"}}
+      "patternProperties": {"^[a-z0-9_]+_reason$": {"type": "string"}}
     },
     "system_prompt": {
       "type": "object",
@@ -39,7 +39,7 @@
         "sha256": {"type": ["string", "null"]},
         "verbatim_archived": {"type": "boolean"}
       },
-      "patternProperties": {"^[a-z_]+_reason$": {"type": "string"}}
+      "patternProperties": {"^[a-z0-9_]+_reason$": {"type": "string"}}
     },
     "tools": {
       "type": "object",
@@ -49,7 +49,7 @@
         "sha256": {"type": ["string", "null"]},
         "names": {"type": "array", "items": {"type": "string"}}
       },
-      "patternProperties": {"^[a-z_]+_reason$": {"type": "string"}}
+      "patternProperties": {"^[a-z0-9_]+_reason$": {"type": "string"}}
     },
     "context": {
       "type": "object",
@@ -61,7 +61,7 @@
         "compaction_threshold": {"type": ["number", "null"]},
         "rewind": {"type": ["boolean", "null"]}
       },
-      "patternProperties": {"^[a-z_]+_reason$": {"type": "string"}}
+      "patternProperties": {"^[a-z0-9_]+_reason$": {"type": "string"}}
     },
     "permissions": {
       "type": "object",
@@ -73,7 +73,7 @@
         "allow": {"type": "array", "items": {"type": "string"}},
         "deny": {"type": "array", "items": {"type": "string"}}
       },
-      "patternProperties": {"^[a-z_]+_reason$": {"type": "string"}}
+      "patternProperties": {"^[a-z0-9_]+_reason$": {"type": "string"}}
     },
     "instructions": {
       "type": "object",
@@ -83,7 +83,7 @@
         "CLAUDE.md_sha256": {"type": ["string", "null"]},
         "AGENTS.md_sha256": {"type": ["string", "null"]}
       },
-      "patternProperties": {"^[A-Za-z_.]+_reason$": {"type": "string"}}
+      "patternProperties": {"^[A-Za-z0-9_.]+_reason$": {"type": "string"}}
     },
     "hooks": {
       "type": "array",
@@ -96,7 +96,7 @@
           "script_sha256": {"type": ["string", "null"]},
           "command": {"type": "string"}
         },
-        "patternProperties": {"^[a-z_]+_reason$": {"type": "string"}}
+        "patternProperties": {"^[a-z0-9_]+_reason$": {"type": "string"}}
       }
     },
     "mcp_servers": {"type": "array", "items": {"type": "string"}},
@@ -129,12 +129,13 @@
         "arch": {"type": "string"},
         "image_digest": {"type": ["string", "null"]}
       },
-      "patternProperties": {"^[a-z_]+_reason$": {"type": "string"}}
+      "patternProperties": {"^[a-z0-9_]+_reason$": {"type": "string"}}
     },
     "blocks": {"type": "array", "items": {"type": "string"}},
     "config_hash": {"type": ["string", "null"]},
     "prompt_hash": {"type": ["string", "null"]},
     "native_log": {"type": ["string", "null"]},
+    "harness_cost_usd": {"type": ["number", "null"]},
     "transcript_path": {"type": ["string", "null"]}
   }
 }

@@ -93,15 +93,3 @@ func (a *App) benchVerifyTask(args []string) error {
 	}
 	return nil
 }
-
-func (a *App) benchRun(args []string) error {
-	return cli.Errorf(cli.ExitUsage, "bench run: not implemented yet")
-}
-
-func (a *App) benchReport(args []string) error {
-	return cli.Errorf(cli.ExitUsage, "bench report: not implemented yet")
-}
-
-func (a *App) benchCompare(args []string) error {
-	return cli.Errorf(cli.ExitUsage, "bench compare: not implemented yet")
-}
