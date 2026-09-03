@@ -2,7 +2,7 @@
 
 > Saga makes any coding agent prove its work: a local, model-agnostic layer for repository knowledge, machine-checked completion, memory that survives compaction, and privacy at the tool boundary, with a benchmark that keeps it honest.
 
-**Status: research and design phase, no code yet.** The documents in `docs/` are the project's current output; milestones will change as the benchmark reports real numbers.
+**Status: M0 in progress.** The documents in `docs/` are the design; the Go module at the repository root is the first implementation step (trace event log, ledger, composed hook, Claude Code adapter, `doctor`). `docs/specs/IMPLEMENTATION-STATUS.md` lists what is implemented against each spec section.
 
 ## Why
 
@@ -48,6 +48,26 @@ From [doc 09, section 5](docs/09-proposal-and-roadmap.md):
 | **M4 Shape** | output parsers, error-aware truncation, result cache, comment stripper | Tokens per task down, correctness flat or up |
 | **M5 Route** | policy file, budget, effort pinning, cheap-model delegation, schema repair | Cost down at equal pass^k; no silent model change |
 | **M6 Portability** | remaining adapters (Cursor, OpenCode, Devin Desktop, Cline, Kilo), trace resume, MCP gateway | Same install on 3+ harnesses |
+
+## Building from source
+
+Requires Go 1.26 or later; no cgo for this milestone.
+
+```sh
+make build            # static binary at bin/saga
+make test             # go test ./...
+make lint             # gofmt and go vet
+make bench-hook       # hook cold start p50/p95 over 50 spawns
+```
+
+Then, in a repository you want traced:
+
+```sh
+saga init                                   # writes .saga/ (gitignore, config skeleton)
+saga install --harness claude-code --dry-run  # shows the hook bindings; drop --dry-run to write them
+saga doctor                                 # environment, hook registration, usage source, pins
+saga trace ledger                           # per-call cost ledger of the latest session
+```
 
 ## Read the research
 
