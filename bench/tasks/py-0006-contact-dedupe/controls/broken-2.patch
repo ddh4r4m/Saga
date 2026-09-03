@@ -1,0 +1,17 @@
+# saga-bench control patch: broken-2 for py-0006-contact-dedupe
+# canary: b382a4c6249ef36a
+diff --git a/contacts/merge.py b/contacts/merge.py
+index 69d76a6..f811e58 100644
+--- a/contacts/merge.py
++++ b/contacts/merge.py
+@@ -3,5 +3,8 @@ from .models import Contact
+ 
+ 
+ def dedupe(contacts: list[Contact]) -> list[Contact]:
+-    """Return the list without duplicate people."""
+-    raise NotImplementedError("dedupe is not implemented yet")
++    """Return the list without duplicate people (same email, case-insensitive)."""
++    by_email: dict[str, Contact] = {}
++    for c in contacts:
++        by_email.setdefault(c.email.strip().lower(), c)
++    return list(by_email.values())

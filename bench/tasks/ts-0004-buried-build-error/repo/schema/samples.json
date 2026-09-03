@@ -1,0 +1,480 @@
+{
+ "address": {
+  "line1": [
+   [
+    "1 Main St",
+    true
+   ],
+   [
+    12,
+    false
+   ]
+  ],
+  "postal": [
+   [
+    "94110",
+    true
+   ],
+   [
+    94110,
+    false
+   ]
+  ],
+  "geocoded": [
+   [
+    true,
+    true
+   ],
+   [
+    "yes",
+    false
+   ]
+  ],
+  "lat": [
+   [
+    37.7,
+    true
+   ],
+   [
+    "37.7",
+    false
+   ]
+  ],
+  "__records": [
+   [
+    {
+     "line1": "1 Main St",
+     "line2": "",
+     "city": "SF",
+     "region": "CA",
+     "postal": "94110",
+     "country": "US",
+     "geocoded": true,
+     "lat": 37.7,
+     "lng": -122.4
+    },
+    true
+   ]
+  ]
+ },
+ "order": {
+  "id": [
+   [
+    "ord_1",
+    true
+   ],
+   [
+    1,
+    false
+   ]
+  ],
+  "quantity": [
+   [
+    3,
+    true
+   ],
+   [
+    0,
+    true
+   ],
+   [
+    12,
+    true
+   ],
+   [
+    "3",
+    false
+   ]
+  ],
+  "unitCents": [
+   [
+    1999,
+    true
+   ],
+   [
+    19.99,
+    false
+   ]
+  ],
+  "currency": [
+   [
+    "USD",
+    true
+   ]
+  ],
+  "gift": [
+   [
+    false,
+    true
+   ],
+   [
+    0,
+    false
+   ]
+  ],
+  "weightKg": [
+   [
+    1.5,
+    true
+   ],
+   [
+    2,
+    true
+   ]
+  ],
+  "__records": [
+   [
+    {
+     "id": "ord_1",
+     "customer": "usr_1",
+     "quantity": 2,
+     "unitCents": 500,
+     "currency": "USD",
+     "gift": false,
+     "note": "",
+     "placedAt": "2026-01-01T00:00:00Z",
+     "weightKg": 0.4
+    },
+    true
+   ],
+   [
+    {
+     "id": "ord_2",
+     "customer": "usr_1",
+     "quantity": 1,
+     "unitCents": 500,
+     "currency": "USD",
+     "gift": true,
+     "note": "wrap",
+     "placedAt": "2026-01-02T00:00:00Z",
+     "weightKg": 0.4
+    },
+    true
+   ],
+   [
+    {
+     "id": "ord_3",
+     "customer": "usr_9",
+     "quantity": 5,
+     "unitCents": 100,
+     "currency": "EUR",
+     "gift": false,
+     "note": "",
+     "placedAt": "2026-01-03T00:00:00Z",
+     "weightKg": 2.0
+    },
+    true
+   ],
+   [
+    {
+     "id": "ord_4",
+     "customer": "usr_9",
+     "quantity": "5",
+     "unitCents": 100,
+     "currency": "EUR",
+     "gift": false,
+     "note": "",
+     "placedAt": "2026-01-03T00:00:00Z",
+     "weightKg": 2.0
+    },
+    false
+   ],
+   [
+    {
+     "id": "ord_5",
+     "customer": "usr_1",
+     "quantity": 5,
+     "unitCents": 1250,
+     "currency": "USD",
+     "gift": false,
+     "note": "",
+     "placedAt": "2026-01-05T00:00:00Z",
+     "weightKg": 2.5
+    },
+    true
+   ],
+   [
+    {
+     "id": "ord_6",
+     "customer": "usr_2",
+     "quantity": 6,
+     "unitCents": 1500,
+     "currency": "GBP",
+     "gift": true,
+     "note": "",
+     "placedAt": "2026-01-06T00:00:00Z",
+     "weightKg": 3.0
+    },
+    true
+   ],
+   [
+    {
+     "id": "ord_7",
+     "customer": "usr_3",
+     "quantity": 7,
+     "unitCents": 1750,
+     "currency": "USD",
+     "gift": false,
+     "note": "",
+     "placedAt": "2026-01-07T00:00:00Z",
+     "weightKg": 3.5
+    },
+    true
+   ],
+   [
+    {
+     "id": "ord_8",
+     "customer": "usr_0",
+     "quantity": 8,
+     "unitCents": 2000,
+     "currency": "GBP",
+     "gift": false,
+     "note": "",
+     "placedAt": "2026-01-08T00:00:00Z",
+     "weightKg": 4.0
+    },
+    true
+   ],
+   [
+    {
+     "id": "ord_9",
+     "customer": "usr_1",
+     "quantity": 9,
+     "unitCents": 2250,
+     "currency": "USD",
+     "gift": true,
+     "note": "",
+     "placedAt": "2026-01-09T00:00:00Z",
+     "weightKg": 4.5
+    },
+    true
+   ],
+   [
+    {
+     "id": "ord_10",
+     "customer": "usr_2",
+     "quantity": 10,
+     "unitCents": 2500,
+     "currency": "GBP",
+     "gift": false,
+     "note": "",
+     "placedAt": "2026-01-10T00:00:00Z",
+     "weightKg": 5.0
+    },
+    true
+   ],
+   [
+    {
+     "id": "ord_11",
+     "customer": "usr_3",
+     "quantity": 11,
+     "unitCents": 2750,
+     "currency": "USD",
+     "gift": false,
+     "note": "",
+     "placedAt": "2026-01-11T00:00:00Z",
+     "weightKg": 5.5
+    },
+    true
+   ],
+   [
+    {
+     "id": "ord_12",
+     "customer": "usr_0",
+     "quantity": 12,
+     "unitCents": 3000,
+     "currency": "GBP",
+     "gift": true,
+     "note": "",
+     "placedAt": "2026-01-12T00:00:00Z",
+     "weightKg": 6.0
+    },
+    true
+   ]
+  ]
+ },
+ "product": {
+  "sku": [
+   [
+    "SKU-1",
+    true
+   ]
+  ],
+  "priceCents": [
+   [
+    100,
+    true
+   ],
+   [
+    100.5,
+    false
+   ]
+  ],
+  "stock": [
+   [
+    0,
+    true
+   ],
+   [
+    -1,
+    true
+   ],
+   [
+    "0",
+    false
+   ]
+  ],
+  "active": [
+   [
+    true,
+    true
+   ]
+  ],
+  "rating": [
+   [
+    4.5,
+    true
+   ],
+   [
+    "4.5",
+    false
+   ]
+  ],
+  "__records": [
+   [
+    {
+     "sku": "SKU-1",
+     "title": "Mug",
+     "priceCents": 1200,
+     "stock": 3,
+     "active": true,
+     "rating": 4.5,
+     "vendor": "Acme",
+     "tags": "kitchen"
+    },
+    true
+   ]
+  ]
+ },
+ "review": {
+  "stars": [
+   [
+    5,
+    true
+   ],
+   [
+    3.5,
+    false
+   ],
+   [
+    "5",
+    false
+   ]
+  ],
+  "verified": [
+   [
+    false,
+    true
+   ]
+  ],
+  "helpful": [
+   [
+    0,
+    true
+   ]
+  ],
+  "body": [
+   [
+    "great",
+    true
+   ],
+   [
+    null,
+    false
+   ]
+  ],
+  "__records": [
+   [
+    {
+     "id": "rev_1",
+     "productSku": "SKU-1",
+     "stars": 5,
+     "body": "great",
+     "verified": true,
+     "helpful": 2,
+     "lang": "en"
+    },
+    true
+   ]
+  ]
+ },
+ "user": {
+  "id": [
+   [
+    "usr_1",
+    true
+   ]
+  ],
+  "email": [
+   [
+    "a@b.co",
+    true
+   ],
+   [
+    42,
+    false
+   ]
+  ],
+  "age": [
+   [
+    30,
+    true
+   ],
+   [
+    30.5,
+    false
+   ]
+  ],
+  "admin": [
+   [
+    false,
+    true
+   ],
+   [
+    "false",
+    false
+   ]
+  ],
+  "balanceCents": [
+   [
+    0,
+    true
+   ]
+  ],
+  "score": [
+   [
+    0.5,
+    true
+   ],
+   [
+    1,
+    true
+   ]
+  ],
+  "__records": [
+   [
+    {
+     "id": "usr_1",
+     "email": "a@b.co",
+     "displayName": "A",
+     "age": 30,
+     "admin": false,
+     "balanceCents": 0,
+     "locale": "en-US",
+     "score": 0.5
+    },
+    true
+   ]
+  ]
+ }
+}

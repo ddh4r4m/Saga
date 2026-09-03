@@ -1,0 +1,13 @@
+{
+  "name": "order-service-config",
+  "version": "2.4.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\""
+  },
+  "dependencies": {
+    "envfile-parse-strict": "^2.1.0"
+  }
+}

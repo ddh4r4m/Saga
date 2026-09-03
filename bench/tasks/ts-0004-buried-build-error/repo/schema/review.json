@@ -1,0 +1,27 @@
+{
+  "name": "review",
+  "fields": {
+    "id": {
+      "type": "string"
+    },
+    "productSku": {
+      "type": "string"
+    },
+    "stars": {
+      "type": "integer",
+      "description": "1 to 5"
+    },
+    "body": {
+      "type": "string"
+    },
+    "verified": {
+      "type": "boolean"
+    },
+    "helpful": {
+      "type": "integer"
+    },
+    "lang": {
+      "type": "string"
+    }
+  }
+}

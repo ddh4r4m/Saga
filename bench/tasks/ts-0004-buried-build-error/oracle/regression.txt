@@ -1,0 +1,4 @@
+# canary: 5bc066014590baf5
+unknown-type-still-errors
+user-email-accepts
+visible-test-present

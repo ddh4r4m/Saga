@@ -1,0 +1,35 @@
+{
+  "name": "order",
+  "fields": {
+    "id": {
+      "type": "string",
+      "description": "Order id, ord_ prefix"
+    },
+    "customer": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "integer "
+    },
+    "unitCents": {
+      "type": "integer",
+      "description": "Unit price in cents"
+    },
+    "currency": {
+      "type": "string"
+    },
+    "gift": {
+      "type": "boolean"
+    },
+    "note": {
+      "type": "string"
+    },
+    "placedAt": {
+      "type": "string",
+      "description": "ISO timestamp"
+    },
+    "weightKg": {
+      "type": "number"
+    }
+  }
+}

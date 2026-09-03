@@ -1,0 +1,28 @@
+# canary: b382a4c6249ef36a
+schema      = "saga.bench.task/1"
+id          = "py-0006-contact-dedupe"
+language    = "python"
+size        = "S"
+expected_minutes = 5
+cost_hint_usd    = 0.15
+created     = 2026-09-03
+source      = { kind = "synthetic", ref = "doc:02 §1, §16; bench-spec §2.2; gate-spec §2.3", note = "ambiguous feature request (case, whitespace, which duplicate wins, blank emails); the contract collapses every branch point so runs stop diverging" }
+tags        = ["plain", "ambiguity"]
+
+[repo]
+kind        = "snapshot"
+path        = "repo"
+snapshot    = "sha256:90adb93d79f05baa89925ad6db42cc419066fb89491a0ce8dc035b63533d3afd"
+
+[env]
+image       = "unpinned:local-python312"
+setup       = "setup.sh"
+network     = "offline"
+timeout_multiplier = 3
+
+[oracle]
+run         = "oracle/run.sh"
+baseline_must_fail = true
+ceiling     = 1.0
+regression_set = "oracle/regression.txt"
+gold_files  = ["contacts/merge.py"]

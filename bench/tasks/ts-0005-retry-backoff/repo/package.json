@@ -1,0 +1,9 @@
+{
+  "name": "retry-kit",
+  "version": "0.9.2",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\""
+  }
+}

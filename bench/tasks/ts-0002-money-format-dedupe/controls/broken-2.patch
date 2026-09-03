@@ -1,0 +1,21 @@
+# saga-bench control patch: broken-2 for ts-0002-money-format-dedupe
+# canary: ed51830731bb09b7
+diff --git a/src/receipt.ts b/src/receipt.ts
+index b5f38eb..b9a841d 100644
+--- a/src/receipt.ts
++++ b/src/receipt.ts
+@@ -6,9 +6,11 @@ export interface ReceiptItem {
+ }
+ 
+ function formatMoney(cents: number): string {
+-  const whole = Math.floor(cents / 100).toLocaleString("en-US");
+-  const frac = String(Math.abs(cents) % 100).padStart(2, "0");
+-  return `$${whole}.${frac}`;
++  const sign = cents < 0 ? "-" : "";
++  const abs = Math.abs(cents);
++  const whole = Math.floor(abs / 100).toLocaleString("en-US");
++  const frac = String(abs % 100).padStart(2, "0");
++  return `${sign}$${whole}.${frac}`;
+ }
+ 
+ export function renderReceipt(items: ReceiptItem[]): string {

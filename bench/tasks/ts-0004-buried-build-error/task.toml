@@ -1,0 +1,28 @@
+# canary: 5bc066014590baf5
+schema      = "saga.bench.task/1"
+id          = "ts-0004-buried-build-error"
+language    = "typescript"
+size        = "S"
+expected_minutes = 6
+cost_hint_usd    = 0.25
+created     = 2026-09-03
+source      = { kind = "synthetic", ref = "doc:02 §6; doc:07 §6.4; shape-spec first_error_found", note = "failing build whose first real error line is buried early in about 250 lines of warn/debug/check noise; the tail shows only cascaded self-check failures" }
+tags        = ["plain", "localization", "build"]
+
+[repo]
+kind        = "snapshot"
+path        = "repo"
+snapshot    = "sha256:61ec949faae8c48278f1104e93a3cab6e65ba9e45f78ba6cbefb81073b87d454"
+
+[env]
+image       = "unpinned:local-node24"
+setup       = "setup.sh"
+network     = "offline"
+timeout_multiplier = 3
+
+[oracle]
+run         = "oracle/run.sh"
+baseline_must_fail = true
+ceiling     = 1.0
+regression_set = "oracle/regression.txt"
+gold_files  = ["schema/order.json"]

@@ -1,0 +1,30 @@
+{
+  "name": "product",
+  "fields": {
+    "sku": {
+      "type": "string",
+      "description": "Stock keeping unit"
+    },
+    "title": {
+      "type": "string"
+    },
+    "priceCents": {
+      "type": "integer"
+    },
+    "stock": {
+      "type": "integer"
+    },
+    "active": {
+      "type": "boolean"
+    },
+    "rating": {
+      "type": "number"
+    },
+    "vendor": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "string"
+    }
+  }
+}

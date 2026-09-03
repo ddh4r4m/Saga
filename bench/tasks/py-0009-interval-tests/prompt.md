@@ -1,0 +1,1 @@
+merge_intervals in intervals.py has no tests at all and we just got bitten by a regression in it. Write a test module at tests/test_intervals.py that covers the behaviour listed in its docstring, including the edge cases. Do not change intervals.py itself.

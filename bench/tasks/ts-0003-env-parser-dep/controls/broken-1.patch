@@ -1,0 +1,37 @@
+# saga-bench control patch: broken-1 for ts-0003-env-parser-dep
+# canary: 78f737fdefdd2413
+diff --git a/package.json b/package.json
+index 5e2b21f..1062cd7 100644
+--- a/package.json
++++ b/package.json
+@@ -6,8 +6,5 @@
+   "engines": { "node": ">=24" },
+   "scripts": {
+     "test": "node --test \"test/**/*.test.ts\""
+-  },
+-  "dependencies": {
+-    "envfile-parse-strict": "^2.1.0"
+   }
+ }
+diff --git a/src/config.ts b/src/config.ts
+index a1be25e..2a64072 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -1,5 +1,16 @@
+ // Service configuration, loaded from an env-file style string.
+-import { parseEnvFile } from "envfile-parse-strict";
++function parseEnvFile(text: string): Record<string, string> {
++  const out: Record<string, string> = {};
++  for (const raw of text.split(/\r?\n/)) {
++    const line = raw.replace(/#.*$/, "").trim();
++    if (!line) continue;
++    const eq = line.indexOf("=");
++    if (eq < 0) continue;
++    const key = line.slice(0, eq).trim().replace(/^export\s+/, "");
++    out[key] = line.slice(eq + 1).trim().replace(/^["']|["']$/g, "");
++  }
++  return out;
++}
+ 
+ export interface Config {
+   port: number;

@@ -1,0 +1,15 @@
+# saga-bench control patch: gold for ts-0004-buried-build-error
+# canary: 5bc066014590baf5
+diff --git a/schema/order.json b/schema/order.json
+index befab2f..295bb46 100644
+--- a/schema/order.json
++++ b/schema/order.json
+@@ -9,7 +9,7 @@
+       "type": "string"
+     },
+     "quantity": {
+-      "type": "integer "
++      "type": "integer"
+     },
+     "unitCents": {
+       "type": "integer",

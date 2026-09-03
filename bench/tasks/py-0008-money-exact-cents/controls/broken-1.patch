@@ -1,0 +1,61 @@
+# saga-bench control patch: broken-1 for py-0008-money-exact-cents
+# canary: 938d4961ccd5198a
+diff --git a/pricing/money.py b/pricing/money.py
+index f586e26..e67a243 100644
+--- a/pricing/money.py
++++ b/pricing/money.py
+@@ -1,19 +1,23 @@
+-"""Money value object."""
++"""Money value object, exact to the cent."""
+ from dataclasses import dataclass
+ 
+ 
+ @dataclass(frozen=True)
+ class Money:
+-    amount: float
++    cents: int
++
++    @classmethod
++    def of(cls, amount: float) -> "Money":
++        return cls(round(amount * 100))
+ 
+     def __add__(self, other: "Money") -> "Money":
+-        return Money(self.amount + other.amount)
++        return Money(self.cents + other.cents)
+ 
+     def __mul__(self, qty: int) -> "Money":
+-        return Money(self.amount * qty)
++        return Money(self.cents * qty)
+ 
+     def __neg__(self) -> "Money":
+-        return Money(-self.amount)
++        return Money(-self.cents)
+ 
+ 
+-ZERO = Money(0.0)
++ZERO = Money(0)
+diff --git a/pricing/report.py b/pricing/report.py
+index 4545891..6aee64e 100644
+--- a/pricing/report.py
++++ b/pricing/report.py
+@@ -5,5 +5,5 @@ from .cart import Line, line_total
+ def to_csv(lines: list[Line]) -> str:
+     rows = ["name,qty,total"]
+     for name, price, qty in lines:
+-        rows.append(f"{name},{qty},{line_total(price, qty).amount}")
++        rows.append(f"{name},{qty},{line_total(price, qty).cents / 100:.2f}")
+     return "\n".join(rows) + "\n"
+diff --git a/tests/test_cart.py b/tests/test_cart.py
+index c643d5c..c14175a 100644
+--- a/tests/test_cart.py
++++ b/tests/test_cart.py
+@@ -6,7 +6,7 @@ from pricing.report import to_csv
+ 
+ class CartTests(unittest.TestCase):
+     def test_three_dimes(self):
+-        self.assertEqual(cart_total([("widget", Money(0.10), 3)]), Money(0.30))
++        self.assertEqual(cart_total([("widget", Money.of(0.10), 3)]), Money.of(0.30))
+ 
+     def test_csv_has_two_decimals(self):
+-        self.assertEqual(to_csv([("widget", Money(0.10), 3)]), "name,qty,total\nwidget,3,0.30\n")
++        self.assertEqual(to_csv([("widget", Money.of(0.10), 3)]), "name,qty,total\nwidget,3,0.30\n")

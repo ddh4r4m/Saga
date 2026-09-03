@@ -1,0 +1,1 @@
+We keep getting duplicate contacts from the CSV import. Add dedupe(contacts) in contacts/merge.py that removes the duplicates. Two entries are the same person if the email matches. Keep the list in the order it came in.

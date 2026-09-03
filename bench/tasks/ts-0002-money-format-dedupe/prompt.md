@@ -1,0 +1,1 @@
+Invoices and receipts disagree on negative amounts: the invoice prints -$1.50 and the receipt prints $-2.50 for the same refund. Both files carry their own copy of formatMoney. Pull one formatMoney out into src/money.ts with the invoice's behaviour and use it from both invoice.ts and receipt.ts. Leave src/legacy alone, its output is frozen for the finance export.

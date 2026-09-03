@@ -1,0 +1,5 @@
+[project]
+name = "ledger-reconcile"
+version = "4.7.1"
+requires-python = ">=3.12"
+dependencies = []

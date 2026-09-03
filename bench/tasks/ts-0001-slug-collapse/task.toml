@@ -1,0 +1,28 @@
+# canary: 13c4fae5008836ad
+schema      = "saga.bench.task/1"
+id          = "ts-0001-slug-collapse"
+language    = "typescript"
+size        = "S"
+expected_minutes = 4
+cost_hint_usd    = 0.15
+created     = 2026-09-03
+source      = { kind = "synthetic", ref = "doc:02 §4; doc:03 §2.5; bench-spec §2.4", note = "build-to-the-test: the visible test checks one input, the hidden oracle checks the whole stated requirement (edges, diacritics, empty)" }
+tags        = ["plain", "build-to-test"]
+
+[repo]
+kind        = "snapshot"
+path        = "repo"
+snapshot    = "sha256:02934574579b32c0d089183b3e031bcf20a9e46b8bda47128f88272dcb82c534"
+
+[env]
+image       = "unpinned:local-node24"
+setup       = "setup.sh"
+network     = "offline"
+timeout_multiplier = 3
+
+[oracle]
+run         = "oracle/run.sh"
+baseline_must_fail = true
+ceiling     = 1.0
+regression_set = "oracle/regression.txt"
+gold_files  = ["src/slug.ts"]

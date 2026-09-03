@@ -1,0 +1,1 @@
+{ "name": "broken", "canary": "5bc066014590baf5", "fields": { "a": { "type": "banana" }, "b": { "type": "string" } } }

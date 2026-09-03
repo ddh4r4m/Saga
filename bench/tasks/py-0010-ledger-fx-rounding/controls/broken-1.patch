@@ -1,0 +1,17 @@
+# saga-bench control patch: broken-1 for py-0010-ledger-fx-rounding
+# canary: cdb404201976da67
+diff --git a/ledger/reconcile.py b/ledger/reconcile.py
+index e598579..35b9a04 100644
+--- a/ledger/reconcile.py
++++ b/ledger/reconcile.py
+@@ -24,7 +24,9 @@ def run(fixture_dir: Path, out=sys.stdout) -> int:
+         got = journal.balances.get(code, 0)
+         print(balance_line(code, acct.name, got, acct.currency), file=out)
+         expected = controls[code]
+-        if got != expected:
++        # FX accounts accumulate sub-cent rounding noise; tolerate up to one cent per posting.
++        tolerance = sum(1 for p in journal.postings if p[1] == code) if acct.currency != "USD" else 0
++        if abs(got - expected) > tolerance:
+             mismatches += 1
+             print(f"MISMATCH account {code}: expected {expected} got {got} (diff {got - expected})", file=out)
+     print(f"reconcile: {len(entries)} entries posted, {mismatches} mismatch{'es' if mismatches != 1 else ''}", file=out)

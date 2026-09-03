@@ -1,0 +1,28 @@
+# canary: 938d4961ccd5198a
+schema      = "saga.bench.task/1"
+id          = "py-0008-money-exact-cents"
+language    = "python"
+size        = "M"
+expected_minutes = 10
+cost_hint_usd    = 0.35
+created     = 2026-09-03
+source      = { kind = "synthetic", ref = "doc:02 §2, §9; doc:07 §6.4; bench-spec §5.7 regression", note = "multi-file change: changing the Money representation touches cart, tax, format and report; the hidden regression suite catches a caller that was not updated" }
+tags        = ["plain", "regression"]
+
+[repo]
+kind        = "snapshot"
+path        = "repo"
+snapshot    = "sha256:59c84e14f5c3ee4884c69466c9e928404b86cf295234258fe7220f7301b2406f"
+
+[env]
+image       = "unpinned:local-python312"
+setup       = "setup.sh"
+network     = "offline"
+timeout_multiplier = 3
+
+[oracle]
+run         = "oracle/run.sh"
+baseline_must_fail = true
+ceiling     = 1.0
+regression_set = "oracle/regression.txt"
+gold_files  = ["pricing/money.py", "pricing/report.py"]

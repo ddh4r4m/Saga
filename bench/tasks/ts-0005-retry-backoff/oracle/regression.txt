@@ -1,0 +1,3 @@
+# canary: 52aeff4aebe362eb
+last-error-rethrown
+single-attempt-no-sleep

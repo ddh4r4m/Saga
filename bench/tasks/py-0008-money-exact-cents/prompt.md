@@ -1,0 +1,1 @@
+Money is float based and totals drift: three widgets at 0.10 come out as 0.30000000000000004 in the finance CSV, and comparing that total to Money(0.30) is False. Store cents as an integer instead of a float amount. Nothing user facing should change apart from the drift going away, so the display format, the tax rounding and the CSV layout stay as they are.

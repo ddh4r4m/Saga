@@ -1,0 +1,84 @@
+# saga-bench control patch: broken-1 for ts-0002-money-format-dedupe
+# canary: ed51830731bb09b7
+diff --git a/src/invoice.ts b/src/invoice.ts
+index 29a61ce..bc3ffa2 100644
+--- a/src/invoice.ts
++++ b/src/invoice.ts
+@@ -1,18 +1,11 @@
+ // Invoice rendering for the customer portal.
++import { formatMoney } from "./money.ts";
+ 
+ export interface Line {
+   description: string;
+   cents: number;
+ }
+ 
+-function formatMoney(cents: number): string {
+-  const sign = cents < 0 ? "-" : "";
+-  const abs = Math.abs(cents);
+-  const whole = Math.floor(abs / 100).toLocaleString("en-US");
+-  const frac = String(abs % 100).padStart(2, "0");
+-  return `${sign}$${whole}.${frac}`;
+-}
+-
+ export function renderInvoice(lines: Line[]): string {
+   const rows = lines.map((l) => `${l.description.padEnd(20)} ${formatMoney(l.cents).padStart(12)}`);
+   const total = lines.reduce((sum, l) => sum + l.cents, 0);
+diff --git a/src/legacy/report.ts b/src/legacy/report.ts
+index afecc4c..35fe585 100644
+--- a/src/legacy/report.ts
++++ b/src/legacy/report.ts
+@@ -1,3 +1,5 @@
++import { formatMoney as fmt } from "../money.ts";
++
+ // Finance export, consumed by the quarterly reconciliation spreadsheet.
+ // The column layout and number format are frozen; finance diffs the
+ // output against last quarter's file.
+@@ -7,10 +9,6 @@ export interface ReportRow {
+   cents: number;
+ }
+ 
+-function fmt(cents: number): string {
+-  return "$" + (cents / 100).toFixed(2);
+-}
+-
+ export function renderReport(rows: ReportRow[]): string {
+   const out = ["account,amount"];
+   for (const r of rows) out.push(`${r.account},${fmt(r.cents)}`);
+diff --git a/src/money.ts b/src/money.ts
+new file mode 100644
+index 0000000..5c4bc67
+--- /dev/null
++++ b/src/money.ts
+@@ -0,0 +1,9 @@
++// Shared money formatter: sign first, thousands grouping, two decimals.
++
++export function formatMoney(cents: number): string {
++  const sign = cents < 0 ? "-" : "";
++  const abs = Math.abs(cents);
++  const whole = Math.floor(abs / 100).toLocaleString("en-US");
++  const frac = String(abs % 100).padStart(2, "0");
++  return `${sign}$${whole}.${frac}`;
++}
+diff --git a/src/receipt.ts b/src/receipt.ts
+index b5f38eb..7e2d9c2 100644
+--- a/src/receipt.ts
++++ b/src/receipt.ts
+@@ -1,16 +1,11 @@
+ // Receipt rendering for the point-of-sale printer.
++import { formatMoney } from "./money.ts";
+ 
+ export interface ReceiptItem {
+   name: string;
+   cents: number;
+ }
+ 
+-function formatMoney(cents: number): string {
+-  const whole = Math.floor(cents / 100).toLocaleString("en-US");
+-  const frac = String(Math.abs(cents) % 100).padStart(2, "0");
+-  return `$${whole}.${frac}`;
+-}
+-
+ export function renderReceipt(items: ReceiptItem[]): string {
+   const rows = items.map((i) => `${i.name.padEnd(16)}${formatMoney(i.cents).padStart(10)}`);
+   const total = items.reduce((sum, i) => sum + i.cents, 0);

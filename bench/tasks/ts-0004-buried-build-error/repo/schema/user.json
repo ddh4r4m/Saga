@@ -1,0 +1,30 @@
+{
+  "name": "user",
+  "fields": {
+    "id": {
+      "type": "string",
+      "description": "usr_ prefix"
+    },
+    "email": {
+      "type": "string"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "age": {
+      "type": "integer"
+    },
+    "admin": {
+      "type": "boolean"
+    },
+    "balanceCents": {
+      "type": "integer"
+    },
+    "locale": {
+      "type": "string"
+    },
+    "score": {
+      "type": "number"
+    }
+  }
+}

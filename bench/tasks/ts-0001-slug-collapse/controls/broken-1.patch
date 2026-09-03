@@ -1,0 +1,13 @@
+# saga-bench control patch: broken-1 for ts-0001-slug-collapse
+# canary: 13c4fae5008836ad
+diff --git a/src/slug.ts b/src/slug.ts
+index 65623a4..e60f197 100644
+--- a/src/slug.ts
++++ b/src/slug.ts
+@@ -4,5 +4,5 @@
+ export function slugify(input: string): string {
+   const lowered = input.toLowerCase();
+   const replaced = lowered.replace(/[^a-z0-9]/g, "-");
+-  return replaced;
++  return replaced.replace(/-{2,}/g, "-").replace(/-$/, "");
+ }

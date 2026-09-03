@@ -1,0 +1,6 @@
+# canary: cdb404201976da67
+test_fx_identity
+test_bad_control_still_reported
+test_posting_lines_regression
+test_loader_regression
+test_report_regression

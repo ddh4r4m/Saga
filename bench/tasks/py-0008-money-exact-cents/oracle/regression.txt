@@ -1,0 +1,9 @@
+# canary: 938d4961ccd5198a
+test_csv_header_regression
+test_format_grouping_regression
+test_format_negative_regression
+test_tax_regression
+test_tax_rounds_to_cent_regression
+test_negative_qty_regression
+test_hundred_pennies
+test_addition_and_negation

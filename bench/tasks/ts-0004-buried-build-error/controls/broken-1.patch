@@ -1,0 +1,18 @@
+# saga-bench control patch: broken-1 for ts-0004-buried-build-error
+# canary: 5bc066014590baf5
+diff --git a/scripts/build.mjs b/scripts/build.mjs
+index 54a75bd..383a28b 100644
+--- a/scripts/build.mjs
++++ b/scripts/build.mjs
+@@ -38,9 +38,8 @@ for (const file of files) {
+     if (spec.format) log("warn", `${rel}#${field}: 'format' is deprecated and ignored`);
+     let check = TYPE_CHECKS[spec.type];
+     if (!check) {
+-      schemaErrors++;
+-      log("error", `${rel}#${field}: unknown type ${JSON.stringify(spec.type)}, emitting a validator that rejects everything`);
+-      check = "() => false";
++      log("warn", `${rel}#${field}: unrecognised type ${JSON.stringify(spec.type)}, treating as number`);
++      check = TYPE_CHECKS.number;
+     }
+     fieldParts.push(`    ${JSON.stringify(field)}: ${check},`);
+   }

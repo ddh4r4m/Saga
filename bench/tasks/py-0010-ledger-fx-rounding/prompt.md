@@ -1,0 +1,1 @@
+The nightly reconcile (python3 -m ledger.reconcile fixtures) reports account 4471 off by 0.30 EUR against the control file; every other account matches. The output is a few thousand lines so it is hard to see anything. Find the cause and fix it so the reconcile is clean.

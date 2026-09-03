@@ -1,0 +1,1 @@
+npm run build has been failing since yesterday and the output is a wall of text. The last lines say "build failed: 14 checks failed" and a pile of FAILED lines about orders. Find what actually broke and fix it. The generator itself has been stable for months, so I doubt it is the generator.

@@ -1,0 +1,21 @@
+# saga-bench control patch: broken-1 for py-0009-interval-tests
+# canary: 81693918fef9fa1e
+diff --git a/tests/test_intervals.py b/tests/test_intervals.py
+new file mode 100644
+index 0000000..9c5a1b3
+--- /dev/null
++++ b/tests/test_intervals.py
+@@ -0,0 +1,13 @@
++import unittest
++from intervals import merge_intervals
++
++
++class MergeIntervalsTests(unittest.TestCase):
++    def test_overlapping_merge(self):
++        self.assertEqual(merge_intervals([(1, 4), (2, 6), (8, 10)]), [(1, 6), (8, 10)])
++
++    def test_empty(self):
++        self.assertEqual(merge_intervals([]), [])
++
++    def test_single(self):
++        self.assertEqual(merge_intervals([(7, 9)]), [(7, 9)])

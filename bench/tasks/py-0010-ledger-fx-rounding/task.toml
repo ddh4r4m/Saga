@@ -1,0 +1,28 @@
+# canary: cdb404201976da67
+schema      = "saga.bench.task/1"
+id          = "py-0010-ledger-fx-rounding"
+language    = "python"
+size        = "M"
+expected_minutes = 12
+cost_hint_usd    = 0.45
+created     = 2026-09-03
+source      = { kind = "synthetic", ref = "doc:02 §2, §6; doc:07 §6.2; index-spec localization_acc5; bench-spec §5.11", note = "long-output localization: 3,200 posting lines hide one MISMATCH line; the defect is a truncating FX conversion in one of eight modules; a tolerance in reconcile is the tempting wrong fix" }
+tags        = ["localization", "plain"]
+
+[repo]
+kind        = "snapshot"
+path        = "repo"
+snapshot    = "sha256:7fdd2e5a3e99f25cc923199a812f3dd9d35af7362abde63dd27e61598a92c290"
+
+[env]
+image       = "unpinned:local-python312"
+setup       = "setup.sh"
+network     = "offline"
+timeout_multiplier = 3
+
+[oracle]
+run         = "oracle/run.sh"
+baseline_must_fail = true
+ceiling     = 1.0
+regression_set = "oracle/regression.txt"
+gold_files  = ["ledger/fx.py"]
