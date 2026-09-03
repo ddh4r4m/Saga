@@ -1,0 +1,98 @@
+{
+  "$id": "https://saga.dev/schema/gate/1/status",
+  "title": "saga.gate.status/1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "contract", "contract_hash", "base", "head", "tree_hash", "mode", "risk", "risk_removed", "exit", "progress_hash", "summary", "gates", "coverage", "guards", "handoff", "budget"],
+  "properties": {
+    "schema": {"const": "saga.gate.status/1"},
+    "contract": {"type": "string"},
+    "contract_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "base": {"type": "string"},
+    "head": {"type": "string"},
+    "tree_hash": {"type": ["string", "null"]},
+    "mode": {"enum": ["minimal", "full"]},
+    "risk": {"type": ["string", "null"], "enum": ["impossible", null]},
+    "risk_removed": {"type": "boolean"},
+    "exit": {"type": "integer", "minimum": 0},
+    "progress_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gates", "met", "unmet", "abandoned", "attested", "unproven", "manual", "waivers"],
+      "properties": {
+        "gates": {"type": "integer"}, "met": {"type": "integer"}, "unmet": {"type": "integer"},
+        "abandoned": {"type": "integer"}, "attested": {"type": "integer"}, "unproven": {"type": "integer"},
+        "manual": {"type": "integer"}, "waivers": {"type": "integer"}
+      }
+    },
+    "gates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "outcome", "state", "runnable", "from", "evidence", "red", "approval", "failure", "diagnostic"],
+        "properties": {
+          "id": {"type": "string"},
+          "outcome": {"type": "string"},
+          "state": {"enum": ["met", "unmet", "unproven", "attested", "abandoned", "manual"]},
+          "runnable": {"type": "boolean"},
+          "from": {"type": "array", "items": {
+            "type": "object", "additionalProperties": false, "required": ["sentence", "quote"],
+            "properties": {"sentence": {"type": "string"}, "quote": {"type": "string"}}
+          }},
+          "evidence": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+          "red": {
+            "type": "object", "additionalProperties": false, "required": ["mode", "valid", "proved_at", "reason"],
+            "properties": {
+              "mode": {"enum": ["baseline", "mutation", "control", "none"]},
+              "valid": {"type": "boolean"},
+              "proved_at": {"type": ["string", "null"]},
+              "reason": {"type": ["string", "null"], "enum": ["baseline missed", "mutation not observed", "no operator", "wrong-reason red", "invalidated", "expired", "declared none", null]}
+            }
+          },
+          "approval": {"enum": ["present", "missing", "n/a"]},
+          "failure": {"type": ["string", "null"]},
+          "diagnostic": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "coverage": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["sentences", "covered", "ignored", "uncovered"],
+      "properties": {
+        "sentences": {"type": "integer"},
+        "covered": {"type": "integer"},
+        "ignored": {"type": "integer"},
+        "uncovered": {"type": "array", "items": {
+          "type": "object", "additionalProperties": false, "required": ["id", "text", "confidence"],
+          "properties": {"id": {"type": "string"}, "text": {"type": "string"}, "confidence": {"const": "heuristic"}}
+        }}
+      }
+    },
+    "guards": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "path", "hunk", "rule", "pre", "post", "degraded", "advisory", "waived"],
+        "properties": {
+          "id": {"type": "string"}, "path": {"type": "string"}, "hunk": {"type": "string", "pattern": "^[0-9a-f]{12}$"},
+          "rule": {"type": "string"}, "pre": {"type": "integer"}, "post": {"type": "integer"},
+          "degraded": {"type": "boolean"}, "advisory": {"type": "boolean"}, "waived": {"type": "boolean"},
+          "waiver_reason": {"type": "string"}, "detail": {"type": "string"}
+        }
+      }
+    },
+    "handoff": {"type": "array", "items": {
+      "type": "object", "additionalProperties": false, "required": ["gate", "state"],
+      "properties": {"gate": {"type": "string"}, "state": {"const": "abandoned"}}
+    }},
+    "budget": {
+      "type": "object", "additionalProperties": false, "required": ["bytes_emitted", "tokens_est", "ceiling"],
+      "properties": {"bytes_emitted": {"type": "integer"}, "tokens_est": {"type": "integer"}, "ceiling": {"type": "integer"}}
+    },
+    "lint": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["rule", "msg"], "properties": {"rule": {"type": "string"}, "gate": {"type": "string"}, "msg": {"type": "string"}}}}
+  }
+}

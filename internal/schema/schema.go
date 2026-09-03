@@ -23,10 +23,14 @@ import (
 
 // Registry maps schema ids to embedded files.
 var Registry = map[string]string{
-	"saga.trace/1":        "trace/1/envelope.json",
-	"saga.trace.ledger/1": "trace/1/ledger.json",
-	"saga.trace.pins/1":   "trace/1/pins.json",
-	"saga.doctor/1":       "doctor/1/doctor.json",
+	"saga.trace/1":         "trace/1/envelope.json",
+	"saga.trace.ledger/1":  "trace/1/ledger.json",
+	"saga.trace.pins/1":    "trace/1/pins.json",
+	"saga.doctor/1":        "doctor/1/doctor.json",
+	"saga.gate.status/1":   "gate/1/status.json",
+	"saga.gate.evidence/1": "gate/1/evidence.json",
+	"saga.gate.red/1":      "gate/1/red.json",
+	"saga.gate.approval/1": "gate/1/approval.json",
 }
 
 // BodyFile returns the embedded body schema file for a trace event type.

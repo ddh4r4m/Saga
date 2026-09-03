@@ -1,0 +1,14 @@
+{
+  "$id": "https://saga.dev/schema/gate/1/approval",
+  "title": "saga.gate.approval/1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "identity_sha256", "gate", "approved_at", "by"],
+  "properties": {
+    "schema": {"const": "saga.gate.approval/1"},
+    "identity_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "gate": {"type": "string"},
+    "approved_at": {"type": "string"},
+    "by": {"type": "string"}
+  }
+}

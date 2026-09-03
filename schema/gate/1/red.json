@@ -1,0 +1,51 @@
+{
+  "$id": "https://saga.dev/schema/gate/1/red",
+  "title": "saga.gate.red/1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "gate", "mode", "oracle_hash", "witness_hash", "request_hash", "proved_at", "base", "operator", "red", "green", "toolchain"],
+  "properties": {
+    "schema": {"const": "saga.gate.red/1"},
+    "gate": {"type": "string", "minLength": 3},
+    "mode": {"enum": ["baseline", "mutation", "control"]},
+    "oracle_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "witness_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "request_hash": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+    "proved_at": {"type": "string"},
+    "base": {"type": "string"},
+    "operator": {"type": ["object", "null"]},
+    "red": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exit", "matched", "output_sha256", "output_bytes"],
+      "properties": {
+        "exit": {"type": "integer"},
+        "matched": {"type": "boolean"},
+        "output_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "output_bytes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "green": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["exit", "matched", "output_sha256", "output_bytes"],
+      "properties": {
+        "exit": {"type": "integer"},
+        "matched": {"type": "boolean"},
+        "output_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "output_bytes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "toolchain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shell", "platform", "path_fingerprint", "path_entries"],
+      "properties": {
+        "shell": {"type": "string"},
+        "platform": {"type": "string"},
+        "path_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "path_entries": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

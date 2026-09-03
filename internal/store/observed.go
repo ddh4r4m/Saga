@@ -55,6 +55,11 @@ type Observed struct {
 	OriginTokens map[string]int `json:"origin_tokens"`
 	// MaskSalt is the per-session salt of mask placeholders.
 	MaskSalt string `json:"mask_salt"`
+	// GateBlocks counts consecutive no-progress Stop blocks by gate and
+	// GateProgress is the progress hash of the last block (gate-spec
+	// section 6).
+	GateBlocks   int    `json:"gate_blocks"`
+	GateProgress string `json:"gate_progress"`
 }
 
 // ObservedSchema is the schema id of the observed session file.

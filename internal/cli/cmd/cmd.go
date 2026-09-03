@@ -17,6 +17,7 @@ import (
 
 	claudecode "github.com/ddh4r4m/saga/adapters/claude-code"
 	"github.com/ddh4r4m/saga/internal/cli"
+	"github.com/ddh4r4m/saga/internal/gate"
 	"github.com/ddh4r4m/saga/internal/harness/claude"
 	"github.com/ddh4r4m/saga/internal/hook"
 	"github.com/ddh4r4m/saga/internal/hookio"
@@ -40,6 +41,8 @@ usage: saga <command> [flags]
   trace doctor [--json]                 trace's subset of saga doctor
   doctor [--json]                       environment, hooks, usage source, pins
   bench verify-task|run|report|compare  the measurement harness (saga bench -h)
+  gate init|status|check|reverify|attest|approve|lint|guard-diff
+                                        contracts, evidence, red proof, diff guards (saga gate -h)
   version
 
 exit codes (contracts section 4): 0 ok, 1 finding, 2 usage, 3 refusal, 4 approval, 5 integrity, 6 environment, 7 contamination
@@ -93,6 +96,8 @@ func (a *App) run(args []string) error {
 		return a.cmdDoctor(args[1:])
 	case "bench":
 		return a.cmdBench(args[1:])
+	case "gate":
+		return a.cmdGate(args[1:])
 	}
 	fmt.Fprint(a.Stderr, usage)
 	return cli.Errorf(cli.ExitUsage, "unknown command %q", args[0])
@@ -244,10 +249,14 @@ func (a *App) cmdHook(args []string) error {
 			cfg = c
 		}
 	}
-	layer := &trace.Layer{Store: s, Version: a.Version, Config: cfg, Components: []string{"trace", "doctor"}, Stderr: func(m string) { fmt.Fprintln(a.Stderr, m) }}
+	stderr := func(m string) { fmt.Fprintln(a.Stderr, m) }
+	layer := &trace.Layer{Store: s, Version: a.Version, Config: cfg, Components: []string{"trace", "gate", "doctor"}, Stderr: stderr}
+	// Order of contracts section 1: trace records first, gate decides,
+	// trace's Finalize records the merged decision. Gate is inactive
+	// without a contract, so it is always in the chain.
 	entry := &hook.Entry{
 		Harness: harness, Parse: claude.Parse, Render: claude.Render,
-		Layers: []hookio.Layer{layer}, Deadline: time.Duration(cfg.Hook.DeadlineMS) * time.Millisecond,
+		Layers: []hookio.Layer{layer, &gate.Layer{Store: s, Stderr: stderr}}, Deadline: time.Duration(cfg.Hook.DeadlineMS) * time.Millisecond,
 		Stdin: a.Stdin, Stdout: a.Stdout, Stderr: a.Stderr,
 	}
 	code := entry.Run(event)
