@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ddh4r4m/saga/internal/bench/adapter"
 	"github.com/ddh4r4m/saga/internal/bench/report"
@@ -23,7 +24,7 @@ func (a *App) abs(p string) string {
 
 func (a *App) benchRun(args []string) error {
 	fs := a.flags("bench run")
-	tasksGlob := fs.String("tasks", "", "task directory glob (bench/tasks/*)")
+	tasksGlob := fs.String("tasks", "", "task directory glob, or a comma-separated list of globs (bench/tasks/*)")
 	adapterName := fs.String("adapter", "", "bare | replay | claude-code")
 	k := fs.Int("k", 1, "runs per task")
 	out := fs.String("out", "", "archive directory")
@@ -49,9 +50,13 @@ func (a *App) benchRun(args []string) error {
 	if *tasksGlob == "" || *adapterName == "" || *out == "" {
 		return cli.Errorf(cli.ExitUsage, "usage: saga bench run --tasks <glob> --adapter <name> --k <n> --out <dir>")
 	}
-	dirs, err := task.Find(a.abs(*tasksGlob))
-	if err != nil || len(dirs) == 0 {
-		return cli.Errorf(cli.ExitUsage, "run: no tasks match %s", *tasksGlob)
+	var dirs []string
+	for _, g := range strings.Split(*tasksGlob, ",") {
+		found, err := task.Find(a.abs(strings.TrimSpace(g)))
+		if err != nil || len(found) == 0 {
+			return cli.Errorf(cli.ExitUsage, "run: no tasks match %s", g)
+		}
+		dirs = append(dirs, found...)
 	}
 	var tasks []*task.Task
 	for _, d := range dirs {

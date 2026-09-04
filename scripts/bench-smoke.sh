@@ -1,0 +1,71 @@
+#!/bin/bash
+# End-to-end bench smoke on Claude Code: arm A is bare Claude Code (no
+# hooks, no contract, `saga` shimmed off the PATH), arm B is Claude Code
+# with the Saga hooks installed and the task contract in .saga/. Three
+# tasks, K runs each, arms interleaved per task (bench-spec 3.2).
+#
+# Run this from a plain terminal, not from inside an agent session: arm
+# B's baseline `saga gate check --approve` is a human act (gate-spec 8)
+# and is refused when CLAUDECODE or another harness marker is set or a
+# harness is in the parent process chain.
+#
+# Authentication: a fresh CLAUDE_CONFIG_DIR has no login, so export
+# CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`) or ANTHROPIC_API_KEY
+# before running. The bench never reads ~/.claude.
+#
+# Environment knobs: OUT (archive root), MODEL (default sonnet), K
+# (default 2), WALL_CAP (seconds per run, default 300), TASKS.
+set -euo pipefail
+
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+OUT=${OUT:-/tmp/saga-bench-smoke-$(date +%Y%m%d-%H%M%S)}
+MODEL=${MODEL:-sonnet}
+K=${K:-2}
+WALL_CAP=${WALL_CAP:-300}
+TASKS=${TASKS:-$ROOT/bench/tasks/ts-0001-slug-collapse,$ROOT/bench/tasks/ts-0005-retry-backoff,$ROOT/bench/tasks/py-0007-version-sort-impossible}
+
+for m in SAGA_AGENT_SHELL CLAUDECODE CLAUDE_CODE_ENTRYPOINT CODEX_SANDBOX CODEX_CI GEMINI_CLI CURSOR_AGENT; do
+  if [ -n "${!m:-}" ]; then
+    echo "bench-smoke: $m is set; run this from a plain terminal (the baseline approval is a human act)" >&2
+    exit 6
+  fi
+done
+if [ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && [ -z "${ANTHROPIC_API_KEY:-}" ]; then
+  echo "bench-smoke: export CLAUDE_CODE_OAUTH_TOKEN (claude setup-token) or ANTHROPIC_API_KEY first; a fresh config dir has no login" >&2
+  exit 6
+fi
+command -v claude >/dev/null || { echo "bench-smoke: claude not on PATH" >&2; exit 6; }
+command -v node >/dev/null || { echo "bench-smoke: node not on PATH (ts tasks)" >&2; exit 6; }
+command -v python3 >/dev/null || { echo "bench-smoke: python3 not on PATH (py tasks)" >&2; exit 6; }
+
+mkdir -p "$OUT/bin"
+go -C "$ROOT" build -trimpath -ldflags "-s -w -X main.version=$(git -C "$ROOT" rev-parse --short HEAD)" -o "$OUT/bin/saga" ./cmd/saga
+SAGA="$OUT/bin/saga"
+
+{
+  echo "bench-smoke $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "saga $($SAGA --version 2>&1 | head -1); claude $(claude --version 2>&1 | head -1)"
+  echo "model=$MODEL k=$K wall_cap=${WALL_CAP}s out=$OUT"
+} | tee "$OUT/run.log"
+
+set +e
+"$SAGA" bench run \
+  --tasks "$TASKS" \
+  --adapter claude-code \
+  --k "$K" \
+  --arm A:bare --arm B:gate \
+  --model "$MODEL" \
+  --wall-cap "$WALL_CAP" \
+  --saga-bin "$SAGA" \
+  --keep \
+  --out "$OUT/archive" 2>&1 | tee -a "$OUT/run.log"
+code=${PIPESTATUS[0]}
+set -e
+echo "bench run exit $code" | tee -a "$OUT/run.log"
+
+if [ -f "$OUT/archive/A/rows.jsonl" ] && [ -f "$OUT/archive/B/rows.jsonl" ]; then
+  "$SAGA" bench compare "$OUT/archive/A" "$OUT/archive/B" --out "$OUT/archive" > /dev/null 2>&1 || true
+  echo "compare written to $OUT/archive/compare.md" | tee -a "$OUT/run.log"
+fi
+echo "archive: $OUT/archive"
+exit "$code"
