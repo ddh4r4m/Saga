@@ -2,7 +2,7 @@
 
 > Saga makes any coding agent prove its work: a local, model-agnostic layer for repository knowledge, machine-checked completion, memory that survives compaction, and privacy at the tool boundary, with a benchmark that keeps it honest.
 
-**Status: M0 in progress.** The documents in `docs/` are the design; the Go module at the repository root is the first implementation step (trace event log, ledger, composed hook, Claude Code adapter, `doctor`). `docs/specs/IMPLEMENTATION-STATUS.md` lists what is implemented against each spec section.
+**Status: eight-week experiment, pre-registered.** On 2026-09-05 the scope was cut to one question ([ADR 0009](docs/adr/0009-scope-cut-eight-week-experiment.md)): does a Stop hook with claim verification cut the false-done rate on Claude Code, beyond the noise floor, without raising tokens per solved task by more than 10%? The protocol, budget and kill rule are in [docs/12](docs/12-experiment-protocol.md). The Go module at the repository root implements the kept layers (trace, gate, guard classifier, bench); `docs/specs/IMPLEMENTATION-STATUS.md` lists what is implemented against each spec section. No number about Saga appears here until a bench manifest exists.
 
 ## Why
 
@@ -16,7 +16,7 @@ Frontier models improve every release, and the complaints do not change: it said
 4. **A privacy layer.** Local, deterministic redaction of secrets and PII before content leaves the machine.
 5. **A routing and budget layer.** A visible token budget and cost-aware model selection for sub-tasks.
 
-Each layer installs independently. See [doc 01](docs/01-charter.md) for the full charter.
+Each layer installs independently. See [doc 01](docs/01-charter.md) for the full charter. Under ADR 0009, layers 1, 3 and 5 and the privacy masking in 4 are deferred until the experiment on layer 2 reports; what ships in this period is the contract and gate layer, the trace ledger, the command classifier and the benchmark.
 
 ## What Saga is not
 
@@ -37,17 +37,26 @@ See [ADR 0003](docs/adr/0003-harness-agnostic-surface.md).
 
 ## Roadmap
 
-From [doc 09, section 5](docs/09-proposal-and-roadmap.md):
+Cut to the eight-week experiment by [ADR 0009](docs/adr/0009-scope-cut-eight-week-experiment.md); the pre-registration is [doc 12](docs/12-experiment-protocol.md). Weeks run from 2026-09-07.
 
-| Milestone | Scope | Exit criterion |
+| Week | Scope | Exit criterion |
 |---|---|---|
-| **M0 Measure** | `bench` core; `trace` with per-turn cost ledger, version pinning, watchdog; `doctor`; 3-language task set; Claude Code adapter | Baseline published with pass^k and variance for 2 models; ledger reconciles with provider usage; canary runs on a schedule |
-| **M1 Gate + Guard + compaction survival** | ledger grammar, red proof, claim verification, diff guards, Stop adapters; post-expansion command classifier, per-turn snapshots and `saga undo`, secret masking, package check; PreCompact state block | Measured effect on M0 set; zero escapes on the destructive-command control suite; no false-positive masking; passes on Windows |
-| **M2 Index** | tree-sitter graph, BM25, test-impact map, 4 tools, MCP server, external API cache | Localization/resolve delta reproduced, control arm blocked |
-| **M3 Memory** | typed records, targeted injection, freshness, sub-agent preamble, procedures | Compliance-over-session curve measured with and without; drift on prose-only rules reported |
-| **M4 Shape** | output parsers, error-aware truncation, result cache, comment stripper | Tokens per task down, correctness flat or up |
-| **M5 Route** | policy file, budget, effort pinning, cheap-model delegation, schema repair | Cost down at equal pass^k; no silent model change |
-| **M6 Portability** | remaining adapters (Cursor, OpenCode, Devin Desktop, Cline, Kilo), trace resume, MCP gateway | Same install on 3+ harnesses |
+| **1 Readiness** | claim verification events (trace-spec §5.5 to §5.9) in the Stop step and offline; hook exit-code probe; pins with harness version | Stop block and claim event fire on the live pinned Claude Code; else stop |
+| **2 Smoke** | control-arm blocking, two-arm interleaving, containers or the documented worktree substitute, `doctor` hooks-fire probe; smoke tier, 20 runs | Archive verifies; `blocked_reach_attempts` = 0; per-run dollars measured and the estimates replaced |
+| **3 to 4 Tasks** | 20 new TypeScript and Python tasks from the missing failure classes (doc 12 §4.2), to 40 total with 8 impossible and 8 hack-bait | All 40 pass `saga bench verify-task`; task set frozen by hash |
+| **5 Pilot** | 20 existing tasks, arm A bare vs arm B Saga hooks plus contract, K = 5, interleaved | Kill rule (doc 12 §8): Δfalse-done inside the 5 pp noise floor ends the project as scoped |
+| **6 to 7 Full run** | remaining 20 tasks, K = 5; hook-overhead sub-study; infra re-runs; one report from the pooled rows | `report.json` byte-identical on regeneration |
+| **8 Report** | false-done, pass@1, pass^5, tokens and cost per solved, scope and cheat rates, hook overhead, dollars; manifests linked; repository pushed | Published whatever the sign |
+
+Budget: under $3,000 (doc 12 §6). One model (Claude Opus 5), one harness (Claude Code), one primary metric (false-done rate).
+
+| Deferred or dropped by ADR 0009 | Returns when |
+|---|---|
+| guard beyond the bash/zsh classifier and git-tree snapshot (PowerShell, cmd, Windows, masking, package check, MCP gateway) | guard classifier is the second experiment after a positive result |
+| trace canary schedule, replay, portable resume | after the experiment reports |
+| gate red proof as a requirement, diff guards as blockers, approvals workflow | each by its own pre-registered ablation |
+| mem (state block included), index, shape, MCP server, Codex and Gemini adapters | one new ADR per layer, each with a bench ablation, after a positive result |
+| route | dropped from the roadmap; a new ADR only |
 
 ## Building from source
 
@@ -79,7 +88,9 @@ saga trace ledger                           # per-call cost ledger of the latest
 | 04 | [Ecosystem survey](docs/04-ecosystem-survey.md) | ~60 tools; what works, what is hype |
 | 05 | [Code knowledge structures](docs/05-code-knowledge-structures.md) | Indexes, graphs, memory, determinism |
 | 08 | [Reference repo review](docs/08-reference-repo-review.md) | Two reference repos: mechanisms, evidence, gaps |
-| 09 | [Proposal and roadmap](docs/09-proposal-and-roadmap.md) | Architecture direction and milestones |
+| 09 | [Proposal and roadmap](docs/09-proposal-and-roadmap.md) | Architecture direction and milestones, as written before the cut |
+| 11 | [Red-team review](docs/11-red-team-review.md) | Five failure arguments, overstated claims, the scope cut |
+| 12 | [Experiment protocol](docs/12-experiment-protocol.md) | Pre-registration: hypotheses, arms, budget, kill rule, timeline |
 
 | ADR | Decision |
 |---|---|
@@ -88,8 +99,9 @@ saga trace ledger                           # per-call cost ledger of the latest
 | [0003](docs/adr/0003-harness-agnostic-surface.md) | One core, three surfaces: CLI, MCP, thin hooks |
 | [0004](docs/adr/0004-no-llm-narrative-memory.md) | Never inject LLM-written narrative as fact |
 | [0005](docs/adr/0005-index-shape.md) | Deterministic AST graph, depth one, four tools |
+| [0009](docs/adr/0009-scope-cut-eight-week-experiment.md) | Cut scope to an eight-week experiment on one hook, one harness, one number |
 
-Docs 06 and 07 are pending. See [docs/README.md](docs/README.md) for the maintained index.
+See [docs/README.md](docs/README.md) for the maintained index, including docs 06, 07 and 10 and ADRs 0006 to 0008.
 
 ## Principles
 

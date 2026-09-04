@@ -29,33 +29,37 @@ Six research agents (Opus-class general-purpose), then Fable agents for every sp
 
 ## Read the red-team review before deciding anything
 
-An adversarial review by a separate Fable agent (docs/11-red-team-review.md) argues the thesis is plausible but the eight-layer scope is not, and recommends an eight-week, one-hook experiment instead: bare harness versus bare plus gate on 40 tasks with hidden oracles, K=5, one model, primary metric false-done rate, budget under $3k, with a pre-registered kill rule. It also corrects several numbers in the proposal: the publish-tier bench is $5.5k to $15k by the spec's own run counts, not the $500 to $2,000 it stated (bench-spec §4.4 and docs/09 §5 now corrected), the M0 task set cannot detect a 5 pp effect, and eight headline rows in docs/09 §1 rest on secondary or unverified sources. The orchestrator did not act on the scope cut; that is decision 0 below.
+An adversarial review by a separate Fable agent (docs/11-red-team-review.md) argues the thesis is plausible but the eight-layer scope is not, and recommends an eight-week, one-hook experiment instead: bare harness versus bare plus gate on 40 tasks with hidden oracles, K=5, one model, primary metric false-done rate, budget under $3k, with a pre-registered kill rule. It also corrects several numbers in the proposal: the publish-tier bench is $5.5k to $15k by the spec's own run counts, not the $500 to $2,000 it stated (bench-spec §4.4 and docs/09 §5 now corrected), the M0 task set cannot detect a 5 pp effect, and eight headline rows in docs/09 §1 rest on secondary or unverified sources. The orchestrator did not act on the scope cut overnight; the owner accepted it on 2026-09-05 (decision 0 below, ADR 0009).
 
-## Decisions that need you
+## Decisions taken
 
-0. **Scope.** Accept the red-team scope cut (bench for TS and Python, trace ledger and pins, gate Stop with claim verification, guard shell classifier and git-tree snapshots, minimal doctor, Claude Code only; defer mem, index, shape, MCP gateway, Windows, masking; drop route), or keep the full eight-layer roadmap with the red-team's ship conditions as gates.
+| # | Decision | Taken | Record |
+|---|---|---|---|
+| 0 | **Scope.** The red-team scope cut is accepted: bench for TypeScript and Python, trace ledger, pins and claim verification, gate Stop block with claim verification, guard bash/zsh classifier and git-tree snapshots, minimal doctor, Claude Code only; mem, index, shape, the MCP gateway, Windows and masking deferred; route dropped from the roadmap | 2026-09-05 | [ADR 0009](adr/0009-scope-cut-eight-week-experiment.md); pre-registration in [docs/12](12-experiment-protocol.md) |
+| was 5 | **Language order.** TypeScript and Python only for the experiment; Go leaves M0; Swift and Dart wait for a positive result | 2026-09-05, by ADR 0009 | ADR 0009 kept/deferred table |
+| was 2 | **Harness facts** verified on live releases (sprint of 2026-09-03) | 2026-09-03 | [harness-facts](specs/harness-facts.md) |
 
-From docs/specs/REVIEW-LOG.md and docs/09 §7:
+## Decisions that still need you
 
-1. **Claim verification now has an owner (trace, spec v0.2 §5.5 to §5.9), with gate blocking Stop on a contradicted claim.** Three judgement calls to confirm: contradicted maps to exit 5 (integrity) rather than 3; the verdict lives inside the watchdog section; `RISK: impossible` is a full-mode contract header, not a per-gate attribute.
-2. **Harness facts verified (sprint done 2026-09-03, `docs/specs/harness-facts.md`).** Every hook fact the adapters rely on was checked against live vendor docs and default-branch source for Claude Code 2.1.258, Codex rust-v0.152.1, Gemini CLI v0.58.0 and OpenCode v1.18.26, with quotes. Both open items closed in Saga's favour: Claude Code `PreToolUse` `additionalContext` works (the two pages described plain stdout versus the JSON field); Codex `updatedInput` works and `PostToolUse` `block` replaces the result. Five spec statements were contradicted and fixed: Claude Code `PostToolUse` can replace results, `PostCompact` cannot add context, `SubagentStart` can (mem's preamble now uses it, removing the `updatedInput.prompt` collision with route), hooks run outside the sandbox on Claude Code and Codex, and `ask` is unsupported on Codex `PreToolUse`. Four fail-open modes were found (hook timeout on Claude Code, non-JSON stdout on Gemini, `ask` on Codex, untrusted hooks on Codex); contracts §1.1 now requires an entry-side deadline and a trust canary. Nothing further for you to decide; REVIEW-LOG risk 9 lists what remains a probe.
-3. **Token budget of 3,800 injected tokens per session** is a sum of priors. Accept as the M0 starting value to be tuned by bench, or set a different ceiling.
-4. **Snapshot cost on monorepos** now sits inside every PreToolUse call. Accept `on_budget = "ask"` prompts, or default snapshots to per-turn rather than per-tool-call on large trees.
-5. **Language order.** M0 is TypeScript, Python, Go. Given your own work is Swift and Flutter, decide whether Swift or Dart should displace Go in M0.
-6. **Public positioning.** README states "research and design phase, no code yet". Decide whether to push now to invite review, or hold until M0 has a first measured baseline.
-7. **Name and licence** are set (Saga, MIT). Confirm.
+Re-numbered after the scope cut. Decisions on deferred layers are parked, not dropped.
+
+1. **Claim verification judgement calls (trace-spec §5.5 to §5.9, gate-spec §6).** Now on the critical path: docs/12 readiness row 1. Three calls to confirm: contradicted maps to exit 5 (integrity) rather than 3; the verdict lives inside the watchdog section; `RISK: impossible` is a full-mode contract header, not a per-gate attribute. Also confirm docs/12 §2.1 rule 1: the bench's `claimed_done` never uses the gate's own exit status, which departs from gate-spec §10.3.
+2. **Public positioning and push timing.** README now states the experiment (ADR 0009). docs/12 §12 commits to pushing the repository with the manifests in week 8, and to publishing the pilot report whatever its sign. Decide whether to push earlier, at the week 2 smoke tier, to invite review of the pre-registration before any paid run.
+3. **Name and licence** are set (Saga, MIT). Confirm.
+4. **Parked with mem (deferred by ADR 0009): the 3,800-token injected budget.** Only trace's 400-token and gate's 1,000-token session shares are live; both are measured in the experiment (docs/12 §2.2 `injected_tokens`). Nothing to decide until a layer that injects mid-conversation is reopened.
+5. **Parked with the monorepo snapshot question: per-turn versus per-tool-call snapshots on large trees.** The corpus repositories are 25 to 257 source lines; the gate Stop step is 155 ms p50 there. The 20k-file figures in IMPLEMENTATION-STATUS stay a known limit and are not part of the experiment.
 
 ## Suggested next steps, in order
 
-1. Read docs/09 (proposal v0.4) end to end, then docs/specs/00-cross-spec-contracts.md.
-2. Answer the seven decisions above; each is a one-line ADR.
-3. Start M0: implement `saga bench` and `saga trace` per their specs, with the first 30 tasks in the language you choose. The bench must exist before any other layer claims a number.
-4. Run the bare-harness baseline on two models and publish the variance; that is the first public artefact worth pushing.
+1. Read [ADR 0009](adr/0009-scope-cut-eight-week-experiment.md), then [docs/12](12-experiment-protocol.md) end to end; it is the plan for the next eight weeks and freezes on the first paid run.
+2. Answer decisions 1 to 3 above; each is one line.
+3. Week 1 of docs/12 §11: claim verification events, the hook exit-code probe, pins with the harness version; tag the pre-registration.
+4. Week 2: control-arm blocking, two-arm interleaving, containers or the documented substitute, then the smoke tier. Its measured dollars replace every estimate in docs/12 §6.
 
 ## Known gaps and caveats
 
 - All numbers in the research docs are as of 2026-09-02 and many come from preprints; the provenance headers say so.
 - Research reports 03 to 08 were written by agents and reviewed only through their summaries; spot-check any number before quoting it externally.
-- Open risks 1, 2, 3, 7 and 8 in docs/specs/REVIEW-LOG.md are closed (2 and 3 by the harness-facts sprint); risks 4 to 6 remain and are decisions 3 to 4 above; risk 9 is informational.
+- Open risks 1, 2, 3, 7 and 8 in docs/specs/REVIEW-LOG.md are closed (2 and 3 by the harness-facts sprint); risks 4 to 6 remain and are parked as decisions 4 and 5 above; risk 9 is informational.
 - The em-dash style rule was applied mechanically across all docs after the fact (558 replacements); a few sentences may read slightly oddly.
 - Nothing has been pushed to GitHub.

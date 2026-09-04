@@ -13,22 +13,25 @@
 | 09 | [Proposal and roadmap](09-proposal-and-roadmap.md) | Evidence-backed architecture, per-model and per-harness gap maps, milestones, open questions |
 | 10 | [Morning brief](10-morning-brief.md) | What was produced overnight, decisions needed, next steps |
 | 11 | [Red-team review](11-red-team-review.md) | Adversarial review: five failure arguments, overstated claims, recommended scope cut and ship conditions |
+| 12 | [Experiment protocol](12-experiment-protocol.md) | Pre-registration of the eight-week experiment: hypotheses, arms, task set, budget, kill rule, analysis plan, readiness checklist, timeline |
 
 ## Layer specifications
 
-| Spec | Milestone | Status |
+Scope as of ADR 0009 (2026-09-05): the experiment in docs/12 uses bench, trace, gate and guard on Claude Code only. Deferred specs stay at their paths and are not edited until the experiment reports.
+
+| Spec | Scope (ADR 0009) | Status |
 |---|---|---|
-| [bench](specs/bench-spec.md) | M0 | v0.1, Fable |
-| [trace](specs/trace-spec.md) | M0 | v0.1, Fable |
-| [gate](specs/gate-spec.md) ([review log](specs/gate-spec-review.md)) | M1 | v0.2, Opus draft, Fable-reviewed |
-| [guard](specs/guard-spec.md) | M1 | v0.1, Fable |
-| [index](specs/index-spec.md) | M2 | v0.1, Fable |
-| [mem](specs/mem-spec.md) | M1 (state block), M3 | v0.1, Fable |
-| [shape](specs/shape-spec.md) | M4 | v0.1, Fable |
-| [route](specs/route-spec.md) | M5 | v0.1, Fable |
+| [bench](specs/bench-spec.md) | kept: TypeScript and Python, `smoke` and `dev` tiers | v0.1, Fable |
+| [trace](specs/trace-spec.md) | kept: ledger, pins, claim verification; canary, replay and resume deferred | v0.2, Fable |
+| [gate](specs/gate-spec.md) ([review log](specs/gate-spec-review.md)) | kept: contract, Stop block, claim verification; red proof as a requirement, diff guards as blockers, approvals deferred | v0.3, Opus draft, Fable-reviewed |
+| [guard](specs/guard-spec.md) | kept: bash and zsh classifier, git-tree snapshot; PowerShell, cmd, Windows, masking, package check, MCP gateway deferred | v0.1, Fable |
+| [index](specs/index-spec.md) | deferred | v0.1, Fable, frozen |
+| [mem](specs/mem-spec.md) | deferred, state block included | v0.1, Fable, frozen |
+| [shape](specs/shape-spec.md) | deferred | v0.1, Fable, frozen |
+| [route](specs/route-spec.md) | dropped from the roadmap | v0.1, Fable, record only |
 
 ## Architecture decision records
 
-See [adr/](adr/): 0001 measurement first, 0002 mechanisms over prompts, 0003 harness-agnostic surface, 0004 no LLM narrative memory, 0005 index shape, 0006 guard command validation, 0007 cost ledger and canary.
+See [adr/](adr/): 0001 measurement first, 0002 mechanisms over prompts, 0003 harness-agnostic surface, 0004 no LLM narrative memory, 0005 index shape, 0006 guard command validation, 0007 cost ledger and canary, 0008 implementation language, 0009 scope cut to the eight-week experiment.
 
 Vendored reference repositories live in `../research/vendor/` (git-ignored, see MANIFEST.md there).
