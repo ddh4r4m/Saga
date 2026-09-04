@@ -6,7 +6,7 @@
 
 ## Why
 
-Frontier models improve every release, and the complaints do not change: it said done but does not work, it forgot what was agreed an hour ago, it ignored the instructions file, same prompt, different result. The research behind Saga found the harness matters more than the model: in one controlled study, harness choice explained 7.8 times more score variance than model choice (evidence table in [doc 09](docs/09-proposal-and-roadmap.md)). Deterministic structure closes gaps prompting cannot: a structural code index raised bug localization from 44% to 85% in one study, while independently measured prompt-only tools delivered close to a tenth of their advertised effect. Saga builds the mechanisms with evidence behind them, and publishes the benchmark that keeps every claim honest.
+Frontier models improve every release, and the complaints do not change: it said done but does not work, it forgot what was agreed an hour ago, it ignored the instructions file, same prompt, different result. The research behind Saga (docs 03 to 08) found that, among frontier models, the choice of harness explains more outcome variance than the choice of model, that prompt-only tools measure far below their advertised effect under independent tests, and that deterministic structure (structural indexes, verification gates, tool-boundary guards) is where the measured gains are. Every number behind those claims carries a source grade in [doc 09 section 1](docs/09-proposal-and-roadmap.md); per [ADR 0009](docs/adr/0009-scope-cut-eight-week-experiment.md) this README quotes none of them until Saga's own benchmark reproduces them.
 
 ## What Saga is
 
