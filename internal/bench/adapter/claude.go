@@ -371,6 +371,19 @@ func (c *ClaudeCode) stageGate(ctx context.Context, in *PrepareInput) error {
 		return fmt.Errorf("saga init in workspace: %w", err)
 	}
 	st := store.Open(in.Workspace)
+	// docs/12 section 4 arm table: arm B runs the task's contract with
+	// require_red = false; regression gates green at baseline would
+	// otherwise hold Stop at exit 5 for the whole run.
+	cfgToml, err := os.ReadFile(st.Path("config.toml"))
+	if err != nil {
+		return fmt.Errorf("config.toml: %w", err)
+	}
+	if !bytes.Contains(cfgToml, []byte("require_red")) {
+		cfgToml = bytes.Replace(cfgToml, []byte("[gate]\n"), []byte("[gate]\nrequire_red = false\n"), 1)
+		if err := store.WriteFileAtomic(st.Path("config.toml"), cfgToml, 0o644); err != nil {
+			return fmt.Errorf("config.toml: %w", err)
+		}
+	}
 	man, _, _ := st.ReadManifest()
 	for _, l := range []string{"trace", "gate"} {
 		if !HasComponent(man.Layers, l) {

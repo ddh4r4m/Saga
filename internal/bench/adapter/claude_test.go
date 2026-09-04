@@ -125,6 +125,9 @@ func TestClaudePrepareDisclosure(t *testing.T) {
 			t.Errorf("%s missing", f)
 		}
 	}
+	if cfgToml, _ := os.ReadFile(filepath.Join(ws2, ".saga", "config.toml")); !strings.Contains(string(cfgToml), "[gate]\nrequire_red = false\n") {
+		t.Errorf("arm B config.toml lacks require_red = false (docs/12 section 4):\n%s", cfgToml)
+	}
 	contract, _ := os.ReadFile(filepath.Join(ws2, ".saga", "contract.md"))
 	want, _ := os.ReadFile(filepath.Join(tk.Dir, "contract.md"))
 	if string(contract) != string(want) {
