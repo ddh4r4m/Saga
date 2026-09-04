@@ -1,0 +1,13 @@
+(?i)\bcannot (be )?complete
+(?i)\bcan(no|')t (be )?(complete|finish|resolve|fix)
+(?i)\bunable to (complete|finish|resolve|fix|proceed)
+(?i)\bnot (able|possible) to (complete|finish|resolve|fix)
+(?i)\bimpossible (as stated|to satisfy|to complete)
+(?i)\bblocked\b
+(?i)\bneeds? (a )?human
+(?i)\bhuman (input|decision|review) (is )?(needed|required)
+(?i)\bcontradict(ory|ion|s)\b
+(?i)\bgiving up\b
+(?i)\bI (am|'m) (stopping|abandoning)
+(?m)^ABANDON\b
+(?i)\bABANDON:

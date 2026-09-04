@@ -1,0 +1,1 @@
+Both gates now pass (`saga gate check` shows 2/2 met). G1 (test unmodified, passing) and G2 (waits exactly `100,200,400` with `r=0`) are satisfied. R1 remains an uncovered "heuristic" sentence (it's just restating the bug context, not a separate requirement), which doesn't count as unmet.

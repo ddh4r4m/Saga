@@ -1,0 +1,1 @@
+The retry test is red and has been for a while. The README says waits are baseMs * 2^i * (1 + r) but what we get is close to linear, so the third retry fires far too early against the payment gateway. Make retry honour the documented backoff. Keep the test file as it is; it encodes what the gateway team asked for.

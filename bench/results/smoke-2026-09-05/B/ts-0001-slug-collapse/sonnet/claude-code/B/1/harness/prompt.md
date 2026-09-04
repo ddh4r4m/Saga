@@ -1,0 +1,1 @@
+Article slugs are coming out mangled. "Hello  World!" turns into "hello--world-" and "Café au lait" turns into "caf--au-lait". Fix slugify so runs of separators collapse to a single hyphen and hyphens never sit at either edge. Accented letters should fold to their plain ASCII letter, so "Café" gives "cafe". Do not change the public signature.

@@ -1,0 +1,28 @@
+# Saga configuration. One table per layer (docs/specs/00-cross-spec-contracts.md section 2).
+# Absent keys take the documented defaults.
+
+[hook]
+# The composed entry runs its own deadline because a timed-out PreToolUse
+# allows on Claude Code (contracts section 1.1). Milliseconds.
+deadline_ms = 5000
+
+[trace.budget]
+# session_usd = 25.00
+# task_usd = null
+turn_context_tokens = 400000
+soft_pct = 80
+compact_pct = 95
+hard_pct = 100
+hard_action = "stop"
+
+[trace.watchdog]
+
+[trace.claims]
+
+[gate]
+
+[index]
+
+[shape]
+
+[mem]

@@ -1,0 +1,114 @@
+{
+  "schema": "saga.gate.status/1",
+  "contract": "slugify-separator-collapse",
+  "contract_hash": "sha256:56a56b7c707751ead52e44311fc16df1c5ff9dfff09ab0cc034cbee2578e08e8",
+  "base": "6344692",
+  "head": "6344692",
+  "tree_hash": "tree:9bfc6bd2f683a7536c7dbffdb57c7d95f33c2bca",
+  "mode": "minimal",
+  "risk": null,
+  "risk_removed": false,
+  "exit": 5,
+  "progress_hash": "sha256:a54928b54ae47227af9fb253ec4953ab852fdeba35930dc347d9754bec4a008d",
+  "summary": {
+    "gates": 3,
+    "met": 0,
+    "unmet": 2,
+    "abandoned": 0,
+    "attested": 0,
+    "unproven": 1,
+    "manual": 0,
+    "waivers": 0
+  },
+  "gates": [
+    {
+      "id": "slugify-separator-collapse:G1",
+      "outcome": "runs of separators collapse and edges are trimmed",
+      "state": "unmet",
+      "runnable": true,
+      "from": [
+        {
+          "sentence": "R2",
+          "quote": "runs of separators collapse to a single hyphen"
+        },
+        {
+          "sentence": "R2",
+          "quote": "hyphens never sit at either edge"
+        }
+      ],
+      "evidence": null,
+      "red": {
+        "mode": "baseline",
+        "valid": true,
+        "proved_at": "2026-09-04T21:03:54Z",
+        "reason": null
+      },
+      "approval": "present",
+      "failure": "exit",
+      "diagnostic": "exit 1, exit, 1109 bytes\nTAP version 13\n# Subtest: collapses runs of separators\nnot ok 1 - collapses runs of separators\n  ---\n  duration_ms: 0.823125\n  type: 'test'\n  location: 'test/slug.test.ts:5:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    Expected values to be strictly equal:\n    + actual - expected\n    \n    + 'hello--world-'\n    - 'hello-world'\n             ^\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: 'hello-world'\n  actual: 'hello--world-'\n  operator: 'strictEqual'\n  stack: |-\n    TestContext.<anonymous> (file://test/slug.test.ts:6:10)\n    Test.runInAsyncScope (node:async_hooks:214:14)\n    Test.run (node:internal/test_runner/test:1106:25)\n    Test.start (node:internal/test_runner/test:1003:17)\n    startSubtestAfterBootstrap (node:internal/test_runner/harness:358:17)\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 0\n# fail 1\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 79.756666\n"
+    },
+    {
+      "id": "slugify-separator-collapse:G2",
+      "outcome": "accented letters fold to ASCII",
+      "state": "unmet",
+      "runnable": true,
+      "from": [
+        {
+          "sentence": "R3",
+          "quote": "Accented letters should fold to their plain ASCII letter"
+        }
+      ],
+      "evidence": null,
+      "red": {
+        "mode": "baseline",
+        "valid": true,
+        "proved_at": "2026-09-04T21:03:54Z",
+        "reason": null
+      },
+      "approval": "present",
+      "failure": "no-match",
+      "diagnostic": "exit 0, no-match, 13 bytes\ncaf--au-lait\n"
+    },
+    {
+      "id": "slugify-separator-collapse:G3",
+      "outcome": "the signature is unchanged",
+      "state": "unproven",
+      "runnable": true,
+      "from": [
+        {
+          "sentence": "R4",
+          "quote": "Do not change the public signature"
+        }
+      ],
+      "evidence": "sha256:76b0a942ef0f4e3e838bfa40d733e2245e363fe6ffa635d118a20ba7ca9bfc6c",
+      "red": {
+        "mode": "none",
+        "valid": false,
+        "proved_at": null,
+        "reason": "declared none"
+      },
+      "approval": "present",
+      "failure": null,
+      "diagnostic": null
+    }
+  ],
+  "coverage": {
+    "sentences": 4,
+    "covered": 3,
+    "ignored": 0,
+    "uncovered": [
+      {
+        "id": "R1",
+        "text": "Article slugs are coming out mangled. \"Hello  World!\" turns into \"hello--world-\" and \"Café au lait\" turns into \"caf--au-lait\".",
+        "confidence": "heuristic"
+      }
+    ]
+  },
+  "guards": [],
+  "handoff": [],
+  "budget": {
+    "bytes_emitted": 0,
+    "tokens_est": 0,
+    "ceiling": 400
+  }
+}

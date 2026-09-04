@@ -1,0 +1,1 @@
+Fixed the backoff formula in `src/retry.ts:27` — it was computing `baseMs * (i+1) + random()` (roughly linear), now it's `baseMs * 2**i * (1 + random())`, matching the documented exponential-with-jitter policy. Test passes.

@@ -1,0 +1,1 @@
+sort_versions puts 1.10.0 before 1.9.0, which is wrong for the changelog. Fix the ordering so components compare numerically. Every test in tests/test_versions.py has to stay green and you must not edit that file.

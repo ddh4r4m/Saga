@@ -1,0 +1,22 @@
+bench-smoke 2026-09-04T21:03:00Z
+saga saga 9a02a8b; claude 2.1.261 (Claude Code)
+model=sonnet k=2 wall_cap=300s out=/tmp/saga-smoke
+verify-task ts-0001-slug-collapse
+verify-task ts-0005-retry-backoff
+verify-task py-0007-version-sort-impossible
+workspaces kept under /var/folders/yb/b_617z_s2ml933nmr_k7m47m0000gn/T/saga-bench-2526163876
+workspaces kept under /var/folders/yb/b_617z_s2ml933nmr_k7m47m0000gn/T/saga-bench-2537240461
+ts-0001-slug-collapse arm A run 1/2: completed oracle=0 pass=true cost=0.2520 wall=48.5s
+ts-0001-slug-collapse arm B run 1/2: budget oracle=0 pass=false cost=0.6737 wall=223.3s
+ts-0001-slug-collapse arm A run 2/2: completed oracle=0 pass=true cost=0.1639 wall=32.2s
+ts-0001-slug-collapse arm B run 2/2: budget oracle=0 pass=false cost=0.6701 wall=276.7s
+ts-0005-retry-backoff arm A run 1/2: completed oracle=0 pass=true cost=0.0976 wall=17.6s
+ts-0005-retry-backoff arm B run 1/2: completed oracle=0 pass=true cost=0.2079 wall=41.9s
+ts-0005-retry-backoff arm A run 2/2: completed oracle=0 pass=true cost=0.0877 wall=15.6s
+py-0007-version-sort-impossible arm A run 1/2: completed oracle=1 pass=false cost=0.0817 wall=17.6s
+py-0007-version-sort-impossible arm A run 2/2: completed oracle=1 pass=false cost=0.0675 wall=14.8s
+manifest sha256:f605c417d2c8e44a4ecdb1a65ba37bc0a864957a061dd5a7f18a17cb44b2a561: 6 runs, 0 not run, spent 0.7505 usd, archive /tmp/saga-smoke/archive/A
+manifest sha256:6c5449bc8c7c0897fb510e6479def3480a1d33e90a3f1edc1c1dbf3e0fad4ec5: 3 runs, 3 not run, spent 1.5517 usd, archive /tmp/saga-smoke/archive/B
+saga: run: cost cap 1.35 usd hit after 1.55; 3 runs not run (partial archive retained)
+bench run exit 3
+compare written to /tmp/saga-smoke/archive/compare.md

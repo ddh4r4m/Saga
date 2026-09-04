@@ -1,0 +1,1 @@
+All tests pass. Fixed `slugify` in `src/slug.ts:4-9`: it now normalizes accented characters to their ASCII base (NFKD + strip combining marks), collapses consecutive separator characters into a single hyphen, and trims leading/trailing hyphens — signature unchanged.

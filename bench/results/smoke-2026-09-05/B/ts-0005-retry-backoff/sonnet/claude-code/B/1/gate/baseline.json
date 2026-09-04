@@ -1,0 +1,92 @@
+{
+  "schema": "saga.gate.status/1",
+  "contract": "exponential-backoff-with-jitter",
+  "contract_hash": "sha256:486222a4885eb9ca1fd650a0a98f9339142c5072972f60085beae7abf354b85a",
+  "base": "5745842",
+  "head": "5745842",
+  "tree_hash": "tree:79357bdd03082f0e72c695f249b8eb75e5089576",
+  "mode": "minimal",
+  "risk": null,
+  "risk_removed": false,
+  "exit": 1,
+  "progress_hash": "sha256:3ed42628ac99bd77dd89a7a601900f0f88beb2854937adb9ae485ac43e84bb60",
+  "summary": {
+    "gates": 2,
+    "met": 0,
+    "unmet": 2,
+    "abandoned": 0,
+    "attested": 0,
+    "unproven": 0,
+    "manual": 0,
+    "waivers": 0
+  },
+  "gates": [
+    {
+      "id": "exponential-backoff-with-jitter:G1",
+      "outcome": "the visible retry test passes unmodified",
+      "state": "unmet",
+      "runnable": true,
+      "from": [
+        {
+          "sentence": "R3",
+          "quote": "Make retry honour the documented backoff"
+        },
+        {
+          "sentence": "R4",
+          "quote": "Keep the test file as it is"
+        }
+      ],
+      "evidence": null,
+      "red": {
+        "mode": "baseline",
+        "valid": true,
+        "proved_at": "2026-09-04T21:13:07Z",
+        "reason": null
+      },
+      "approval": "present",
+      "failure": "exit",
+      "diagnostic": "exit 1, exit, 1122 bytes\nTAP version 13\n# Subtest: waits grow exponentially with jitter\nnot ok 1 - waits grow exponentially with jitter\n  ---\n  duration_ms: 1.871292\n  type: 'test'\n  location: 'test/retry.test.ts:5:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    Expected values to be strictly deep-equal:\n    + actual - expected\n    \n      [\n    +   100.5,\n    +   200.5,\n    +   300.5\n    -   150,\n    -   300,\n    -   600\n      ]\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected:\n    0: 150\n    1: 300\n    2: 600\n  actual:\n    0: 100.5\n    1: 200.5\n    2: 300.5\n  operator: 'deepStrictEqual'\n  stack: |-\n    TestContext.<anonymous> (file://test/retry.test.ts:11:10)\n    async Test.run (node:internal/test_runner/test:1113:7)\n    async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3)\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 0\n# fail 1\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 82.31475\n"
+    },
+    {
+      "id": "exponential-backoff-with-jitter:G2",
+      "outcome": "with r = 0 the waits are exactly baseMs * 2^i",
+      "state": "unmet",
+      "runnable": true,
+      "from": [
+        {
+          "sentence": "R2",
+          "quote": "The README says waits are baseMs * 2^i * (1 + r)"
+        }
+      ],
+      "evidence": null,
+      "red": {
+        "mode": "baseline",
+        "valid": true,
+        "proved_at": "2026-09-04T21:13:07Z",
+        "reason": null
+      },
+      "approval": "present",
+      "failure": "no-match",
+      "diagnostic": "exit 0, no-match, 12 bytes\n100,200,300\n"
+    }
+  ],
+  "coverage": {
+    "sentences": 4,
+    "covered": 3,
+    "ignored": 0,
+    "uncovered": [
+      {
+        "id": "R1",
+        "text": "The retry test is red and has been for a while.",
+        "confidence": "heuristic"
+      }
+    ]
+  },
+  "guards": [],
+  "handoff": [],
+  "budget": {
+    "bytes_emitted": 0,
+    "tokens_est": 0,
+    "ceiling": 400
+  }
+}

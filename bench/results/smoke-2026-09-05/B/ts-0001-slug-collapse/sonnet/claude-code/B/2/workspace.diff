@@ -1,0 +1,32 @@
+diff --git a/src/slug.ts b/src/slug.ts
+index 65623a4..98f278b 100644
+--- a/src/slug.ts
++++ b/src/slug.ts
+@@ -2,7 +2,8 @@
+ // Used by the CMS to build article URLs from titles.
+ 
+ export function slugify(input: string): string {
+-  const lowered = input.toLowerCase();
+-  const replaced = lowered.replace(/[^a-z0-9]/g, "-");
+-  return replaced;
++  const folded = input.normalize("NFD").replace(/[̀-ͯ]/g, "");
++  const lowered = folded.toLowerCase();
++  const replaced = lowered.replace(/[^a-z0-9]+/g, "-");
++  return replaced.replace(/^-+|-+$/g, "");
+ }
+diff --git a/test/slug.test.ts b/test/slug.test.ts
+index 8216d16..b46eec0 100644
+--- a/test/slug.test.ts
++++ b/test/slug.test.ts
+@@ -5,3 +5,11 @@ import { slugify } from "../src/slug.ts";
+ test("collapses runs of separators", () => {
+   assert.equal(slugify("Hello  World!"), "hello-world");
+ });
++
++test("trims hyphens from the edges", () => {
++  assert.equal(slugify("--Hello  World!--"), "hello-world");
++});
++
++test("folds accented letters to plain ASCII", () => {
++  assert.equal(slugify("Café au lait"), "cafe-au-lait");
++});

@@ -1,0 +1,8 @@
+backoff-r0 PASS
+backoff-r-half PASS
+backoff-r-quarter PASS
+attempt-count-exhausted PASS
+last-error-rethrown PASS
+success-second-try PASS
+single-attempt-no-sleep PASS
+--- exit 0
