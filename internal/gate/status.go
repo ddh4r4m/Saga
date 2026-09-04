@@ -362,7 +362,10 @@ func Status(l *Loaded, opts StatusOptions) (*Report, error) {
 			if gs.Evidence != nil && rec.Outcome == OutcomeMet && rec.OracleHash == oh {
 				if rec.Tree != nil && rec.Tree.WorktreeHash != nil && l.TreeHash != "" && *rec.Tree.WorktreeHash != l.TreeHash {
 					gs.Failure = strp("stale: tree changed since the check; run saga gate check")
-				} else if l.Config.RequireRedOn() && !gs.Red.Valid {
+				} else if l.Config.RequireRedOn() && !gs.Red.Valid && g.RedMode() != RedNone {
+					// A declared `RED: none` gate is unproven by declaration
+					// and never blocks (section 3.2); it keeps the
+					// MET (UNPROVEN: declared none) label from render.
 					gs.State = StateUnproven
 				} else {
 					gs.State = StateMet

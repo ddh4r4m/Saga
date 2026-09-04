@@ -229,6 +229,35 @@ func TestRedInvalidation(t *testing.T) {
 	}
 }
 
+func TestRedNoneNeverBlocks(t *testing.T) {
+	// Section 3.2: `RED: none` is declared unproven and never blocks. A
+	// regression gate that is green at baseline must not hold the ledger at
+	// exit 5 under require_red once the proven gates are met.
+	r := newRepo(t)
+	r.write("marker.txt", "no\n")
+	r.write("sig.txt", "export function f\n")
+	r.write(".saga/contract.md", "# Contract: n\n\nIN: marker.txt, sig.txt\n\n- [ ] G1: o\n    CHECK: cat marker.txt\n    EXPECT: CANARY-DONE\n- [ ] G2: the signature is unchanged\n    CHECK: grep -c \"export function f\" sig.txt\n    EXPECT: /^1$/m\n    RED: none\n")
+	r.commit("base")
+	rep := r.check(CheckOptions{Approve: true})
+	if g := gateState(rep, "G2"); g.State != StateMet || g.Red.Valid || g.Red.Reason == nil || *g.Red.Reason != ReasonDeclaredNone {
+		t.Errorf("declared-none gate at baseline: %+v", g)
+	}
+	if rep.Exit != int(cli.ExitFinding) || rep.Summary.Unproven != 0 {
+		t.Errorf("baseline exit %d unproven %d; want 1 (G1 unmet) and 0", rep.Exit, rep.Summary.Unproven)
+	}
+	r.write("marker.txt", "CANARY-DONE\n")
+	rep = r.check(CheckOptions{})
+	if rep.Exit != 0 {
+		t.Errorf("all met with a declared-none gate should exit 0, got %d: %v", rep.Exit, rep.Lines)
+	}
+	if !strings.Contains(strings.Join(rep.Lines, "\n"), "MET (UNPROVEN: "+ReasonDeclaredNone+")") {
+		t.Errorf("declared-none label missing:\n%s", strings.Join(rep.Lines, "\n"))
+	}
+	if st := r.status(); st.Exit != 0 || gateState(st, "G2").State != StateMet {
+		t.Errorf("status: exit %d %+v", st.Exit, gateState(st, "G2"))
+	}
+}
+
 func TestControlRedProof(t *testing.T) {
 	r := newRepo(t)
 	r.write("marker.txt", "CANARY-DONE\n")
