@@ -144,6 +144,13 @@ func Compare(a, b *Archive, epsilon float64) (*Report, error) {
 	r.Manifests = map[string]string{armA: a.Hash, armB: b.Hash}
 	r.Arms[armA], r.Arms[armB] = sa, sb
 	r.armOrder = []string{armA, armB}
+	r.armMeta = map[string]run.Arm{}
+	if len(a.Manifest.Arms) > 0 {
+		r.armMeta[armA] = a.Manifest.Arms[0]
+	}
+	if len(b.Manifest.Arms) > 0 {
+		r.armMeta[armB] = b.Manifest.Arms[0]
+	}
 	r.PerSolved[armA], r.PerSolved[armB] = sa.PerSolved, sb.PerSolved
 	r.Instability[armA], r.Instability[armB] = sa.Instability, sb.Instability
 	ut := append(unstable(sa), unstable(sb)...)

@@ -30,9 +30,12 @@ type PrepareInput struct {
 	Workspace string
 	ConfigDir string
 	Arm       string
-	Blocks    []string
-	Seed      string
-	Limits    Limits
+	// Components are the Saga components of the arm (bench-spec 4.3);
+	// empty is the bare control arm, blocked per 4.2.
+	Components []string
+	Blocks     []string
+	Seed       string
+	Limits     Limits
 	// SagaBinary is the saga executable hooks are bound to.
 	SagaBinary string
 }
@@ -99,8 +102,11 @@ type CollectOutput struct {
 	// HarnessCostUSD is the harness's own cost figure when it reports
 	// one; the bench prices usage itself and records both.
 	HarnessCostUSD *float64
-	TraceJSONL     []byte
-	TranscriptPath string
+	// BlockedReachAttempts counts control-arm reaches for the component
+	// (bench-spec 4.2), from the PATH shim's log.
+	BlockedReachAttempts int
+	TraceJSONL           []byte
+	TranscriptPath       string
 	// Disclosure additions learnt at collect time (model id, version).
 	Disclosure Disclosure
 }

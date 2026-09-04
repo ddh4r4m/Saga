@@ -54,10 +54,13 @@ func TestClaudeArgsAndEnv(t *testing.T) {
 			t.Errorf("env not sorted at %d", i)
 		}
 	}
-	s := c.Settings()
+	s := c.Settings([]string{"gate"})
 	hooks := s["hooks"].(map[string]any)
 	if _, ok := hooks["PreToolUse"]; !ok || len(hooks) < 8 {
 		t.Errorf("hooks fragment incomplete: %d events", len(hooks))
+	}
+	if bare := c.Settings(nil)["hooks"].(map[string]any); len(bare) != 0 {
+		t.Errorf("bare arm settings carry hooks: %v", bare)
 	}
 	cmd := hooks["Stop"].([]any)[0].(map[string]any)["hooks"].([]any)[0].(map[string]any)["command"].(string)
 	if cmd != "/opt/saga hook claude-code Stop" {
@@ -71,6 +74,7 @@ func TestClaudePrepareDisclosure(t *testing.T) {
 	ws := filepath.Join(root, "ws")
 	os.MkdirAll(ws, 0o755)
 	c := &ClaudeCode{Binary: "/nonexistent/claude", SagaBinary: "/nonexistent/saga", Version: "2.1.259 (Claude Code)"}
+	// Bare control arm: no .saga/, no hooks, the PATH shim block.
 	out, err := c.Prepare(context.Background(), &PrepareInput{Task: tk, Workspace: ws, ConfigDir: filepath.Join(root, "cfg"), Limits: Limits{WallS: 720, MaxTurns: 200, USD: 0.45}, Blocks: []string{}})
 	if err != nil {
 		t.Fatal(err)
@@ -78,8 +82,11 @@ func TestClaudePrepareDisclosure(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, "cfg", "settings.json")); err != nil {
 		t.Error("settings.json not written")
 	}
-	if _, err := os.Stat(filepath.Join(ws, ".saga", "config.toml")); err != nil {
-		t.Error(".saga not initialised in the workspace")
+	if _, err := os.Stat(filepath.Join(ws, ".saga")); err == nil {
+		t.Error(".saga present in the control arm workspace (bench-spec 4.2)")
+	}
+	if _, err := os.Stat(filepath.Join(root, "cfg", shimDir, "saga")); err != nil {
+		t.Error("control arm has no PATH shim")
 	}
 	v, err := schema.Normalize(out.Disclosure)
 	if err != nil {
@@ -92,8 +99,85 @@ func TestClaudePrepareDisclosure(t *testing.T) {
 	if h["version"] != "2.1.259 (Claude Code)" || h["binary_sha256"] != nil || h["binary_sha256_reason"] == nil {
 		t.Errorf("harness block %v", h)
 	}
-	if hooks := out.Disclosure["hooks"].([]any); len(hooks) != 10 {
+	if hooks := out.Disclosure["hooks"].([]any); len(hooks) != 0 {
+		t.Errorf("%d hooks disclosed in the control arm", len(hooks))
+	}
+	if blocks := out.Disclosure["blocks"].([]string); len(blocks) != 1 || blocks[0] != "path-shim:saga" {
+		t.Errorf("blocks %v", blocks)
+	}
+
+	// Treatment arm with gate: .saga/ with contract and request, saga on
+	// PATH, the approval store, the baseline check run through the saga
+	// binary (a fake here that records its argv and exits 1 = unmet).
+	ws2 := filepath.Join(root, "ws2")
+	os.MkdirAll(ws2, 0o755)
+	fake := filepath.Join(root, "fake-saga")
+	argv := filepath.Join(root, "argv")
+	os.WriteFile(fake, []byte("#!/bin/sh\necho \"$@\" > '"+argv+"'\necho \"$SAGA_APPROVAL_DIR\" >> '"+argv+"'\necho '{}'\nexit 1\n"), 0o755)
+	c2 := &ClaudeCode{Binary: "/nonexistent/claude", SagaBinary: fake, Version: "2.1.259 (Claude Code)"}
+	cfg2 := filepath.Join(root, "cfg2")
+	out2, err := c2.Prepare(context.Background(), &PrepareInput{Task: tk, Workspace: ws2, ConfigDir: cfg2, Components: []string{"gate"}, Limits: Limits{WallS: 720, MaxTurns: 200, USD: 0.45}, Blocks: []string{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range []string{".saga/config.toml", ".saga/contract.md", ".saga/request.md"} {
+		if _, err := os.Stat(filepath.Join(ws2, f)); err != nil {
+			t.Errorf("%s missing", f)
+		}
+	}
+	contract, _ := os.ReadFile(filepath.Join(ws2, ".saga", "contract.md"))
+	want, _ := os.ReadFile(filepath.Join(tk.Dir, "contract.md"))
+	if string(contract) != string(want) {
+		t.Error("contract not the task's")
+	}
+	if req, _ := os.ReadFile(filepath.Join(ws2, ".saga", "request.md")); string(req) != tk.Prompt() {
+		t.Error("request is not the prompt")
+	}
+	if fi, err := os.Stat(filepath.Join(cfg2, approvedDir)); err != nil || fi.Mode().Perm() != 0o700 {
+		t.Errorf("approval store: %v %v", fi, err)
+	}
+	if _, err := os.Stat(filepath.Join(cfg2, binDir, "saga")); err != nil {
+		t.Error("saga not linked into the agent's PATH")
+	}
+	got, _ := os.ReadFile(argv)
+	if !strings.HasPrefix(string(got), "gate check --approve --json\n"+filepath.Join(cfg2, approvedDir)) {
+		t.Errorf("baseline check argv/env:\n%s", got)
+	}
+	if hooks := out2.Disclosure["hooks"].([]any); len(hooks) != 10 {
 		t.Errorf("%d hooks disclosed", len(hooks))
+	}
+	if blocks := out2.Disclosure["blocks"].([]string); len(blocks) != 0 {
+		t.Errorf("treatment arm blocks %v", blocks)
+	}
+}
+
+func TestClaudeArmStaging(t *testing.T) {
+	c := &ClaudeCode{SagaBinary: "/opt/saga"}
+	cfg := t.TempDir()
+	if err := c.stageShim(cfg); err != nil {
+		t.Fatal(err)
+	}
+	env := strings.Join(c.Env(cfg), "\n")
+	if !strings.Contains(env, "PATH="+filepath.Join(cfg, shimDir)+string(os.PathListSeparator)) {
+		t.Errorf("shim dir not first on PATH:\n%s", env)
+	}
+	if strings.Contains(env, "SAGA_APPROVAL_DIR=") {
+		t.Errorf("control arm names an approval store")
+	}
+	if strings.Contains(env, "CLAUDE_CODE_ENTRYPOINT=") {
+		t.Errorf("harness marker leaked into the bench environment")
+	}
+	shim, _ := os.ReadFile(filepath.Join(cfg, shimDir, "saga"))
+	if !strings.Contains(string(shim), "exit 127") || !strings.Contains(string(shim), blockedLog) {
+		t.Errorf("shim:\n%s", shim)
+	}
+	// Treatment: bin and approved dirs switch the environment.
+	cfg2 := t.TempDir()
+	os.MkdirAll(filepath.Join(cfg2, binDir), 0o755)
+	os.WriteFile(filepath.Join(cfg2, binDir, "saga"), []byte("#!/bin/sh\n"), 0o755)
+	env2 := strings.Join(c.Env(cfg2), "\n")
+	if !strings.Contains(env2, "SAGA_APPROVAL_DIR="+filepath.Join(cfg2, approvedDir)) || !strings.Contains(env2, "PATH="+filepath.Join(cfg2, binDir)+string(os.PathListSeparator)) {
+		t.Errorf("treatment env:\n%s", env2)
 	}
 }
 

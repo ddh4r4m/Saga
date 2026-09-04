@@ -16,16 +16,33 @@ import (
 
 	claudecode "github.com/ddh4r4m/saga/adapters/claude-code"
 	"github.com/ddh4r4m/saga/internal/canon"
+	"github.com/ddh4r4m/saga/internal/gate"
 	"github.com/ddh4r4m/saga/internal/store"
 	"github.com/ddh4r4m/saga/internal/trace"
 )
 
 // ClaudeCode runs `claude -p` headless (bench-spec section 6.1) with a
 // bench-generated minimal settings file: Saga hooks bound to
-// `saga hook claude-code <event>`, an explicit tool list that restores
-// Grep and Glob (harness-facts C32), the task's permission mode and turn
-// cap, and a fresh HOME and CLAUDE_CONFIG_DIR so the operator's own
-// configuration is never read (section 3.1).
+// `saga hook claude-code <event>` in a treatment arm, an explicit tool
+// list that restores Grep and Glob (harness-facts C32), the task's
+// permission mode and turn cap, and a fresh HOME and CLAUDE_CONFIG_DIR so
+// the operator's own configuration is never read (section 3.1).
+//
+// Authentication: a fresh config dir holds no login (on macOS the OAuth
+// credential lives in the Keychain under a service name scoped to the
+// config dir; the 2026-09-05 smoke observed "Not logged in" with total
+// cost 0), so the operator supplies CLAUDE_CODE_OAUTH_TOKEN (from
+// `claude setup-token`) or ANTHROPIC_API_KEY in the environment; both
+// pass through and are redacted in harness.json. The bench never reads
+// the operator's ~/.claude.
+//
+// Arms: with Components empty the run is the bare control arm of section
+// 4.2: no hooks, no .saga/, and a PATH shim `saga` that logs the reach to
+// blocked.log and exits 127 (blocked_reach_attempts). With "gate" among
+// the components the workspace gets .saga/ with the task's contract and
+// the prompt as the request, the baseline red run with approval (a human
+// act, so the bench must be launched from a human shell), `saga` on the
+// agent's PATH and an owner-private approval store under the config dir.
 type ClaudeCode struct {
 	// Binary is the claude executable; "claude" on PATH by default.
 	Binary string
@@ -77,9 +94,19 @@ func SessionID(seed string) string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
 }
 
-// Settings is the generated settings.json: Saga hooks, a permissive
-// allow list for the bench tools, no co-author trailer.
-func (c *ClaudeCode) Settings() map[string]any {
+// HasComponent reports whether name is among the arm's components.
+func HasComponent(components []string, name string) bool {
+	for _, c := range components {
+		if c == name {
+			return true
+		}
+	}
+	return false
+}
+
+// Settings is the generated settings.json: Saga hooks when the arm has
+// them, a permissive allow list for the bench tools, no co-author trailer.
+func (c *ClaudeCode) Settings(components []string) map[string]any {
 	saga := c.SagaBinary
 	if saga == "" {
 		saga = "saga"
@@ -88,12 +115,30 @@ func (c *ClaudeCode) Settings() map[string]any {
 	for _, t := range c.tools() {
 		allow = append(allow, t)
 	}
+	hooks := map[string]any{}
+	if HasComponent(components, "gate") {
+		hooks = claudecode.Fragment(saga)["hooks"].(map[string]any)
+	}
 	return map[string]any{
-		"hooks":               claudecode.Fragment(saga)["hooks"],
+		"hooks":               hooks,
 		"permissions":         map[string]any{"allow": allow, "deny": []string{}},
 		"includeCoAuthoredBy": false,
 		"env":                 map[string]string{"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"},
 	}
+}
+
+// Per-run files under the config dir that Env reads back, so Prepare,
+// Run and the baseline check agree on the environment without state.
+const (
+	shimDir     = "shim"     // control arm: PATH shim `saga`
+	binDir      = "bin"      // treatment arm: symlink to the saga binary
+	approvedDir = "approved" // treatment arm: SAGA_APPROVAL_DIR
+	blockedLog  = "blocked.log"
+)
+
+func exists(p string) bool {
+	_, err := os.Lstat(p)
+	return err == nil
 }
 
 // passthrough lists the operator environment variables the harness
@@ -102,8 +147,10 @@ var passthrough = []string{"PATH", "TMPDIR", "LANG", "SHELL", "USER", "LOGNAME",
 
 // Env is the environment for the harness process: a private HOME and
 // CLAUDE_CONFIG_DIR under configDir plus the passthrough set and every
-// ANTHROPIC_* and CLAUDE_CODE_* variable (credentials). Sorted so the
-// disclosure block is stable.
+// ANTHROPIC_* and CLAUDE_CODE_* variable (credentials). The control
+// arm's shim directory or the treatment arm's bin directory is put first
+// on PATH when Prepare created it, and the treatment arm names its
+// approval store. Sorted so the disclosure block is stable.
 func (c *ClaudeCode) Env(configDir string) []string {
 	env := map[string]string{
 		"HOME":              filepath.Join(configDir, "home"),
@@ -126,6 +173,17 @@ func (c *ClaudeCode) Env(configDir string) []string {
 				env[k] = v
 			}
 		}
+	}
+	// CLAUDE_CODE_ENTRYPOINT is the harness's own marker for its children
+	// (gate.AgentShellMarkers), not a credential; it must not leak into
+	// the bench's shells.
+	delete(env, "CLAUDE_CODE_ENTRYPOINT")
+	if exists(filepath.Join(configDir, shimDir, "saga")) {
+		env["PATH"] = filepath.Join(configDir, shimDir) + string(os.PathListSeparator) + env["PATH"]
+	}
+	if exists(filepath.Join(configDir, binDir, "saga")) {
+		env["PATH"] = filepath.Join(configDir, binDir) + string(os.PathListSeparator) + env["PATH"]
+		env[gate.ApprovalEnv] = filepath.Join(configDir, approvedDir)
 	}
 	keys := make([]string, 0, len(env))
 	for k := range env {
@@ -170,8 +228,9 @@ func (c *ClaudeCode) version(ctx context.Context) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-// Prepare implements Adapter: writes the settings file, initialises
-// .saga/ in the workspace for the hooks, and fills the disclosure block.
+// Prepare implements Adapter: writes the settings file, stages the arm
+// (shim or .saga/ with the contract, request and baseline approval), and
+// fills the disclosure block.
 func (c *ClaudeCode) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOutput, error) {
 	if in.SagaBinary != "" && c.SagaBinary == "" {
 		c.SagaBinary = in.SagaBinary
@@ -181,7 +240,7 @@ func (c *ClaudeCode) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOut
 			return nil, err
 		}
 	}
-	settings, err := json.MarshalIndent(c.Settings(), "", "  ")
+	settings, err := json.MarshalIndent(c.Settings(in.Components), "", "  ")
 	if err != nil {
 		return nil, err
 	}
@@ -189,14 +248,23 @@ func (c *ClaudeCode) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOut
 	if err := os.WriteFile(settingsPath, append(settings, '\n'), 0o644); err != nil {
 		return nil, err
 	}
-	if _, err := store.Init(in.Workspace); err != nil {
-		return nil, fmt.Errorf("saga init in workspace: %w", err)
+	blocks := append([]string{}, in.Blocks...)
+	withGate := HasComponent(in.Components, "gate")
+	if withGate {
+		if err := c.stageGate(ctx, in); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := c.stageShim(in.ConfigDir); err != nil {
+			return nil, err
+		}
+		blocks = append(blocks, "path-shim:saga")
 	}
 	version, err := c.version(ctx)
 	if err != nil {
 		return nil, err
 	}
-	d := NewDisclosure("claude-code", in.Limits, in.Blocks)
+	d := NewDisclosure("claude-code", in.Limits, blocks)
 	h := d.Block("harness")
 	Set(h, "version", version, "")
 	if p, err := exec.LookPath(c.binary()); err == nil {
@@ -223,14 +291,14 @@ func (c *ClaudeCode) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOut
 	p := d.Block("permissions")
 	Set(p, "mode", in.Task.PermissionMode(), "")
 	Set(p, "sandbox", "none", "")
-	p["allow"] = c.Settings()["permissions"].(map[string]any)["allow"]
+	p["allow"] = c.Settings(in.Components)["permissions"].(map[string]any)["allow"]
 	p["deny"] = []string{}
 	ctxb := d.Block("context")
 	Set(ctxb, "compaction", "auto", "")
-	var hooks []any
+	hooks := []any{}
 	saga := c.SagaBinary
 	sagaSum := FileSHA256(saga)
-	for ev, list := range c.Settings()["hooks"].(map[string]any) {
+	for ev, list := range c.Settings(in.Components)["hooks"].(map[string]any) {
 		for _, entry := range list.([]any) {
 			for _, hk := range entry.(map[string]any)["hooks"].([]any) {
 				cmd := hk.(map[string]any)["command"].(string)
@@ -261,6 +329,93 @@ func (c *ClaudeCode) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOut
 	d["config_hash"] = BytesSHA256(settings)
 	d["prompt_hash"] = BytesSHA256([]byte(in.Task.Prompt()))
 	return &PrepareOutput{ConfigHash: BytesSHA256(settings), PromptHash: BytesSHA256([]byte(in.Task.Prompt())), ToolsHash: canon.SHA256(toolsCanon), Disclosure: d}, nil
+}
+
+// stageShim writes the control arm's PATH shim (bench-spec 4.2): `saga`
+// logs its arguments to blocked.log and exits 127.
+func (c *ClaudeCode) stageShim(configDir string) error {
+	dir := filepath.Join(configDir, shimDir)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	log := filepath.Join(configDir, blockedLog)
+	script := "#!/bin/sh\n# saga bench control arm: the component is blocked here (bench-spec 4.2)\nprintf '%s\\n' \"saga $*\" >> '" + log + "'\necho 'saga: not available in this environment' >&2\nexit 127\n"
+	return os.WriteFile(filepath.Join(dir, "saga"), []byte(script), 0o755)
+}
+
+// stageGate prepares the treatment arm: .saga/ in the workspace with the
+// prompt as the request and the task contract, `saga` on the agent's
+// PATH, an owner-private approval store, and the baseline `saga gate
+// check --approve` so the reds are recorded and the CHECK: lines are
+// approved before the agent starts (gate-spec 3.2; the approval is a
+// human act and is refused inside an agent shell).
+func (c *ClaudeCode) stageGate(ctx context.Context, in *PrepareInput) error {
+	if c.SagaBinary == "" {
+		return fmt.Errorf("gate arm: no saga binary")
+	}
+	sagaAbs, err := filepath.Abs(c.SagaBinary)
+	if err != nil {
+		return err
+	}
+	bin := filepath.Join(in.ConfigDir, binDir)
+	if err := os.MkdirAll(bin, 0o755); err != nil {
+		return err
+	}
+	if err := os.Symlink(sagaAbs, filepath.Join(bin, "saga")); err != nil && !errors.Is(err, os.ErrExist) {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Join(in.ConfigDir, approvedDir), 0o700); err != nil {
+		return err
+	}
+	if _, err := store.Init(in.Workspace); err != nil {
+		return fmt.Errorf("saga init in workspace: %w", err)
+	}
+	st := store.Open(in.Workspace)
+	man, _, _ := st.ReadManifest()
+	for _, l := range []string{"trace", "gate"} {
+		if !HasComponent(man.Layers, l) {
+			man.Layers = append(man.Layers, l)
+		}
+	}
+	if err := st.WriteManifest(man); err != nil {
+		return fmt.Errorf("manifest: %w", err)
+	}
+	if err := store.WriteFileAtomic(st.Path("request.md"), []byte(in.Task.Prompt()), 0o644); err != nil {
+		return fmt.Errorf("request: %w", err)
+	}
+	contract, err := os.ReadFile(filepath.Join(in.Task.Dir, "contract.md"))
+	if err != nil {
+		return fmt.Errorf("task contract: %w", err)
+	}
+	if err := store.WriteFileAtomic(st.Path("contract.md"), contract, 0o644); err != nil {
+		return fmt.Errorf("contract: %w", err)
+	}
+	// Baseline red with approval, in the agent's environment so the
+	// approval identity (which includes PATH) matches the agent's checks.
+	cmd := exec.CommandContext(ctx, sagaAbs, "gate", "check", "--approve", "--json")
+	cmd.Dir = in.Workspace
+	cmd.Env = c.Env(in.ConfigDir)
+	var out, errb bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &errb
+	err = cmd.Run()
+	var ee *exec.ExitError
+	code := 0
+	if errors.As(err, &ee) {
+		code = ee.ExitCode()
+	} else if err != nil {
+		return fmt.Errorf("baseline check: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(in.ConfigDir, "baseline.json"), out.Bytes(), 0o644); err != nil {
+		return err
+	}
+	switch code {
+	case 0:
+		return fmt.Errorf("baseline check: every gate met before any work (task verify-task should have failed)")
+	case 1, 5:
+		return nil
+	default:
+		return fmt.Errorf("baseline check --approve exited %d: %s", code, strings.TrimSpace(errb.String()))
+	}
 }
 
 // Run implements Adapter.
@@ -501,6 +656,12 @@ func (c *ClaudeCode) Collect(ctx context.Context, in *CollectInput) (*CollectOut
 	}
 	if sr.PermMode != "" {
 		Set(out.Disclosure.Block("permissions"), "mode", sr.PermMode, "")
+	}
+	if raw, err := os.ReadFile(filepath.Join(in.ConfigDir, blockedLog)); err == nil {
+		out.BlockedReachAttempts = len(strings.Split(strings.TrimRight(string(raw), "\n"), "\n"))
+		if len(strings.TrimSpace(string(raw))) == 0 {
+			out.BlockedReachAttempts = 0
+		}
 	}
 	out.Disclosure["native_log"] = filepath.Base(in.NativeLogPath)
 	if out.TranscriptPath != "" {

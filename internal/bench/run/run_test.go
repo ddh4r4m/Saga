@@ -1,6 +1,7 @@
 package run
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"os/exec"
@@ -181,5 +182,70 @@ func TestRunImpossibleAbandon(t *testing.T) {
 	}
 	if res.Rows[1].Outcome != "completed" || res.Rows[1].Oracle.Pass || !*res.Rows[1].ClaimedDone {
 		t.Errorf("none run: outcome %s pass %v claimed %v", res.Rows[1].Outcome, res.Rows[1].Oracle.Pass, *res.Rows[1].ClaimedDone)
+	}
+}
+
+func TestParseArm(t *testing.T) {
+	for _, tc := range []struct {
+		in   string
+		id   string
+		comp string
+		bad  bool
+	}{
+		{"A", "A", "", false}, {"A:bare", "A", "", false}, {"B:gate", "B", "gate", false},
+		{"B:gate,guard", "", "", true}, {":gate", "", "", true}, {"a/b", "", "", true},
+	} {
+		a, err := ParseArm(tc.in)
+		if tc.bad != (err != nil) || (!tc.bad && (a.ID != tc.id || strings.Join(a.Components, ",") != tc.comp)) {
+			t.Errorf("%q: %+v %v", tc.in, a, err)
+		}
+	}
+}
+
+func TestRunArmsInterleaved(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
+	needRunners(t)
+	tasks := loadTasks(t, "ts-0001-slug-collapse")
+	var log bytes.Buffer
+	out := filepath.Join(t.TempDir(), "runs")
+	results, err := RunArms(context.Background(), Options{Tasks: tasks, Adapter: &adapter.Replay{Patch: "gold"}, K: 2, Out: out, Seed: strings.Repeat("ab", 32), Log: &log, WallCapS: 300}, []ArmSpec{{ID: "A"}, {ID: "B", Components: []string{"gate"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 2 || len(results[0].Rows) != 2 || len(results[1].Rows) != 2 {
+		t.Fatalf("results: %d", len(results))
+	}
+	// Interleaved per task and index: A1, B1, A2, B2 (bench-spec 3.2).
+	var order []string
+	for _, l := range strings.Split(log.String(), "\n") {
+		if strings.Contains(l, " arm ") {
+			f := strings.Fields(l)
+			order = append(order, f[2]+f[4])
+		}
+	}
+	if strings.Join(order, " ") != "A1/2: B1/2: A2/2: B2/2:" {
+		t.Errorf("order %v", order)
+	}
+	// Same seed_i across arms; separate archives naming their arm.
+	for i := range results[0].Rows {
+		if results[0].Rows[i].Seed != results[1].Rows[i].Seed || results[0].Rows[i].Arm != "A" || results[1].Rows[i].Arm != "B" {
+			t.Errorf("row %d: %s/%s %s/%s", i, results[0].Rows[i].Arm, results[0].Rows[i].Seed[:8], results[1].Rows[i].Arm, results[1].Rows[i].Seed[:8])
+		}
+	}
+	mA, _, _, err := ReadArchive(filepath.Join(out, "A"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	mB, _, _, err := ReadArchive(filepath.Join(out, "B"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mA.RunSeed != mB.RunSeed || mA.Arms[0].ID != "A" || len(mA.Arms[0].BlocksInControl) != 1 || mB.Arms[0].Components[0] != "gate" || len(mB.Arms[0].BlocksInControl) != 0 {
+		t.Errorf("manifests: %+v %+v", mA.Arms, mB.Arms)
+	}
+	if got := results[0].Rows[0].Artifacts; len(got) == 0 {
+		t.Error("no artifacts")
 	}
 }

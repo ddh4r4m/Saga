@@ -108,6 +108,10 @@ type Report struct {
 	Reproduce          []string             `json:"reproduce"`
 
 	armOrder []string
+	// armMeta is the manifest's arm entry (components, control blocks)
+	// per arm id, for the setup section; not serialised (the schema is
+	// closed and the manifests carry it).
+	armMeta map[string]run.Arm
 }
 
 func f6(x float64) *float64 {
@@ -299,6 +303,9 @@ func Build(m *run.Manifest, hash string, rows []run.Row, dir string) *Report {
 	a := ArmFrom(m, rows)
 	r.Arms[arm] = a
 	r.armOrder = []string{arm}
+	if len(m.Arms) > 0 {
+		r.armMeta = map[string]run.Arm{arm: m.Arms[0]}
+	}
 	r.PerSolved[arm] = a.PerSolved
 	r.Instability[arm] = a.Instability
 	r.Instability["unstable_tasks"] = unstable(a)
@@ -429,7 +436,11 @@ func (r *Report) Markdown() string {
 		a := r.Arms[id]
 		w("- arm %s: model `%s`, harness `%s`, %d runs over %d tasks, K=%d, outcomes %s", id, a.Model, a.Harness, a.Runs, a.Tasks, a.K, fmtOutcomes(a.Outcomes))
 	}
-	w("- blocks: none (single-component arms are not blocked in this runner)")
+	for _, id := range order {
+		if meta, ok := r.armMeta[id]; ok {
+			w("- arm %s: components %s; control blocks %s", id, fmtList(meta.Components), fmtList(meta.BlocksInControl))
+		}
+	}
 	w("- task set: `%s`", deref(r.TaskSetSHA256))
 	w("- isolation: %s", deref(r.Isolation))
 	w("- exclusions: %d infra", r.Exclusions["infra"])
@@ -586,4 +597,11 @@ func describe(m map[string]any) string {
 		}
 	}
 	return strings.Join(parts, " ")
+}
+
+func fmtList(xs []string) string {
+	if len(xs) == 0 {
+		return "none"
+	}
+	return "`" + strings.Join(xs, "`, `") + "`"
 }

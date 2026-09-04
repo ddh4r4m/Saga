@@ -27,7 +27,12 @@ func (a *App) benchRun(args []string) error {
 	adapterName := fs.String("adapter", "", "bare | replay | claude-code")
 	k := fs.Int("k", 1, "runs per task")
 	out := fs.String("out", "", "archive directory")
-	arm := fs.String("arm", "A", "arm id")
+	var arms []string
+	fs.Func("arm", "arm spec <id>[:bare|:<component>,...]; repeat for interleaved arms, each archived under <out>/<id> (default A:bare)", func(v string) error {
+		arms = append(arms, v)
+		return nil
+	})
+	wallCap := fs.Float64("wall-cap", 0, "cap every run's wall limit at this many seconds (0: the task's limit)")
 	model := fs.String("model", "", "model id (claude-code --model; labels the cell)")
 	seed := fs.String("seed", "", "64-hex run seed (drawn and recorded when empty)")
 	replayPatch := fs.String("replay", "gold", "replay adapter: control name, comma list cycling by run, path, none or abandon")
@@ -78,20 +83,45 @@ func (a *App) benchRun(args []string) error {
 			prices = p
 		}
 	}
+	if len(arms) == 0 {
+		arms = []string{"A"}
+	}
+	var specs []run.ArmSpec
+	for _, v := range arms {
+		sp, err := run.ParseArm(v)
+		if err != nil {
+			return err
+		}
+		specs = append(specs, sp)
+	}
 	ctx, cancel := signalContext()
 	defer cancel()
 	outDir := a.abs(*out)
-	res, err := run.Run(ctx, run.Options{
-		Tasks: tasks, Adapter: ad, K: *k, Out: outDir, Arm: *arm, Tier: *tier, Seed: *seed, Model: *model,
-		Prices: prices, SagaBinary: *sagaBin, Version: a.Version, Budget: *budget, Verify: !*noVerify, Keep: *keep, Log: a.Stderr,
-	})
-	if res != nil && len(res.Rows) > 0 && !*noReport {
-		if rerr := a.writeReport(outDir, false); rerr != nil && err == nil {
+	opts := run.Options{
+		Tasks: tasks, Adapter: ad, K: *k, Out: outDir, Tier: *tier, Seed: *seed, Model: *model,
+		Prices: prices, SagaBinary: *sagaBin, Version: a.Version, Budget: *budget, Verify: !*noVerify, Keep: *keep, WallCapS: *wallCap, Log: a.Stderr,
+	}
+	report := func(dir string, res *run.Result, err error) error {
+		if res != nil && len(res.Rows) > 0 && !*noReport {
+			if rerr := a.writeReport(dir, false); rerr != nil && err == nil {
+				err = rerr
+			}
+		}
+		if res != nil {
+			fmt.Fprintf(a.Stdout, "manifest %s: %d runs, %d not run, spent %.4f usd, archive %s\n", res.ManifestHash, len(res.Rows), res.NotRun, res.SpentUSD, dir)
+		}
+		return err
+	}
+	if len(specs) == 1 {
+		opts.Arm, opts.Components = specs[0].ID, specs[0].Components
+		res, err := run.Run(ctx, opts)
+		return report(outDir, res, err)
+	}
+	results, err := run.RunArms(ctx, opts, specs)
+	for i, res := range results {
+		if rerr := report(filepath.Join(outDir, specs[i].ID), res, nil); rerr != nil && err == nil {
 			err = rerr
 		}
-	}
-	if res != nil {
-		fmt.Fprintf(a.Stdout, "manifest %s: %d runs, %d not run, spent %.4f usd, archive %s\n", res.ManifestHash, len(res.Rows), res.NotRun, res.SpentUSD, outDir)
 	}
 	return err
 }

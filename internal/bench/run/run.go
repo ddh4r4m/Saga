@@ -41,7 +41,10 @@ type Options struct {
 	K       int
 	Out     string
 	Arm     string
-	Tier    string
+	// Components are the arm's Saga components (bench-spec 4.3); empty
+	// is the bare control arm.
+	Components []string
+	Tier       string
 	// Seed is the 64-hex run seed; empty draws one and records it.
 	Seed string
 	// Model labels the cell directory and manifest; the row carries the
@@ -58,8 +61,50 @@ type Options struct {
 	Verify bool
 	// Keep retains the temporary workspaces.
 	Keep bool
-	Log  io.Writer
+	// WallCapS, when positive, lowers every run's wall limit to at most
+	// this many seconds (a smoke-run safety; the task's own limit is the
+	// section 3.3 default).
+	WallCapS float64
+	Log      io.Writer
 }
+
+// ArmSpec is one parsed `--arm` value: `<id>` or `<id>:bare` is the
+// control arm; `<id>:<component>[,<component>...]` a treatment arm
+// (bench-spec 9.1).
+type ArmSpec struct {
+	ID         string
+	Components []string
+}
+
+// KnownComponents are the components an arm may name; trace and doctor
+// are present in every arm (section 4.3) and are not listed.
+var KnownComponents = map[string]bool{"gate": true}
+
+// ParseArm parses an `--arm` value.
+func ParseArm(spec string) (ArmSpec, error) {
+	id, comps, _ := strings.Cut(spec, ":")
+	id = strings.TrimSpace(id)
+	if id == "" || strings.ContainsAny(id, "/\\ ") {
+		return ArmSpec{}, cli.Errorf(cli.ExitUsage, "run: --arm %q: the id must be a non-empty path segment", spec)
+	}
+	a := ArmSpec{ID: id, Components: []string{}}
+	comps = strings.TrimSpace(comps)
+	if comps == "" || comps == "bare" {
+		return a, nil
+	}
+	for _, c := range strings.Split(comps, ",") {
+		c = strings.TrimSpace(c)
+		if !KnownComponents[c] {
+			return ArmSpec{}, cli.Errorf(cli.ExitUsage, "run: --arm %q: unknown component %q (known: gate)", spec, c)
+		}
+		a.Components = append(a.Components, c)
+	}
+	return a, nil
+}
+
+// ControlBlocks are the section 4.2 blocks the claude-code adapter
+// applies in a bare arm.
+var ControlBlocks = []string{"path-shim:saga"}
 
 // Result is what Run returns.
 type Result struct {
@@ -96,8 +141,9 @@ func Estimate(tasks []*task.Task, k int) float64 {
 	return e
 }
 
-// Run executes the cell.
-func Run(ctx context.Context, opts Options) (*Result, error) {
+// open validates opts, verifies and hashes the task set, writes the
+// manifest and opens the archive.
+func open(ctx context.Context, opts Options) (*session, error) {
 	if opts.K < 1 {
 		return nil, cli.Errorf(cli.ExitUsage, "run: k must be at least 1")
 	}
@@ -164,7 +210,7 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 		Created: time.Now().UTC().Format(time.RFC3339),
 		Tier:    opts.Tier,
 		TaskSet: TaskSet{SHA256: "sha256:" + hex.EncodeToString(setHash.Sum(nil)), Tasks: taskHashes},
-		Arms:    []Arm{{ID: opts.Arm, Components: []string{}}},
+		Arms:    []Arm{armOf(opts)},
 		Models:  []Model{{ID: opts.Model}},
 		K:       opts.K, RunSeed: opts.Seed, BootstrapSeed: BootstrapSeed,
 		AbstainListSHA256: AbstainHash, Isolation: "worktree", Images: map[string]string{},
@@ -210,57 +256,156 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 	if err != nil {
 		return nil, cli.Wrap(cli.ExitEnvironment, "rows", err)
 	}
-	defer rowsFile.Close()
 	exclusions, err := os.OpenFile(filepath.Join(opts.Out, "exclusions.jsonl"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {
+		rowsFile.Close()
 		return nil, err
 	}
-	defer exclusions.Close()
 
 	tmpRoot, err := os.MkdirTemp("", "saga-bench-")
 	if err != nil {
 		return nil, cli.Wrap(cli.ExitEnvironment, "tmp", err)
 	}
-	if !opts.Keep {
-		defer os.RemoveAll(tmpRoot)
-	} else {
+	if opts.Keep {
 		opts.logf("workspaces kept under %s", tmpRoot)
 	}
 
-	res := &Result{ManifestHash: manifestHash, Manifest: m}
-	for _, t := range opts.Tasks {
-		for i := 1; i <= opts.K; i++ {
-			if ctx.Err() != nil {
-				res.NotRun++
-				continue
-			}
-			if res.SpentUSD > cap && cap > 0 {
-				res.CapHit = true
-				res.NotRun++
-				continue
-			}
-			row := runOne(ctx, &opts, m, manifestHash, t, i, tmpRoot)
-			if row.CostUSD != nil {
-				res.SpentUSD += *row.CostUSD
-			}
-			line, _ := json.Marshal(row)
-			rowsFile.Write(append(line, '\n'))
-			if row.Outcome == "infra" {
-				ex, _ := json.Marshal(map[string]any{"task": row.Task, "i": row.I, "reason": deref(row.OutcomeReason)})
-				exclusions.Write(append(ex, '\n'))
-			}
-			res.Rows = append(res.Rows, row)
-			opts.logf("%s run %d/%d: %s oracle=%s pass=%v cost=%s wall=%.1fs", t.ID, i, opts.K, row.Outcome, exitStr(row), row.Oracle.Pass, costStr(row.CostUSD), row.WallS)
-		}
+	return &session{opts: opts, m: m, hash: manifestHash, rowsFile: rowsFile, exclusions: exclusions, tmpRoot: tmpRoot, cap: cap, res: &Result{ManifestHash: manifestHash, Manifest: m}}, nil
+}
+
+// session is one open archive: manifest written, rows and exclusions
+// files open, workspaces root created.
+type session struct {
+	opts       Options
+	m          *Manifest
+	hash       string
+	rowsFile   *os.File
+	exclusions *os.File
+	tmpRoot    string
+	cap        float64
+	res        *Result
+}
+
+// run executes run i of task t and appends the row.
+func (s *session) run(ctx context.Context, t *task.Task, i int) {
+	res, opts := s.res, &s.opts
+	if ctx.Err() != nil {
+		res.NotRun++
+		return
+	}
+	if res.SpentUSD > s.cap && s.cap > 0 {
+		res.CapHit = true
+		res.NotRun++
+		return
+	}
+	row := runOne(ctx, opts, s.m, s.hash, t, i, s.tmpRoot)
+	if row.CostUSD != nil {
+		res.SpentUSD += *row.CostUSD
+	}
+	line, _ := json.Marshal(row)
+	s.rowsFile.Write(append(line, '\n'))
+	if row.Outcome == "infra" {
+		ex, _ := json.Marshal(map[string]any{"task": row.Task, "i": row.I, "reason": deref(row.OutcomeReason)})
+		s.exclusions.Write(append(ex, '\n'))
+	}
+	res.Rows = append(res.Rows, row)
+	opts.logf("%s arm %s run %d/%d: %s oracle=%s pass=%v cost=%s wall=%.1fs", t.ID, opts.Arm, i, opts.K, row.Outcome, exitStr(row), row.Oracle.Pass, costStr(row.CostUSD), row.WallS)
+}
+
+// close writes status.json, releases the files and workspaces, and
+// returns the result with the cap error when the cap stopped scheduling.
+func (s *session) close() (*Result, error) {
+	res, opts := s.res, &s.opts
+	s.rowsFile.Close()
+	s.exclusions.Close()
+	if !opts.Keep {
+		os.RemoveAll(s.tmpRoot)
 	}
 	spent := res.SpentUSD
-	status := map[string]any{"spent_usd": spent, "cap_usd": cap, "cap_hit": res.CapHit, "not_run": res.NotRun, "runs": len(res.Rows)}
+	status := map[string]any{"spent_usd": spent, "cap_usd": s.cap, "cap_hit": res.CapHit, "not_run": res.NotRun, "runs": len(res.Rows)}
 	sj, _ := json.MarshalIndent(status, "", "  ")
 	os.WriteFile(filepath.Join(opts.Out, "status.json"), append(sj, '\n'), 0o644)
 	if res.CapHit {
-		return res, cli.Errorf(cli.ExitRefusal, "run: cost cap %.2f usd hit after %.2f; %d runs not run (partial archive retained)", cap, spent, res.NotRun)
+		return res, cli.Errorf(cli.ExitRefusal, "run: cost cap %.2f usd hit after %.2f; %d runs not run (partial archive retained)", s.cap, spent, res.NotRun)
 	}
 	return res, nil
+}
+
+// Run executes one cell.
+func Run(ctx context.Context, opts Options) (*Result, error) {
+	s, err := open(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range opts.Tasks {
+		for i := 1; i <= opts.K; i++ {
+			s.run(ctx, t, i)
+		}
+	}
+	return s.close()
+}
+
+// RunArms executes several arms interleaved per task and run index
+// (A1, B1, A2, B2, ..., bench-spec 3.2) from one run seed, so run i of
+// every arm shares seed_i. Each arm is its own archive under
+// `<base.Out>/<arm id>` with the manifest naming that arm; `compare`
+// pairs them. Results come back in arm order; the first error (a cap
+// hit stops that arm only) is returned.
+func RunArms(ctx context.Context, base Options, arms []ArmSpec) ([]*Result, error) {
+	if len(arms) == 0 {
+		return nil, cli.Errorf(cli.ExitUsage, "run: no arms")
+	}
+	if base.Seed == "" {
+		b := make([]byte, 32)
+		if _, err := rand.Read(b); err != nil {
+			return nil, cli.Wrap(cli.ExitEnvironment, "run seed", err)
+		}
+		base.Seed = hex.EncodeToString(b)
+	}
+	var sessions []*session
+	for _, a := range arms {
+		opts := base
+		opts.Arm, opts.Components, opts.Out = a.ID, a.Components, filepath.Join(base.Out, a.ID)
+		s, err := open(ctx, opts)
+		if err != nil {
+			for _, o := range sessions {
+				o.close()
+			}
+			return nil, err
+		}
+		sessions = append(sessions, s)
+		// Verify once: the task set is shared.
+		base.Verify = false
+	}
+	for _, t := range base.Tasks {
+		for i := 1; i <= base.K; i++ {
+			for _, s := range sessions {
+				s.run(ctx, t, i)
+			}
+		}
+	}
+	var results []*Result
+	var first error
+	for _, s := range sessions {
+		r, err := s.close()
+		results = append(results, r)
+		if err != nil && first == nil {
+			first = err
+		}
+	}
+	return results, first
+}
+
+// armOf is the manifest arm entry for opts.
+func armOf(opts Options) Arm {
+	a := Arm{ID: opts.Arm, Components: opts.Components}
+	if a.Components == nil {
+		a.Components = []string{}
+	}
+	if len(a.Components) == 0 {
+		a.BlocksInControl = ControlBlocks
+	}
+	return a
 }
 
 func deref(s *string) string {
@@ -292,7 +437,11 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 		Usage:      Usage{Source: "none"},
 		Compliance: []any{}, ToolSequence: []adapter.ToolCall{}, Artifacts: map[string]string{},
 	}
-	limits := adapter.Limits{WallS: t.WallLimit().Seconds(), MaxTurns: t.MaxTurns(), USD: t.CostCap()}
+	wall := t.WallLimit()
+	if opts.WallCapS > 0 && wall.Seconds() > opts.WallCapS {
+		wall = time.Duration(opts.WallCapS * float64(time.Second))
+	}
+	limits := adapter.Limits{WallS: wall.Seconds(), MaxTurns: t.MaxTurns(), USD: t.CostCap()}
 	runDir := filepath.Join(opts.Out, t.ID, opts.Model, opts.Adapter.Name(), opts.Arm, fmt.Sprint(i))
 	os.MkdirAll(runDir, 0o755)
 	base := filepath.Join(tmpRoot, t.ID, fmt.Sprint(i))
@@ -321,7 +470,7 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 	if err := os.WriteFile(promptPath, []byte(t.Prompt()), 0o644); err != nil {
 		return infra("prompt", err)
 	}
-	prep, err := opts.Adapter.Prepare(ctx, &adapter.PrepareInput{Task: t, Workspace: ws, ConfigDir: cfg, Arm: opts.Arm, Blocks: []string{}, Seed: seed, Limits: limits, SagaBinary: opts.SagaBinary})
+	prep, err := opts.Adapter.Prepare(ctx, &adapter.PrepareInput{Task: t, Workspace: ws, ConfigDir: cfg, Arm: opts.Arm, Components: opts.Components, Blocks: []string{}, Seed: seed, Limits: limits, SagaBinary: opts.SagaBinary})
 	if err != nil {
 		return infra("prepare", err)
 	}
@@ -329,7 +478,7 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 		disclosure.Merge(prep.Disclosure)
 	}
 
-	runCtx, cancel := context.WithTimeout(ctx, t.WallLimit())
+	runCtx, cancel := context.WithTimeout(ctx, wall)
 	start := time.Now()
 	ro, err := opts.Adapter.Run(runCtx, &adapter.RunInput{Task: t, Workspace: ws, ConfigDir: cfg, PromptPath: promptPath, Seed: seed, Index: i, Limits: limits, Log: opts.Log})
 	row.WallS = time.Since(start).Seconds()
@@ -349,6 +498,7 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 	}
 	row.Usage = UsageFrom(col.Usage)
 	row.Turns, row.ToolCalls = col.Turns, col.ToolCalls
+	row.BlockedReachAttempts = col.BlockedReachAttempts
 	if col.ToolSequence != nil {
 		row.ToolSequence = col.ToolSequence
 	}
