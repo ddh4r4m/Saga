@@ -1,0 +1,34 @@
+{
+  "type": "result",
+  "subtype": "success",
+  "is_error": true,
+  "result": "Not logged in \u00b7 Please run /login",
+  "total_cost_usd": 0,
+  "duration_ms": 74,
+  "duration_api_ms": 0,
+  "num_turns": 1,
+  "terminal_reason": "api_error",
+  "usage": {
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "input_tokens": 0,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "output_tokens": 0,
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "",
+    "iterations": [],
+    "speed": "standard"
+  },
+  "session_id": "fcd43212-fc57-4fd9-9903-8641be5e5671",
+  "_note": "claude 2.1.261, -p --output-format json --max-turns 1 --model haiku, private HOME and CLAUDE_CONFIG_DIR as adapter.ClaudeCode.Env builds them; no API call was made"
+}
