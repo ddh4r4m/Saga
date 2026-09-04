@@ -64,8 +64,11 @@ set -e
 echo "bench run exit $code" | tee -a "$OUT/run.log"
 
 if [ -f "$OUT/archive/A/rows.jsonl" ] && [ -f "$OUT/archive/B/rows.jsonl" ]; then
-  "$SAGA" bench compare "$OUT/archive/A" "$OUT/archive/B" --out "$OUT/archive" > /dev/null 2>&1 || true
-  echo "compare written to $OUT/archive/compare.md" | tee -a "$OUT/run.log"
+  if "$SAGA" bench compare "$OUT/archive/A" "$OUT/archive/B" --out "$OUT/archive" 2>&1 | tee -a "$OUT/run.log"; then
+    echo "compare written to $OUT/archive/compare.md" | tee -a "$OUT/run.log"
+  else
+    echo "compare failed (exit ${PIPESTATUS[0]}); no compare.md (a partial arm cannot be paired)" | tee -a "$OUT/run.log"
+  fi
 fi
 echo "archive: $OUT/archive"
 exit "$code"
