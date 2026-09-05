@@ -1,0 +1,11 @@
+{
+  "name": "digestmail",
+  "version": "2.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\"",
+    "preview": "node src/preview.ts"
+  }
+}

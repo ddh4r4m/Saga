@@ -1,0 +1,23 @@
+# saga-bench control patch: broken-1 for ts-0023-digest-duplicate-zero-edit
+# canary: a273871d1b0cb4c1
+diff --git a/src/digest.ts b/src/digest.ts
+index 5977800..41a14d8 100644
+--- a/src/digest.ts
++++ b/src/digest.ts
+@@ -10,11 +10,15 @@ export interface Digest {
+   items: string[];
+ }
+ 
+-// One digest per recipient, in roster order.
++// One digest per recipient, in roster order; a member of several teams is
++// mailed once, for the first team that lists them.
+ export function buildDigests(roster: Team[]): Digest[] {
+   const out: Digest[] = [];
++  const seen = new Set<string>();
+   for (const team of roster) {
+     for (const email of team.members) {
++      if (seen.has(email)) continue;
++      seen.add(email);
+       out.push({ email, teams: [team.name], items: [...team.items] });
+     }
+   }

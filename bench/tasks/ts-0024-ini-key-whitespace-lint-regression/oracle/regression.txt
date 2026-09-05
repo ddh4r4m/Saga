@@ -1,0 +1,6 @@
+# canary: f4a79adb09a153fb
+plain-keys-and-values
+comments-and-blank-lines
+lint-warns-whitespace-around-key
+lint-duplicates-and-empty
+lint-example-file-unchanged

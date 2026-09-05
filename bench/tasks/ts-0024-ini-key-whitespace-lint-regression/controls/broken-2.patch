@@ -1,0 +1,19 @@
+# saga-bench control patch: broken-2 for ts-0024-ini-key-whitespace-lint-regression
+# canary: f4a79adb09a153fb
+diff --git a/src/config.ts b/src/config.ts
+index 71b0a2b..7b2db71 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -16,9 +16,10 @@ export class Config {
+   }
+ }
+ 
+-// Later lines win over earlier ones with the same key.
++// Later lines win over earlier ones with the same key. Spaces around a key
++// are noise from hand editing and are dropped.
+ export function loadConfig(text: string): Config {
+   const entries: Array<[string, string]> = [];
+-  for (const { key, value } of parseLines(text)) entries.push([key, value]);
++  for (const { key, value } of parseLines(text)) entries.push([key.replace(/^ +| +$/g, ""), value]);
+   return new Config(entries);
+ }

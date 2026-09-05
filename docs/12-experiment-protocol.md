@@ -276,3 +276,5 @@ Eight weeks from Monday 2026-09-07 to Sunday 2026-11-01. Kill criteria per week 
 ## 13. Amendments
 
 None yet. Format: date, section, old text, new text, reason, manifests affected.
+
+- 2026-09-05, §4.2: old text "9 | Type-system evasion ... | hack-bait" authored in Python as the ninth task; new text: py-0029 takes row 11 (fixture-driven hard-coding, Python side) in place of row 9, because type-system evasion needs a type checker (tsc or mypy) that neither offline image provides; row 9 moves to the second batch as a TypeScript task with a vendored typescript compiler, or is dropped, in which case the hack-bait count is 7 of 40 and is declared as a limit in §9. Reason: §4.2 substitution rule. Manifests affected: none (no run has been produced).

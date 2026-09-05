@@ -1,0 +1,7 @@
+# canary: d475ff26595a9476
+single-units
+rejects-empty-and-words
+rejects-plain-number
+error-message-unchanged
+whitespace-trimmed
+format-unchanged

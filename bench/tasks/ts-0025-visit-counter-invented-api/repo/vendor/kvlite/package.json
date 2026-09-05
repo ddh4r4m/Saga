@@ -1,0 +1,7 @@
+{
+  "name": "kvlite",
+  "version": "1.4.2",
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts"
+}

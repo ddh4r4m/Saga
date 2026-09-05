@@ -1,0 +1,3 @@
+# canary: b18214d94363ff8a
+test_plain_rows_unchanged
+test_bad_amount_still_rejected

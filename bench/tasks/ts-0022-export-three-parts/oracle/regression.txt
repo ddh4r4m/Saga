@@ -1,0 +1,5 @@
+# canary: 9d0a1caa380d8582
+csv-plain-unchanged
+header-and-sku-order
+since-absent-keeps-all
+cli-unknown-option-exits-2

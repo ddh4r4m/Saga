@@ -1,0 +1,5 @@
+[
+  { "name": "platform", "members": ["lena@example.org", "omar@example.org"], "items": ["PLAT-311 rollout window moved", "PLAT-320 image scan is green again"] },
+  { "name": "security", "members": ["omar@example.org", "priya@example.org"], "items": ["SEC-77 key rotation done"] },
+  { "name": "billing", "members": ["chen@example.org"], "items": [] }
+]

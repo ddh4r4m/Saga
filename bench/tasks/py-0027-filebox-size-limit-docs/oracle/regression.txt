@@ -1,0 +1,5 @@
+# canary: 57c8933b1286efcf
+test_round_trip_and_missing
+test_existing_codes_still_documented
+test_name_and_exists_codes_unchanged
+test_public_errors_all_registered

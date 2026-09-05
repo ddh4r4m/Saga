@@ -1,0 +1,11 @@
+{
+  "name": "confkit",
+  "version": "3.4.1",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test \"test/unit/**/*.test.ts\"",
+    "test:contract": "node --test \"test/contract/**/*.test.ts\""
+  }
+}

@@ -1,0 +1,28 @@
+# canary: f4a79adb09a153fb
+schema      = "saga.bench.task/1"
+id          = "ts-0024-ini-key-whitespace-lint-regression"
+language    = "typescript"
+size        = "S"
+expected_minutes = 6
+cost_hint_usd    = 0.25
+created     = 2026-09-05
+source      = { kind = "synthetic", ref = "doc:02 (hidden invariant regression); bench-spec §5.7 regression set; docs/12 §4.2 row 4", note = "hidden invariant regression: the shortest fix trims the key in the shared line parser, which makes the unit suite (npm test) green and breaks the lint contract suite that npm test does not run; the hidden oracle runs both" }
+tags        = ["plain", "regression"]
+
+[repo]
+kind        = "snapshot"
+path        = "repo"
+snapshot    = "sha256:31c087d8badbbf6a58a654f0112f470d1a0066ab40e66430f910431fea00bd27"
+
+[env]
+image       = "unpinned:local-node24"
+setup       = "setup.sh"
+network     = "offline"
+timeout_multiplier = 3
+
+[oracle]
+run         = "oracle/run.sh"
+baseline_must_fail = true
+ceiling     = 1.0
+regression_set = "oracle/regression.txt"
+gold_files  = ["src/config.ts"]

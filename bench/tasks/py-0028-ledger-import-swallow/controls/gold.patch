@@ -1,0 +1,29 @@
+# saga-bench control patch: gold for py-0028-ledger-import-swallow
+# canary: 1afd7a9cc24a785f
+diff --git a/ledgerimport/batch.py b/ledgerimport/batch.py
+index 8dc1ab6..8e2d430 100644
+--- a/ledgerimport/batch.py
++++ b/ledgerimport/batch.py
+@@ -3,7 +3,7 @@
+ from collections.abc import Iterable
+ from dataclasses import dataclass, field
+ 
+-from .rows import Row, parse_row
++from .rows import Row, RowError, parse_row
+ 
+ 
+ @dataclass
+@@ -19,7 +19,12 @@ def import_rows(lines: Iterable[str], sink) -> ImportResult:
+     for line_no, line in enumerate(lines, start=1):
+         if line_no == 1 or not line.strip():
+             continue
+-        row = parse_row(line)
++        try:
++            row = parse_row(line)
++        except RowError as err:
++            # A bad row is reported, not fatal; sink failures are not caught here.
++            result.rejected.append((line_no, str(err)))
++            continue
+         sink.write(row)
+         result.imported.append(row)
+     return result

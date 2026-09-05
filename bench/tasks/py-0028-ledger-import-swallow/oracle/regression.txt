@@ -1,0 +1,5 @@
+# canary: 1afd7a9cc24a785f
+test_clean_file_imports_everything
+test_sink_error_propagates
+test_parse_row_reasons_unchanged
+test_blank_lines_skipped

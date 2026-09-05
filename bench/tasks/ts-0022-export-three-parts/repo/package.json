@@ -1,0 +1,11 @@
+{
+  "name": "stockctl",
+  "version": "0.9.4",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\"",
+    "export": "node src/cli.ts export"
+  }
+}

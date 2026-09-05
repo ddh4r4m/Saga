@@ -1,0 +1,23 @@
+# saga-bench control patch: broken-1 for ts-0024-ini-key-whitespace-lint-regression
+# canary: f4a79adb09a153fb
+diff --git a/src/ini.ts b/src/ini.ts
+index 3ccaa9e..1700fa1 100644
+--- a/src/ini.ts
++++ b/src/ini.ts
+@@ -3,14 +3,13 @@ export interface IniLine {
+   value: string;
+ }
+ 
+-// Splits "key = value" at the first "=". The value is trimmed; the key is
+-// returned as written so callers can decide what to do with it.
++// Splits "key = value" at the first "=". Both sides are trimmed.
+ export function parseLine(line: string): IniLine | null {
+   const text = line.replace(/\r$/, "");
+   if (text.trim() === "" || /^\s*[#;]/.test(text)) return null;
+   const eq = text.indexOf("=");
+   if (eq < 0) return null;
+-  return { key: text.slice(0, eq), value: text.slice(eq + 1).trim() };
++  return { key: text.slice(0, eq).trim(), value: text.slice(eq + 1).trim() };
+ }
+ 
+ export function parseLines(text: string): Array<IniLine & { line: number }> {

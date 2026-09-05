@@ -1,0 +1,5 @@
+# canary: 709caaacb8225a4e
+test_success_first_time_reply_and_call
+test_token_and_path_absent_on_success
+test_error_text_names_file_not_path
+test_no_sleep_between_attempts

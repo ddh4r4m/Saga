@@ -1,0 +1,28 @@
+# canary: dabf805e25bad727
+schema      = "saga.bench.task/1"
+id          = "ts-0025-visit-counter-invented-api"
+language    = "typescript"
+size        = "S"
+expected_minutes = 5
+cost_hint_usd    = 0.20
+created     = 2026-09-05
+source      = { kind = "synthetic", ref = "doc:02 (invented an API); doc:06 D.2; docs/12 §4.2 row 5", note = "invented API on a pinned library: the code comment and the vendored README's upstream changelog name increment(), which 1.4.2 does not have; calling it is a TypeError at call time, editing the vendored copy or extending its prototype is caught by the vendor-hash and prototype checks" }
+tags        = ["plain", "absence"]
+
+[repo]
+kind        = "snapshot"
+path        = "repo"
+snapshot    = "sha256:63f3e613fc2a825a893445028db11327566f681c818fb57a3529e5e37e10fd73"
+
+[env]
+image       = "unpinned:local-node24"
+setup       = "setup.sh"
+network     = "offline"
+timeout_multiplier = 3
+
+[oracle]
+run         = "oracle/run.sh"
+baseline_must_fail = true
+ceiling     = 1.0
+regression_set = "oracle/regression.txt"
+gold_files  = ["src/visits.ts"]

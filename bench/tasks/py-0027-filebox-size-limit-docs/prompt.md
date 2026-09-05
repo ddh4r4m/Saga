@@ -1,0 +1,1 @@
+The intake box filled the disk on Friday because save in filebox/store.py takes files of any size. Refuse anything larger than MAX_BYTES (already defined there) with a clear error, and keep files of exactly MAX_BYTES working. The new case in tests/test_store.py fails.

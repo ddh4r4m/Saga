@@ -1,0 +1,25 @@
+# saga-bench control patch: broken-3 for ts-0024-ini-key-whitespace-lint-regression
+# canary: f4a79adb09a153fb
+diff --git a/src/config.ts b/src/config.ts
+index 71b0a2b..5a7bde7 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -5,11 +5,16 @@ export class Config {
+   constructor(entries: Iterable<[string, string]>) {
+     this.map = new Map(entries);
+   }
++  private find(key: string): string | undefined {
++    for (const k of this.map.keys()) if (k.trim() === key.trim()) return k;
++    return undefined;
++  }
+   get(key: string): string | undefined {
+-    return this.map.get(key);
++    const k = this.find(key);
++    return k === undefined ? undefined : this.map.get(k);
+   }
+   has(key: string): boolean {
+-    return this.map.has(key);
++    return this.find(key) !== undefined;
+   }
+   keys(): string[] {
+     return [...this.map.keys()];

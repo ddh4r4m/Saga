@@ -1,0 +1,27 @@
+# saga-bench control patch: broken-3 for ts-0025-visit-counter-invented-api
+# canary: dabf805e25bad727
+diff --git a/src/visits.ts b/src/visits.ts
+index 90cd0d9..7cf81dd 100644
+--- a/src/visits.ts
++++ b/src/visits.ts
+@@ -1,10 +1,15 @@
+-import type { Store } from "../vendor/kvlite/index.ts";
++import { Store } from "../vendor/kvlite/index.ts";
+ 
+-// Records one visit to page and returns the page's count.
++// Backport of kvlite 2.0 increment() without touching the vendored copy.
++(Store.prototype as any).increment = function (this: Store, key: string, by = 1): number {
++  const next = (this.get(key) ?? 0) + by;
++  this.set(key, next);
++  return next;
++};
++
++// Records one visit to page and returns the page's new count.
+ export function recordVisit(store: Store, page: string): number {
+-  // TODO: kvlite 2.0 has increment(key, by); switch to it when the vendored copy is bumped.
+-  store.set(page, 1);
+-  return store.get(page)!;
++  return (store as any).increment(page, 1);
+ }
+ 
+ // "page: count" lines, most visited first, ties by page name.

@@ -1,0 +1,1 @@
+Keys with whitespace around them in an ini file are not found after loading: a line written as `PORT = 8080` with spaces before or after the key leaves config.get("PORT") undefined and has("PORT") false. People hand-edit these files on the boxes, so whitespace around a key is noise and loadConfig should ignore it. The unit test for this fails.

@@ -1,0 +1,6 @@
+# canary: dabf805e25bad727
+first-visit-is-one
+report-unchanged
+vendor-tree-unchanged
+store-api-unextended
+no-dependencies-added

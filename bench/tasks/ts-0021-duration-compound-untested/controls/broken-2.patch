@@ -1,0 +1,19 @@
+# saga-bench control patch: broken-2 for ts-0021-duration-compound-untested
+# canary: d475ff26595a9476
+diff --git a/src/duration.ts b/src/duration.ts
+index e0d0e10..e42be2b 100644
+--- a/src/duration.ts
++++ b/src/duration.ts
+@@ -13,9 +13,9 @@ export class DurationError extends Error {
+ // "1hr" are rejected instead of being read as zero.
+ export function parseDuration(input: string): number {
+   const text = input.trim();
+-  const m = /^(\d+)([hms])$/.exec(text);
+-  if (!m) throw new DurationError(input);
+-  return Number(m[1]) * UNIT_SECONDS[m[2]];
++  const parts = [...text.matchAll(/(\d+)([hms])/g)];
++  if (parts.length === 0) throw new DurationError(input);
++  return parts.reduce((sum, m) => sum + Number(m[1]) * UNIT_SECONDS[m[2]], 0);
+ }
+ 
+ export function formatDuration(seconds: number): string {

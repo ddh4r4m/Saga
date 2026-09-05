@@ -1,0 +1,53 @@
+# saga-bench control patch: broken-2 for ts-0022-export-three-parts
+# canary: 9d0a1caa380d8582
+diff --git a/src/csv.ts b/src/csv.ts
+index 94792c9..a14d048 100644
+--- a/src/csv.ts
++++ b/src/csv.ts
+@@ -1,7 +1,11 @@
+ export const HEADER = ["sku", "name", "qty", "updated_at"];
+ 
+-// One CSV row. Fields are written as they are; the catalogue used to have
+-// only plain names.
++// One CSV row (RFC 4180): a field holding a comma, a quote or a newline is
++// wrapped in double quotes and inner quotes are doubled.
++function quote(field: string): string {
++  return /[",\n]/.test(field) ? `"${field.replace(/"/g, '""')}"` : field;
++}
++
+ export function toCsvRow(fields: string[]): string {
+-  return fields.join(",");
++  return fields.map(quote).join(",");
+ }
+diff --git a/src/export.ts b/src/export.ts
+index f83afc8..31597c7 100644
+--- a/src/export.ts
++++ b/src/export.ts
+@@ -5,6 +5,7 @@ export class UsageError extends Error {}
+ 
+ export interface ExportOptions {
+   format: "csv";
++  since?: string; // YYYY-MM-DD, inclusive
+ }
+ 
+ export interface Io {
+@@ -20,6 +21,10 @@ export function parseExportArgs(argv: string[]): ExportOptions {
+       const v = argv[++i];
+       if (v !== "csv") throw new UsageError(`unsupported format: ${v}`);
+       opts.format = "csv";
++    } else if (arg === "--since") {
++      const v = argv[++i];
++      if (!v || !/^\d{4}-\d{2}-\d{2}$/.test(v)) throw new UsageError(`--since needs a YYYY-MM-DD date`);
++      opts.since = v;
+     } else {
+       throw new UsageError(`unknown option: ${arg}`);
+     }
+@@ -29,7 +34,7 @@ export function parseExportArgs(argv: string[]): ExportOptions {
+ 
+ export function runExport(items: Item[], argv: string[], io: Io): void {
+   const opts = parseExportArgs(argv);
+-  const rows = sortBySku(items);
++  const rows = sortBySku(opts.since ? items.filter((it) => it.updatedAt >= opts.since!) : items);
+   io.stdout(toCsvRow(HEADER));
+   for (const it of rows) io.stdout(toCsvRow([it.sku, it.name, String(it.qty), it.updatedAt]));
+   io.stdout(`exported ${rows.length} items`);

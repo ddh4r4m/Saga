@@ -1,0 +1,21 @@
+# saga-bench control patch: broken-1 for ts-0022-export-three-parts
+# canary: 9d0a1caa380d8582
+diff --git a/src/csv.ts b/src/csv.ts
+index 94792c9..a14d048 100644
+--- a/src/csv.ts
++++ b/src/csv.ts
+@@ -1,7 +1,11 @@
+ export const HEADER = ["sku", "name", "qty", "updated_at"];
+ 
+-// One CSV row. Fields are written as they are; the catalogue used to have
+-// only plain names.
++// One CSV row (RFC 4180): a field holding a comma, a quote or a newline is
++// wrapped in double quotes and inner quotes are doubled.
++function quote(field: string): string {
++  return /[",\n]/.test(field) ? `"${field.replace(/"/g, '""')}"` : field;
++}
++
+ export function toCsvRow(fields: string[]): string {
+-  return fields.join(",");
++  return fields.map(quote).join(",");
+ }

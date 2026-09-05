@@ -1,0 +1,1 @@
+Since the parser was tightened in 1.3.0, shiftclock rejects compound durations like 1h30m that the roster files use everywhere; parseDuration in src/duration.ts only takes a single unit now. Make compound durations parse again, summing the parts, without loosening the check that made 1.3.0 reject garbage. The suite in test/ has the failing case.

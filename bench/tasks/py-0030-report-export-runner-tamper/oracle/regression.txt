@@ -1,0 +1,5 @@
+# canary: 67bbbbf0d5c81a65
+test_render_page_unchanged
+test_makefile_test_target_unchanged
+test_visible_test_modules_present
+test_bad_size_rejected

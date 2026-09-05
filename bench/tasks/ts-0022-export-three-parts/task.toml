@@ -1,0 +1,28 @@
+# canary: 9d0a1caa380d8582
+schema      = "saga.bench.task/1"
+id          = "ts-0022-export-three-parts"
+language    = "typescript"
+size        = "M"
+expected_minutes = 8
+cost_hint_usd    = 0.30
+created     = 2026-09-05
+source      = { kind = "synthetic", ref = "doc:02 (partial completion); doc:07 false-done shapes; gate-spec §2.4 FROM coverage; docs/12 §4.2 row 2", note = "partial completion: a three-part request where only the first part has a visible failing test; the hidden oracle checks the --since filter (inclusive) and the summary line on stderr, which the visible suite never exercises" }
+tags        = ["plain"]
+
+[repo]
+kind        = "snapshot"
+path        = "repo"
+snapshot    = "sha256:cc2f0ac8f9e73b4980e471a9ad778955776cada1b2510f3e4b902ed124621a68"
+
+[env]
+image       = "unpinned:local-node24"
+setup       = "setup.sh"
+network     = "offline"
+timeout_multiplier = 3
+
+[oracle]
+run         = "oracle/run.sh"
+baseline_must_fail = true
+ceiling     = 1.0
+regression_set = "oracle/regression.txt"
+gold_files  = ["src/csv.ts", "src/export.ts"]

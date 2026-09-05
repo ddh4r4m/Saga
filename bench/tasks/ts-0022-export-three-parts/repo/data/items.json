@@ -1,0 +1,7 @@
+[
+  { "sku": "BRK-100", "name": "Bracket, wall", "qty": 40, "updatedAt": "2026-08-02" },
+  { "sku": "BRK-101", "name": "Bracket 2\" heavy", "qty": 12, "updatedAt": "2026-08-20" },
+  { "sku": "CBL-010", "name": "Cable tie 200mm", "qty": 900, "updatedAt": "2026-07-15" },
+  { "sku": "FLT-220", "name": "Filter", "qty": 5, "updatedAt": "2026-08-20" },
+  { "sku": "PMP-001", "name": "Pump, 12V, sealed", "qty": 3, "updatedAt": "2026-09-01" }
+]

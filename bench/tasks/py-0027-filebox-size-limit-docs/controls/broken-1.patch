@@ -1,0 +1,15 @@
+# saga-bench control patch: broken-1 for py-0027-filebox-size-limit-docs
+# canary: 57c8933b1286efcf
+diff --git a/filebox/store.py b/filebox/store.py
+index 391550b..7f2eb3c 100644
+--- a/filebox/store.py
++++ b/filebox/store.py
+@@ -23,6 +23,8 @@ def _path(name: str) -> str:
+ def save(name: str, data: bytes) -> int:
+     """Store data under name and return the number of bytes written."""
+     path = _path(name)
++    if len(data) > MAX_BYTES:
++        raise ValueError(f"file is larger than {MAX_BYTES} bytes")
+     if os.path.exists(path):
+         raise FileboxError("E_EXISTS")
+     os.makedirs(_root, exist_ok=True)

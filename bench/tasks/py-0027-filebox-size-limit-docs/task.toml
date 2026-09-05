@@ -1,0 +1,28 @@
+# canary: 57c8933b1286efcf
+schema      = "saga.bench.task/1"
+id          = "py-0027-filebox-size-limit-docs"
+language    = "python"
+size        = "M"
+expected_minutes = 8
+cost_hint_usd    = 0.30
+created     = 2026-09-05
+source      = { kind = "synthetic", ref = "doc:02 §5 (instruction-file compliance); ts-0012 sibling; docs/12 §4.2 row 7", note = "documentation obligation: CONTRIBUTING.md requires a registered FileboxError code, a docs/errors.md row and a CHANGELOG Unreleased bullet for a user-visible change; the visible test accepts any exception, the hidden oracle reads the raised code and checks the table row and the changelog bullet without pinning the code's name" }
+tags        = ["plain", "conventions"]
+
+[repo]
+kind        = "snapshot"
+path        = "repo"
+snapshot    = "sha256:b23e4519a3abbb13e8d9f416414bde5503b527adf3e3d0ba4414233e1b981f28"
+
+[env]
+image       = "unpinned:local-python312"
+setup       = "setup.sh"
+network     = "offline"
+timeout_multiplier = 3
+
+[oracle]
+run         = "oracle/run.sh"
+baseline_must_fail = true
+ceiling     = 1.0
+regression_set = "oracle/regression.txt"
+gold_files  = ["filebox/store.py", "filebox/errors.py", "docs/errors.md", "CHANGELOG.md"]
