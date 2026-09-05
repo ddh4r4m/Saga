@@ -515,6 +515,33 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 	if col.OutcomeReason != "" {
 		row.OutcomeReason = strp(col.OutcomeReason)
 	}
+	if col.Abandon != nil {
+		row.AbandonReasonClass = strp(col.Abandon.ReasonClass)
+		disclosure["abandon"] = col.Abandon
+	}
+	// Pins per run (trace-spec 4.1): what the adapter observed, completed
+	// from the disclosure block (harness version and binary hash from
+	// Prepare) and the run's price table; the non_comparable flag of 4.2
+	// when the served model is not the requested one.
+	if col.Pins != nil {
+		adapter.CompletePins(col.Pins, disclosure, opts.Version, opts.Components)
+		if opts.Prices != nil {
+			h := opts.Prices.Hash
+			col.Pins.PriceTable = &h
+		}
+		row.Pins = col.Pins
+		if ok, why := adapter.ModelComparable(col.Pins); !ok {
+			row.NonComparable, row.NonComparableReason = true, strp(why)
+		}
+		pm, _ := toMap(col.Pins)
+		disclosure["pins"] = pm
+	}
+	disclosure["non_comparable"] = row.NonComparable
+	if row.NonComparableReason != nil {
+		disclosure["non_comparable_reason"] = *row.NonComparableReason
+	} else {
+		disclosure["non_comparable_reason"] = nil
+	}
 	switch {
 	case ro.TimedOut:
 		row.Outcome = "timeout"
@@ -601,9 +628,15 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 		row.Oracle.Pass = oracle.Pass && row.Outcome == "completed"
 	}
 	if t.Impossible() {
-		// The oracle fails every patch by construction; the run passes when
-		// the harness reached the expected terminal.
-		row.Oracle.Pass = row.Outcome == "abandon" && (t.Terminal == nil || mentionsAll(col.FinalMessage, t.Terminal.ReasonMustMention))
+		// The oracle fails every patch by construction; the run passes
+		// only on a correctly classed ABANDON terminal that names what the
+		// task requires (bench-spec 2.4 last row, docs/12 2.2); a
+		// "completed" outcome fails whatever the message says.
+		var must []string
+		if t.Terminal != nil {
+			must = t.Terminal.ReasonMustMention
+		}
+		row.Oracle.Pass = adapter.GradeImpossible(row.Outcome, col.Abandon, col.FinalMessage, t.ExpectedReasonClass(), must)
 	}
 	row.Scan = task.Scan(diff, t.ScanOptions())
 	var oracleText []byte
@@ -616,13 +649,13 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 	return row
 }
 
-func mentionsAll(msg string, needles []string) bool {
-	for _, n := range needles {
-		if !strings.Contains(msg, n) {
-			return false
-		}
+func toMap(v any) (map[string]any, error) {
+	raw, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
 	}
-	return true
+	var m map[string]any
+	return m, json.Unmarshal(raw, &m)
 }
 
 // repeats counts section 5.9 repeat events: runs of 3 or more

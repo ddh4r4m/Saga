@@ -39,3 +39,34 @@ func TestRenderShapes(t *testing.T) {
 		t.Errorf("session start: %s", got)
 	}
 }
+
+// TestParsePostToolUseFailure: the failure event carries `error` and
+// `is_interrupt` beside the tool fields (harness-facts C34; the payload
+// is synthesised from the documented shape, not an archived capture);
+// Render honours additionalContext only.
+func TestParsePostToolUseFailure(t *testing.T) {
+	raw := `{"session_id":"abc","cwd":"/p","hook_event_name":"PostToolUseFailure","tool_name":"Bash","tool_input":{"command":"pytest -q"},"tool_use_id":"tu","error":"Command failed with exit code 1\n2 failed, 5 passed","is_interrupt":false,"duration_ms":40}`
+	in, err := Parse(hookio.EventPostToolUseFailure, []byte(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if in.ToolName != "Bash" || in.ToolUseID != "tu" || in.Interrupted || !json.Valid(in.ToolInput) || in.ToolError != "Command failed with exit code 1\n2 failed, 5 passed" || in.DurationMS != 40 {
+		t.Errorf("parsed: %+v", in)
+	}
+	out := hookio.Allow("trace")
+	out.Decision = hookio.DecisionBlock
+	out.AdditionalContext = []string{"saga trace: budget"}
+	var m map[string]any
+	if err := json.Unmarshal(Render(in, out), &m); err != nil {
+		t.Fatal(err)
+	}
+	if _, has := m["decision"]; has {
+		t.Errorf("PostToolUseFailure has no decision control: %v", m)
+	}
+	if sp, _ := m["hookSpecificOutput"].(map[string]any); sp["additionalContext"] != "saga trace: budget" || sp["hookEventName"] != "PostToolUseFailure" {
+		t.Errorf("render: %v", m)
+	}
+	if _, err := Parse(hookio.EventPostToolUseFailure, []byte(`{"session_id":"abc","hook_event_name":"PostToolUse"}`)); err == nil {
+		t.Error("event name mismatch accepted")
+	}
+}

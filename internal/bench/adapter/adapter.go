@@ -141,6 +141,13 @@ type CollectOutput struct {
 	// abandon, infra; the runner overrides with timeout and cost cap.
 	Outcome       string
 	OutcomeReason string
+	// Abandon is the recognised ABANDON terminal when Outcome is
+	// "abandon" (DetectAbandon, identical in every arm).
+	Abandon *Abandon
+	// Pins is the trace-spec section 4.1 pin record the adapter observed
+	// for this run (model requested and served, harness version, tools
+	// hash, cache TTL observation); nil when the adapter has none.
+	Pins *trace.Pins
 	// HarnessCostUSD is the harness's own cost figure when it reports
 	// one; the bench prices usage itself and records both.
 	HarnessCostUSD *float64
@@ -251,13 +258,19 @@ func BytesSHA256(b []byte) string {
 	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
-// Merge copies src blocks over dst (field-wise inside objects).
+// Merge copies src blocks over dst (field-wise inside objects); a
+// non-null value drops the stale <field>_reason it replaces.
 func (d Disclosure) Merge(src Disclosure) {
 	for k, v := range src {
 		if sm, ok := v.(map[string]any); ok {
 			dm := d.Block(k)
 			for kk, vv := range sm {
 				dm[kk] = vv
+				if vv != nil && !strings.HasSuffix(kk, "_reason") {
+					if _, has := sm[kk+"_reason"]; !has {
+						delete(dm, kk+"_reason")
+					}
+				}
 			}
 			continue
 		}

@@ -146,7 +146,7 @@ func TestClaudePrepareDisclosure(t *testing.T) {
 	if !strings.HasPrefix(string(got), "gate check --approve --json\n"+filepath.Join(cfg2, approvedDir)) {
 		t.Errorf("baseline check argv/env:\n%s", got)
 	}
-	if hooks := out2.Disclosure["hooks"].([]any); len(hooks) != 10 {
+	if hooks := out2.Disclosure["hooks"].([]any); len(hooks) != 11 {
 		t.Errorf("%d hooks disclosed", len(hooks))
 	}
 	if blocks := out2.Disclosure["blocks"].([]string); len(blocks) != 0 {

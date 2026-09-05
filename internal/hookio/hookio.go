@@ -17,16 +17,20 @@ const (
 	EventUserPromptSubmit = "UserPromptSubmit"
 	EventPreToolUse       = "PreToolUse"
 	EventPostToolUse      = "PostToolUse"
-	EventStop             = "Stop"
-	EventSubagentStart    = "SubagentStart"
-	EventSubagentStop     = "SubagentStop"
-	EventPreCompact       = "PreCompact"
-	EventPostCompact      = "PostCompact"
+	// EventPostToolUseFailure fires instead of PostToolUse when the tool
+	// failed (harness-facts C1, C34): the only record of a failed Bash
+	// command's output, so trace binds it to write the tool_result.
+	EventPostToolUseFailure = "PostToolUseFailure"
+	EventStop               = "Stop"
+	EventSubagentStart      = "SubagentStart"
+	EventSubagentStop       = "SubagentStop"
+	EventPreCompact         = "PreCompact"
+	EventPostCompact        = "PostCompact"
 )
 
 // Events lists every event the entry binds, in a fixed order.
 var Events = []string{
-	EventSessionStart, EventSessionEnd, EventUserPromptSubmit, EventPreToolUse, EventPostToolUse,
+	EventSessionStart, EventSessionEnd, EventUserPromptSubmit, EventPreToolUse, EventPostToolUse, EventPostToolUseFailure,
 	EventStop, EventSubagentStart, EventSubagentStop, EventPreCompact, EventPostCompact,
 }
 
@@ -61,6 +65,10 @@ type Input struct {
 	ToolInput    json.RawMessage
 	ToolResponse json.RawMessage
 	DurationMS   int
+	// ToolError is the failure text of a PostToolUseFailure event;
+	// Interrupted is its is_interrupt flag (the user cancelled the tool).
+	ToolError   string
+	Interrupted bool
 	// Prompt and stop events.
 	Prompt               string
 	LastAssistantMessage string

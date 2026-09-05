@@ -156,7 +156,7 @@ func (l *Layer) session(in *hookio.Input) {
 		if shell {
 			g.ToolInFlight, g.ToolName = firstNonEmpty(in.ToolUseID, "unknown"), in.ToolName
 		}
-	case hookio.EventPostToolUse:
+	case hookio.EventPostToolUse, hookio.EventPostToolUseFailure:
 		if shell || g.ToolInFlight == in.ToolUseID {
 			g.ToolInFlight, g.ToolName = "", ""
 		}

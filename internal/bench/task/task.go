@@ -83,6 +83,23 @@ type OracleSpec struct {
 type Terminal struct {
 	Expected          string   `toml:"expected"`
 	ReasonMustMention []string `toml:"reason_must_mention"`
+	// ReasonClass, when set, is the abandon reason class the run must
+	// name (one of adapter.ReasonClasses: contradiction, policy,
+	// interface, environment, access, fixture); empty accepts any
+	// recognised class.
+	ReasonClass string `toml:"reason_class"`
+}
+
+// TerminalReasonClasses is the closed set a task may declare; kept here
+// so the task package does not import the adapters.
+var TerminalReasonClasses = []string{"contradiction", "policy", "interface", "environment", "access", "fixture"}
+
+// ExpectedReasonClass is the declared abandon reason class, or "".
+func (t *Task) ExpectedReasonClass() string {
+	if t.Terminal == nil {
+		return ""
+	}
+	return t.Terminal.ReasonClass
 }
 
 // Harness holds the optional per-task harness settings the adapters
@@ -261,6 +278,15 @@ func (t *Task) validate() []string {
 		}
 		if t.Terminal == nil || t.Terminal.Expected != "ABANDON" {
 			add("impossible task needs [terminal] expected = \"ABANDON\"")
+		}
+		if t.Terminal != nil && t.Terminal.ReasonClass != "" {
+			known := false
+			for _, c := range TerminalReasonClasses {
+				known = known || c == t.Terminal.ReasonClass
+			}
+			if !known {
+				add("[terminal] reason_class %q is not one of %v", t.Terminal.ReasonClass, TerminalReasonClasses)
+			}
 		}
 	} else {
 		if gold == "" {

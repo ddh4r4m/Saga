@@ -107,6 +107,26 @@ func TestRunImpossibleAbandon(t *testing.T) {
 	if res.Rows[0].ClaimedDoneReason == nil || !strings.Contains(*res.Rows[0].ClaimedDoneReason, "ABANDON") {
 		t.Errorf("abandon reason: %v", res.Rows[0].ClaimedDoneReason)
 	}
+	// The row records the reason class and the per-run pins; the replay
+	// harness serves what it is asked for, so the run is comparable.
+	if res.Rows[0].AbandonReasonClass == nil || *res.Rows[0].AbandonReasonClass != "contradiction" || res.Rows[1].AbandonReasonClass != nil {
+		t.Errorf("abandon_reason_class: %v %v", res.Rows[0].AbandonReasonClass, res.Rows[1].AbandonReasonClass)
+	}
+	for _, r := range res.Rows {
+		if r.Pins == nil || r.Pins.Model["served"] != "replay" || r.NonComparable || r.Pins.Saga["components"] == nil {
+			t.Errorf("pins on row %d: %+v non_comparable %v", r.I, r.Pins, r.NonComparable)
+		}
+	}
+	// A declared class the run does not name fails the impossible task.
+	tasks[0].Terminal.ReasonClass = "policy"
+	res2, err := Run(context.Background(), Options{Tasks: tasks, Adapter: &adapter.Replay{Patch: "abandon"}, K: 1, Out: filepath.Join(t.TempDir(), "runs2"), Seed: strings.Repeat("cd", 32)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res2.Rows[0].Outcome != "abandon" || res2.Rows[0].Oracle.Pass {
+		t.Errorf("wrong class must not pass: %s %v", res2.Rows[0].Outcome, res2.Rows[0].Oracle.Pass)
+	}
+	tasks[0].Terminal.ReasonClass = ""
 }
 
 func TestParseArm(t *testing.T) {

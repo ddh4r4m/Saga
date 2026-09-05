@@ -45,6 +45,8 @@ func Parse(event string, raw []byte) (*hookio.Input, error) {
 	if d, ok := m["duration_ms"].(float64); ok {
 		in.DurationMS = int(d)
 	}
+	in.ToolError = str(m, "error")
+	in.Interrupted, _ = m["is_interrupt"].(bool)
 	in.Prompt = str(m, "prompt")
 	in.LastAssistantMessage = str(m, "last_assistant_message")
 	in.StopHookActive, _ = m["stop_hook_active"].(bool)
@@ -123,7 +125,9 @@ func Render(in *hookio.Input, out *hookio.Output) []byte {
 		if ctx != "" {
 			specific["additionalContext"] = ctx
 		}
-	case hookio.EventSessionStart, hookio.EventSubagentStart:
+	case hookio.EventSessionStart, hookio.EventSubagentStart, hookio.EventPostToolUseFailure:
+		// PostToolUseFailure takes additionalContext only (harness-facts
+		// C5); the tool already failed, there is nothing to decide.
 		if ctx != "" {
 			specific["additionalContext"] = ctx
 		}

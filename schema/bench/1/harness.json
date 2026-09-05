@@ -136,6 +136,9 @@
     "prompt_hash": {"type": ["string", "null"]},
     "native_log": {"type": ["string", "null"]},
     "harness_cost_usd": {"type": ["number", "null"]},
-    "transcript_path": {"type": ["string", "null"]}
+    "transcript_path": {"type": ["string", "null"]},
+    "pins": {"type": ["object", "null"]},
+    "non_comparable": {"type": "boolean"},
+    "non_comparable_reason": {"type": ["string", "null"]}
   }
 }

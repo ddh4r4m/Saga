@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/ddh4r4m/saga/internal/canon"
@@ -167,6 +168,8 @@ func (l *Layer) Run(ctx context.Context, in *hookio.Input) (*hookio.Output, erro
 		err = s.preTool(in, src, out)
 	case hookio.EventPostToolUse:
 		err = s.postTool(in, src, out)
+	case hookio.EventPostToolUseFailure:
+		err = s.postToolFailure(in, src, out)
 	case hookio.EventStop:
 		err = s.stop(in, src, out)
 	case hookio.EventSubagentStart, hookio.EventSubagentStop:
@@ -382,6 +385,65 @@ func (s *session) postTool(in *hookio.Input, src string, out *hookio.Output) err
 	if err := s.sweepTranscript(in, src); err != nil {
 		s.l.note("saga trace: transcript: %v", err)
 	}
+	return s.budgetFeedback(src, out)
+}
+
+// exitInError reads an exit status the harness's failure text names
+// ("exit code 1", "exited with code 2", "exit status 3").
+var exitInError = regexp.MustCompile(`(?i)\bexit(?:ed)?(?: with)?(?: code| status)?[: ]+(\d{1,3})\b`)
+
+// postToolFailure records a failed tool as a tool_result (trace-spec
+// 2.2) from the PostToolUseFailure payload (harness-facts C34): the
+// failure text is the stored result so a runner summary inside it is
+// readable by the claim check, `exit` is the code the text names, else 1
+// (a failure is never exit 0), and `error` carries the first line. An
+// interrupted tool is recorded with error "interrupted".
+func (s *session) postToolFailure(in *hookio.Input, src string, out *hookio.Output) error {
+	text := in.ToolError
+	if in.Interrupted && text == "" {
+		text = "interrupted"
+	}
+	raw, err := json.Marshal(map[string]any{"error": text, "is_interrupt": in.Interrupted})
+	if err != nil {
+		return err
+	}
+	p, err := s.w.StorePayload(raw)
+	if err != nil {
+		return err
+	}
+	var forSeq any
+	if seq, ok := s.obs.Pending[in.ToolUseID]; ok {
+		forSeq = seq
+		delete(s.obs.Pending, in.ToolUseID)
+	}
+	exit := 1
+	if m := exitInError.FindStringSubmatch(text); m != nil {
+		fmt.Sscanf(m[1], "%d", &exit)
+	}
+	first := text
+	if i := strings.IndexByte(first, '\n'); i >= 0 {
+		first = first[:i]
+	}
+	if in.Interrupted {
+		first = "interrupted"
+	}
+	if first == "" {
+		first = "tool failed"
+	}
+	var wall any
+	if in.DurationMS > 0 {
+		wall = in.DurationMS
+	}
+	body := map[string]any{
+		"for_seq": forSeq, "exit": exit, "error": canon.CleanText(first), "result_hash": p.Hash, "result_bytes": p.Bytes,
+		"result_inline": p.Inline, "result_ref": p.Ref, "truncated": p.Truncated, "wall_ms": wall, "served": "live",
+	}
+	mc := p.MaskedCount
+	if err := s.append(&Event{Type: TypeToolResult, Source: src, Body: body, MaskedCount: &mc}); err != nil {
+		return err
+	}
+	s.obs.ToolOutputBytesTurn += p.Bytes
+	s.obs.OriginTokens["tool_results"] += canon.TokensEst(raw)
 	return s.budgetFeedback(src, out)
 }
 

@@ -66,16 +66,25 @@ type Drift struct {
 
 // Row is one saga.bench.run/1 record.
 type Row struct {
-	Schema                string             `json:"schema"`
-	Manifest              string             `json:"manifest"`
-	Task                  string             `json:"task"`
-	Model                 string             `json:"model"`
-	Harness               string             `json:"harness"`
-	Arm                   string             `json:"arm"`
-	I                     int                `json:"i"`
-	Seed                  string             `json:"seed"`
-	Outcome               string             `json:"outcome"`
-	OutcomeReason         *string            `json:"outcome_reason"`
+	Schema        string  `json:"schema"`
+	Manifest      string  `json:"manifest"`
+	Task          string  `json:"task"`
+	Model         string  `json:"model"`
+	Harness       string  `json:"harness"`
+	Arm           string  `json:"arm"`
+	I             int     `json:"i"`
+	Seed          string  `json:"seed"`
+	Outcome       string  `json:"outcome"`
+	OutcomeReason *string `json:"outcome_reason"`
+	// AbandonReasonClass is the reason class of an ABANDON terminal
+	// (adapter.ReasonClasses or "unclassified"); null otherwise.
+	AbandonReasonClass *string `json:"abandon_reason_class"`
+	// Pins is the trace-spec section 4.1 record observed for this run;
+	// NonComparable marks a run whose served model differs from the
+	// requested one (trace-spec section 4.2, gemini-cli #28859 class).
+	Pins                  *trace.Pins        `json:"pins"`
+	NonComparable         bool               `json:"non_comparable"`
+	NonComparableReason   *string            `json:"non_comparable_reason"`
 	ClaimedDone           *bool              `json:"claimed_done"`
 	ClaimedDoneReason     *string            `json:"claimed_done_reason"`
 	ClaimedDoneStructural *bool              `json:"claimed_done_structural"`

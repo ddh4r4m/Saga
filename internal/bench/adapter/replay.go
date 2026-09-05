@@ -111,14 +111,21 @@ func (r *Replay) Collect(ctx context.Context, in *CollectInput) (*CollectOutput,
 	// trace claim detector reads it the way it reads a model's message.
 	switch {
 	case log.Patch == "abandon":
-		out.Outcome = "abandon"
-		out.FinalMessage = "ABANDON: the task cannot be completed as stated."
+		// The synthetic abandon message names the task's required terms
+		// as a contradiction and ends with the NOT-DONE marker; the
+		// outcome comes from the shared detector, as in the live adapter.
+		out.FinalMessage = "The task cannot be completed as stated: the requirements contradict each other."
 		if in.Task.Terminal != nil && len(in.Task.Terminal.ReasonMustMention) > 0 {
 			out.FinalMessage += " Contradiction between " + strings.Join(in.Task.Terminal.ReasonMustMention, " and ") + "."
 		}
 		out.FinalMessage += "\n\nNOT-DONE"
 		out.ToolCalls = 0
 		out.ToolSequence = nil
+		contract, _ := os.ReadFile(filepath.Join(in.Workspace, ".saga", "contract.md"))
+		if ab := DetectAbandon(out.FinalMessage, contract); ab != nil {
+			out.Outcome, out.Abandon = "abandon", ab
+			out.OutcomeReason = "ABANDON via " + ab.Source + ", reason class " + ab.ReasonClass
+		}
 	case log.Error != "":
 		out.FinalMessage = fmt.Sprintf("Attempted to apply %s but it did not apply: %s.\n\nDONE", log.Patch, log.Error)
 	case log.Patch == "none":
@@ -129,11 +136,20 @@ func (r *Replay) Collect(ctx context.Context, in *CollectInput) (*CollectOutput,
 	default:
 		out.FinalMessage = fmt.Sprintf("Applied %s.\n\nDONE", log.Patch)
 	}
-	trace, err := replayTrace(in, out)
+	tr, err := replayTrace(in, out)
 	if err != nil {
 		return nil, fmt.Errorf("replay trace: %w", err)
 	}
-	out.TraceJSONL = trace
+	out.TraceJSONL = tr
+	cfg := BytesSHA256([]byte("replay:" + r.Patch))
+	pins := trace.NewPins("replay", "", &cfg, nil, "", "", nil)
+	pins.Harness["version"], pins.Harness["version_reason"] = "1", nil
+	pins.Harness["binary_sha256_reason"] = "built into saga"
+	pins.Model["requested"], pins.Model["requested_reason"] = "replay", nil
+	pins.Model["served"], pins.Model["served_reason"] = "replay", nil
+	pins.Tools = map[string]any{"sha256": BytesSHA256([]byte("apply_patch")), "sha256_reason": nil, "count": 1}
+	pins.PriceTable = nil
+	out.Pins = &pins
 	return out, nil
 }
 

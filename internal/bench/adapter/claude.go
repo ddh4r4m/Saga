@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 	"syscall"
+	"time"
 
 	claudecode "github.com/ddh4r4m/saga/adapters/claude-code"
 	"github.com/ddh4r4m/saga/internal/canon"
@@ -493,6 +494,14 @@ type StreamResult struct {
 	CostUSD      *float64
 	SessionID    string
 	PermMode     string
+	// ClaudeCodeVersion is the init event's claude_code_version.
+	ClaudeCodeVersion string
+	// ServedModels lists the model of every assistant message, in order
+	// (duplicates included); the pin record deduplicates.
+	ServedModels []string
+	// APIKeySource is the init event's apiKeySource ("none" when not
+	// logged in, the 2026-09-05 smoke's dry-run finding).
+	APIKeySource string
 }
 
 // ParseStream normalises a `--output-format stream-json` log. Usage is
@@ -530,16 +539,23 @@ func ParseStream(raw []byte) StreamResult {
 				}
 				r.SessionID, _ = ev["session_id"].(string)
 				r.PermMode, _ = ev["permissionMode"].(string)
+				r.ClaudeCodeVersion, _ = ev["claude_code_version"].(string)
+				r.APIKeySource, _ = ev["apiKeySource"].(string)
 			}
 		case "assistant":
 			msg, _ := ev["message"].(map[string]any)
 			if msg == nil {
 				continue
 			}
-			if m, _ := msg["model"].(string); m != "" && r.Model == "" {
-				r.Model = m
-			}
 			id, _ := msg["id"].(string)
+			if m, _ := msg["model"].(string); m != "" {
+				if r.Model == "" {
+					r.Model = m
+				}
+				if id == "" || !seen[id] {
+					r.ServedModels = append(r.ServedModels, m)
+				}
+			}
 			if u, ok := msg["usage"].(map[string]any); ok && (id == "" || !seen[id]) {
 				seen[id] = true
 				uu := trace.UsageFromAnthropic(u, "claude-code:stream-json", "5m")
@@ -640,6 +656,16 @@ func (c *ClaudeCode) Collect(ctx context.Context, in *CollectInput) (*CollectOut
 	case sr.IsError:
 		out.OutcomeReason = "result subtype " + sr.Subtype
 	}
+	// ABANDON terminal (gate-spec section 2, docs/12 section 2.2): the
+	// staged contract's ABANDON: statement when the arm has one, else the
+	// NOT-DONE last line; the same detector in every arm.
+	if out.Outcome == "completed" {
+		contract, _ := os.ReadFile(filepath.Join(in.Workspace, ".saga", "contract.md"))
+		if ab := DetectAbandon(sr.FinalMessage, contract); ab != nil {
+			out.Outcome, out.Abandon = "abandon", ab
+			out.OutcomeReason = "ABANDON via " + ab.Source + ", reason class " + ab.ReasonClass
+		}
+	}
 	sessionID := SessionID(in.Seed)
 	if sr.SessionID != "" {
 		sessionID = sr.SessionID
@@ -670,6 +696,24 @@ func (c *ClaudeCode) Collect(ctx context.Context, in *CollectInput) (*CollectOut
 	if sr.PermMode != "" {
 		Set(out.Disclosure.Block("permissions"), "mode", sr.PermMode, "")
 	}
+	if sr.ClaudeCodeVersion != "" {
+		Set(out.Disclosure.Block("harness"), "version", sr.ClaudeCodeVersion, "")
+	}
+	// Pins per run (trace-spec 4.1) from the stream plus the generated
+	// settings file; the runner completes them from the disclosure.
+	var settingsHash, hooksHash *string
+	if raw, err := os.ReadFile(filepath.Join(in.ConfigDir, "settings.json")); err == nil {
+		sh := canon.SHA256(raw)
+		settingsHash = &sh
+		var sm map[string]any
+		if json.Unmarshal(raw, &sm) == nil {
+			if hb, err := canon.JSON(sm["hooks"]); err == nil {
+				hh := canon.SHA256(hb)
+				hooksHash = &hh
+			}
+		}
+	}
+	out.Pins = PinsFromStream(sr, c.Model, settingsHash, hooksHash, time.Now())
 	if raw, err := os.ReadFile(filepath.Join(in.ConfigDir, blockedLog)); err == nil {
 		out.BlockedReachAttempts = len(strings.Split(strings.TrimRight(string(raw), "\n"), "\n"))
 		if len(strings.TrimSpace(string(raw))) == 0 {

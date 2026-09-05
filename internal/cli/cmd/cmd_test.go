@@ -256,3 +256,66 @@ func TestTraceClaimsCLI(t *testing.T) {
 		t.Errorf("run dir json: %v", body)
 	}
 }
+
+// TestPostToolUseFailureRecordsResult closes the claims gap "a red last
+// test run reads no_result": Claude Code fires PostToolUseFailure (not
+// PostToolUse) when Bash fails, so the composed hook binds it and trace
+// writes the tool_result with the exit status the failure text names.
+// A later "tests pass" claim is then contradicted at Stop. The payload
+// is synthesised from the documented shape (harness-facts C34).
+func TestPostToolUseFailureRecordsResult(t *testing.T) {
+	root := t.TempDir()
+	root, _ = filepath.EvalSymlinks(root)
+	for _, args := range [][]string{{"init", "-q"}, {"config", "user.email", "t@t"}, {"config", "user.name", "t"}, {"config", "commit.gpgsign", "false"}} {
+		gitIn(t, root, args...)
+	}
+	os.WriteFile(filepath.Join(root, "README.md"), []byte("x\n"), 0o644)
+	gitIn(t, root, "add", "-A")
+	gitIn(t, root, "commit", "-q", "-m", "base")
+	if _, _, code := runIn(t, root, "", "init"); code != cli.ExitOK {
+		t.Fatal("init")
+	}
+	os.Remove(filepath.Join(root, ".saga", "config.toml"))
+	common := `"session_id":"cf-1","cwd":"` + root + `"`
+	hookJSON(t, root, "SessionStart", `{`+common+`,"hook_event_name":"SessionStart","source":"startup"}`)
+	hookJSON(t, root, "UserPromptSubmit", `{`+common+`,"hook_event_name":"UserPromptSubmit","prompt":"fix it"}`)
+	hookJSON(t, root, "PreToolUse", `{`+common+`,"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"pytest -q"},"tool_use_id":"tu1"}`)
+	m, code := hookJSON(t, root, "PostToolUseFailure", `{`+common+`,"hook_event_name":"PostToolUseFailure","tool_name":"Bash","tool_input":{"command":"pytest -q"},"tool_use_id":"tu1","error":"Command failed with exit code 1\n===== 2 failed, 5 passed in 0.1s =====","is_interrupt":false,"duration_ms":25}`)
+	if code != cli.ExitOK {
+		t.Fatalf("PostToolUseFailure: %v %v", m, code)
+	}
+	// The tool_result exists, bound to the tool_call, with exit 1.
+	raw, err := os.ReadFile(filepath.Join(root, ".saga", "trace", "sessions", "cf-1", "events.000001.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found bool
+	for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
+		var ev trace.Event
+		if json.Unmarshal([]byte(line), &ev) != nil || ev.Type != trace.TypeToolResult {
+			continue
+		}
+		found = true
+		if ev.Source != "hook:PostToolUseFailure" || ev.Body["exit"] != float64(1) || ev.Body["for_seq"] == nil || ev.Body["error"] != "Command failed with exit code 1" {
+			t.Errorf("tool_result body: %v", ev.Body)
+		}
+	}
+	if !found {
+		t.Fatalf("no tool_result recorded:\n%s", raw)
+	}
+	m, code = hookJSON(t, root, "Stop", `{`+common+`,"hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"I ran `+"`pytest -q`"+` and the tests pass.\n\nDONE"}`)
+	if m["decision"] != "block" || code != cli.ExitIntegrity {
+		t.Fatalf("stop: %v %v", m, code)
+	}
+	out, _, code := runIn(t, root, "", "trace", "claims", "cf-1", "--status")
+	if code != cli.ExitIntegrity || !strings.Contains(out, "tests_pass   contradicted") || !strings.Contains(out, "status fail") {
+		t.Fatalf("claims --status: %d %s", code, out)
+	}
+	// An interrupted tool records error "interrupted" and no exit parse.
+	hookJSON(t, root, "PreToolUse", `{`+common+`,"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"sleep 100"},"tool_use_id":"tu2"}`)
+	hookJSON(t, root, "PostToolUseFailure", `{`+common+`,"hook_event_name":"PostToolUseFailure","tool_name":"Bash","tool_input":{"command":"sleep 100"},"tool_use_id":"tu2","error":"","is_interrupt":true}`)
+	raw, _ = os.ReadFile(filepath.Join(root, ".saga", "trace", "sessions", "cf-1", "events.000001.jsonl"))
+	if !strings.Contains(string(raw), `"error":"interrupted"`) {
+		t.Errorf("interrupted tool not recorded:\n%s", raw)
+	}
+}
