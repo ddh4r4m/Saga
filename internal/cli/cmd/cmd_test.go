@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/ddh4r4m/saga/internal/cli"
+	schemapkg "github.com/ddh4r4m/saga/internal/schema"
 	"github.com/ddh4r4m/saga/internal/store"
 	"github.com/ddh4r4m/saga/internal/trace"
 )
@@ -128,7 +129,7 @@ func TestEndToEndClaudeCodeSession(t *testing.T) {
 	for _, e := range events {
 		types = append(types, e.Type)
 	}
-	want := "session turn tool_call tool_call tool_call tool_result model_call budget tool_call model_call model_call turn compaction compaction subagent subagent session"
+	want := "session turn tool_call tool_call tool_call tool_result model_call budget tool_call model_call model_call turn gate compaction compaction subagent subagent gate session"
 	if got := strings.Join(types, " "); got != want {
 		t.Errorf("event sequence\n got %s\nwant %s", got, want)
 	}
@@ -195,3 +196,63 @@ func TestTamperedChainExitsIntegrity(t *testing.T) {
 
 // nil0 opens the store at root for assertions.
 func nil0(root string) *store.Store { return store.Open(root) }
+
+// TestTraceClaimsCLI covers `saga trace claims` over a recorded session
+// (human and --json output, --status exit per trace-spec 5.9) and over a
+// bench run directory (source derived).
+func TestTraceClaimsCLI(t *testing.T) {
+	root := t.TempDir()
+	root, _ = filepath.EvalSymlinks(root)
+	for _, args := range [][]string{{"init", "-q"}, {"config", "user.email", "t@t"}, {"config", "user.name", "t"}, {"config", "commit.gpgsign", "false"}} {
+		gitIn(t, root, args...)
+	}
+	os.WriteFile(filepath.Join(root, "README.md"), []byte("x\n"), 0o644)
+	gitIn(t, root, "add", "-A")
+	gitIn(t, root, "commit", "-q", "-m", "base")
+	if _, _, code := runIn(t, root, "", "init"); code != cli.ExitOK {
+		t.Fatal("init")
+	}
+	os.Remove(filepath.Join(root, ".saga", "config.toml"))
+	common := `"session_id":"cl-1","cwd":"` + root + `"`
+	hookJSON(t, root, "SessionStart", `{`+common+`,"hook_event_name":"SessionStart","source":"startup"}`)
+	hookJSON(t, root, "UserPromptSubmit", `{`+common+`,"hook_event_name":"UserPromptSubmit","prompt":"fix it"}`)
+	hookJSON(t, root, "PreToolUse", `{`+common+`,"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"pytest -q"},"tool_use_id":"tu1"}`)
+	hookJSON(t, root, "PostToolUse", `{`+common+`,"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"pytest -q"},"tool_response":{"stdout":"===== 2 failed, 5 passed in 0.1s =====","stderr":"","interrupted":false,"isImage":false},"tool_use_id":"tu1","duration_ms":10}`)
+	m, code := hookJSON(t, root, "Stop", `{`+common+`,"hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"I ran `+"`pytest -q`"+` and the tests pass.\n\nDONE"}`)
+	if m["decision"] != "block" || code != cli.ExitIntegrity {
+		t.Fatalf("stop: %v %v", m, code)
+	}
+	out, errs, code := runIn(t, root, "", "trace", "claims", "cl-1", "--status")
+	if code != cli.ExitIntegrity || !strings.Contains(out, "tests_pass   contradicted") || !strings.Contains(out, "verdict contradicted") {
+		t.Fatalf("claims --status: %d %s %s", code, out, errs)
+	}
+	out, errs, code = runIn(t, root, "", "trace", "claims", "--session", "cl-1", "--json")
+	if code != cli.ExitOK {
+		t.Fatalf("claims --json: %d %s", code, errs)
+	}
+	var body map[string]any
+	if err := json.Unmarshal([]byte(out), &body); err != nil {
+		t.Fatalf("json: %v\n%s", err, out)
+	}
+	if body["schema"] != "saga.trace.claims/1" || body["session"] != "cl-1" || body["trigger"] != "cli" || body["verdict"] != "contradicted" || body["claimed_done"] != true {
+		t.Errorf("claims json: %v", body)
+	}
+	if err := schemapkg.ValidateBytes("saga.trace.claims/1", []byte(out)); err != nil {
+		t.Errorf("schema: %v", err)
+	}
+	// A bench run directory: final_message.txt plus trace.jsonl, judged as derived.
+	dir := filepath.Join(t.TempDir(), "run")
+	os.MkdirAll(dir, 0o755)
+	os.WriteFile(filepath.Join(dir, "final_message.txt"), []byte("Updated `src/a.py`.\n\nDONE"), 0o644)
+	os.WriteFile(filepath.Join(dir, "workspace.diff"), []byte("diff --git a/src/a.py b/src/a.py\n--- a/src/a.py\n+++ b/src/a.py\n@@ -1 +1 @@\n-x\n+y\n"), 0o644)
+	os.WriteFile(filepath.Join(dir, "trace.jsonl"), nil, 0o644)
+	out, errs, code = runIn(t, root, "", "trace", "claims", dir, "--json", "--status")
+	if code != cli.ExitFinding {
+		t.Fatalf("run dir: %d %s %s", code, out, errs)
+	}
+	body = map[string]any{}
+	json.Unmarshal([]byte(out), &body)
+	if body["trigger"] != "derived" || body["verdict"] != "unverified" || body["claimed_done"] != true {
+		t.Errorf("run dir json: %v", body)
+	}
+}

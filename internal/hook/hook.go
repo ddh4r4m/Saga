@@ -162,7 +162,9 @@ func (e *Entry) chain(ctx context.Context, in *hookio.Input) (*hookio.Output, cl
 			codes = append(codes, cli.ExitUsage)
 			break
 		}
-		if stop {
+		// On Stop every layer runs: block wins, gate's reason first and
+		// trace's claim line second (contracts section 1).
+		if stop && in.Event != hookio.EventStop {
 			break
 		}
 		if ctx.Err() != nil {

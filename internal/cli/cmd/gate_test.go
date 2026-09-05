@@ -157,9 +157,10 @@ func TestEndToEndBenchTasks(t *testing.T) {
 					t.Errorf("gold %s: %s (%s)", id, states[id], errs)
 				}
 			}
-			// G3 is a regression gate (green at baseline): met but unproven
-			// under require_red, so exit 5; without require_red the run is ALL MET.
-			if states["G3"] != gate.StateUnproven || code != cli.ExitIntegrity {
+			// G3 is a regression gate (green at baseline) declared RED: none:
+			// met with the declared-none label, never blocking (gate-spec
+			// section 3.2, commit c18531d), so gold is ALL MET with exit 0.
+			if states["G3"] != gate.StateMet || code != cli.ExitOK {
 				t.Errorf("gold G3: %s exit %d", states["G3"], code)
 			}
 			out, errs, code = runIn(t, ws, "", "gate", "check", "--no-require-red")
@@ -174,21 +175,35 @@ func TestEndToEndBenchTasks(t *testing.T) {
 			if out, errs, code := runIn(t, ws, "", "gate", "guard-diff"); code != cli.ExitOK {
 				t.Errorf("guard-diff: %d %s %s", code, out, errs)
 			}
-			if _, errs, code := runIn(t, ws, "", "gate", "reverify", "--ci", "--json"); code != cli.ExitIntegrity {
+			if _, errs, code := runIn(t, ws, "", "gate", "reverify", "--ci", "--json"); code != cli.ExitOK {
 				t.Errorf("reverify --ci: %d %s", code, errs)
 			}
-			// The Stop hook cites ids only and allows once the ledger is green.
-			payload := `{"session_id":"e2e","hook_event_name":"Stop","stop_hook_active":false,"cwd":"` + ws + `"}`
+			// The Stop hook cites ids only; with the ledger green and the
+			// final message claiming done, gate allows and trace's claim
+			// verdict is verified (fresh evidence at this tree).
 			hookJSON(t, ws, "SessionStart", `{"session_id":"e2e","hook_event_name":"SessionStart","source":"startup","cwd":"`+ws+`"}`)
+			payload := `{"session_id":"e2e","hook_event_name":"Stop","stop_hook_active":false,"cwd":"` + ws + `","last_assistant_message":"Applied the fix.\n\nDONE"}`
 			res, code := hookJSON(t, ws, "Stop", payload)
-			if code != cli.ExitIntegrity || res["decision"] != "block" || !strings.Contains(res["reason"].(string), "G3(unproven)") {
-				t.Errorf("stop under require_red: %v %d", res, code)
+			if code != cli.ExitOK || res["decision"] != nil {
+				t.Errorf("stop with all gates met: %v %d", res, code)
+			}
+			// Reverting gold leaves the evidence stale: gate blocks with ids
+			// only, the claim line follows gate's text, outcomes never leak.
+			gitIn(t, ws, "apply", "--reverse", filepath.Join(taskDir, "controls", "gold.patch"))
+			res, code = hookJSON(t, ws, "Stop", payload)
+			reason, _ := res["reason"].(string)
+			if code == cli.ExitOK || res["decision"] != "block" || !strings.Contains(reason, "saga gate:") {
+				t.Errorf("stop on a stale tree: %v %d", res, code)
+			}
+			if ci := strings.Index(reason, "saga trace: claim"); ci >= 0 && ci < strings.Index(reason, "saga gate:") {
+				t.Errorf("claim line must follow gate's text: %q", reason)
 			}
 			for _, g := range m["gates"].([]any) {
-				if strings.Contains(res["reason"].(string), g.(map[string]any)["outcome"].(string)) {
+				if strings.Contains(reason, g.(map[string]any)["outcome"].(string)) {
 					t.Error("outcome text leaked into the Stop reason")
 				}
 			}
+			gitIn(t, ws, "apply", filepath.Join(taskDir, "controls", "gold.patch"))
 			// A cheat patch trips a guard at Stop.
 			cheat := filepath.Join(taskDir, "controls", "cheat-1.patch")
 			if _, err := os.Stat(cheat); err == nil {

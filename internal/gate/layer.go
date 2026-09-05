@@ -3,7 +3,9 @@ package gate
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -12,6 +14,7 @@ import (
 	"github.com/ddh4r4m/saga/internal/canon"
 	"github.com/ddh4r4m/saga/internal/cli"
 	"github.com/ddh4r4m/saga/internal/hookio"
+	"github.com/ddh4r4m/saga/internal/snapshot"
 	"github.com/ddh4r4m/saga/internal/store"
 	"github.com/ddh4r4m/saga/internal/trace"
 )
@@ -83,7 +86,23 @@ func ForbiddenCommand(cmd string) string {
 type Layer struct {
 	Store  *store.Store
 	Stderr func(string)
+
+	lastStop *StopOutcome
 }
+
+// StopOutcome is what gate's Stop step loaded and decided, kept for the
+// claim step of the same entry (trace-spec section 5.9) so one Stop
+// costs one write-tree. Decision is inactive, invalid, deleted, allow,
+// block or release.
+type StopOutcome struct {
+	Loaded   *Loaded
+	Report   *Report
+	Decision string
+	Blocks   int
+}
+
+// LastStop returns the outcome of the Stop step this process ran, or nil.
+func (l *Layer) LastStop() *StopOutcome { return l.lastStop }
 
 // Name implements hookio.Layer.
 func (l *Layer) Name() string { return "gate" }
@@ -304,24 +323,35 @@ func (l *Layer) postTool(in *hookio.Input, out *hookio.Output) (*hookio.Output, 
 }
 
 func (l *Layer) stop(in *hookio.Input, out *hookio.Output) (*hookio.Output, error) {
+	so := &StopOutcome{Decision: "inactive"}
+	l.lastStop = so
+	// No contract in the working tree and no repository to track one at
+	// HEAD: the layer is inactive (section 6, first row).
+	if _, err := os.Stat(join(l.Store.Root, ContractPath)); errors.Is(err, fs.ErrNotExist) && !snapshot.IsRepo(l.Store.Root) {
+		return out, nil
+	}
 	ld, err := Load(l.Store.Root, l.Store)
 	if ld != nil && ld.Missing {
 		if ld.TrackedAtHead {
+			so.Decision = "deleted"
 			out.Decision, out.Reason, out.Exit = hookio.DecisionBlock, l.cap(in, "saga gate: contract deleted; restore .saga/contract.md", CeilingStop), int(cli.ExitRefusal)
 			l.record(in, "stop", map[string]any{"decision": "block", "reason": "contract deleted"})
 		}
 		return out, nil
 	}
 	if err != nil {
+		so.Decision = "invalid"
 		out.Decision, out.Reason, out.Exit = hookio.DecisionBlock, l.cap(in, "saga gate: contract invalid: run saga gate lint", CeilingStop), int(cli.CodeOf(err))
 		l.record(in, "stop", map[string]any{"decision": "block", "reason": "contract invalid", "exit": int(cli.CodeOf(err))})
 		return out, nil
 	}
 	rep, err := Status(ld, StatusOptions{})
 	if err != nil {
+		so.Decision = "invalid"
 		out.Decision, out.Reason, out.Exit = hookio.DecisionBlock, l.cap(in, "saga gate: contract invalid: run saga gate lint", CeilingStop), int(cli.CodeOf(err))
 		return out, nil
 	}
+	so.Loaded, so.Report = ld, rep
 	obs, oerr := l.Store.ReadObserved(in.SessionID)
 	if oerr != nil {
 		return out, cli.Wrap(cli.ExitEnvironment, "observed", oerr)
@@ -329,12 +359,14 @@ func (l *Layer) stop(in *hookio.Input, out *hookio.Output) (*hookio.Output, erro
 	body := map[string]any{
 		"for_turn": obs.Turn, "progress_hash": rep.ProgressHash, "tree_hash": rep.TreeHash, "mode": rep.Mode, "exit": rep.Exit,
 		"ids": ids(rep), "states": states(rep),
-		// Reserved for trace's claim verdict (trace-spec section 5.9, M1).
-		"claims": nil, "claim_verdict": nil, "claim_reason": "trace claims ship in M1",
+		// The claim verdict is the kind: claim event trace writes after
+		// this step (trace-spec section 5.9).
+		"claims": nil, "claim_verdict": nil, "claim_reason": "see the kind: claim event of this turn",
 	}
 	if rep.Exit == 0 {
 		obs.GateBlocks, obs.GateProgress = 0, rep.ProgressHash
 		body["decision"] = "allow"
+		so.Decision = "allow"
 		l.record(in, "stop", body)
 		return out, l.Store.WriteObserved(obs)
 	}
@@ -344,7 +376,9 @@ func (l *Layer) stop(in *hookio.Input, out *hookio.Output) (*hookio.Output, erro
 		obs.GateBlocks = 1
 	}
 	obs.GateProgress = rep.ProgressHash
+	so.Blocks = obs.GateBlocks
 	if obs.GateBlocks > ld.Config.MaxBlocks {
+		so.Decision = "release"
 		body["decision"], body["blocks"] = "release", obs.GateBlocks
 		out.AdditionalContext = append(out.AdditionalContext, "HANDOFF REQUIRED: "+fmt.Sprint(ld.Config.MaxBlocks)+" Stop blocks without progress")
 		l.record(in, "stop", body)
@@ -358,6 +392,7 @@ func (l *Layer) stop(in *hookio.Input, out *hookio.Output) (*hookio.Output, erro
 	obs.Tokens["gate"] += canon.TokensEstString(msg)
 	rep.Budget = Budget{BytesEmitted: len(msg), TokensEst: canon.TokensEstString(msg), Ceiling: CeilingStop}
 	out.Decision, out.Reason, out.Exit = hookio.DecisionBlock, msg, rep.Exit
+	so.Decision = "block"
 	body["decision"], body["blocks"] = "block", obs.GateBlocks
 	l.record(in, "stop", body)
 	return out, l.Store.WriteObserved(obs)

@@ -81,6 +81,7 @@
     "run_seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "bootstrap_seed": {"type": "integer"},
     "price_table_sha256": {"type": ["string", "null"]},
+    "claims_list_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
     "abstain_list_sha256": {"type": "string"},
     "isolation": {"enum": ["container", "worktree"]},
     "images": {"type": "object", "additionalProperties": {"type": "string"}},

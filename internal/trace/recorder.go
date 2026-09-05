@@ -52,6 +52,10 @@ type Layer struct {
 	Components []string
 	// Stderr receives one-line notes that never reach the harness.
 	Stderr func(string)
+	// ClaimedDone is the trace-spec section 5.6 detector over the final
+	// message, wired by the entry (internal/trace/claims); nil leaves
+	// claimed_done null with a reason.
+	ClaimedDone func(final string) (claimed *bool, reason string)
 
 	pending *toolCall
 }
@@ -367,7 +371,7 @@ func (s *session) postTool(in *hookio.Input, src string, out *hookio.Output) err
 	}
 	body := map[string]any{
 		"for_seq": forSeq, "exit": nil, "error": toolErr, "result_hash": p.Hash, "result_bytes": p.Bytes,
-		"result_ref": p.Ref, "truncated": p.Truncated, "wall_ms": wall, "served": "live",
+		"result_inline": p.Inline, "result_ref": p.Ref, "truncated": p.Truncated, "wall_ms": wall, "served": "live",
 	}
 	mc := p.MaskedCount
 	if err := s.append(&Event{Type: TypeToolResult, Source: src, Body: body, MaskedCount: &mc}); err != nil {
@@ -407,8 +411,12 @@ func (s *session) stop(in *hookio.Input, src string, out *hookio.Output) error {
 		return err
 	}
 	body := map[string]any{
-		"phase": "assistant_end", "final_message_hash": p.Hash, "final_message_bytes": p.Bytes, "final_message_ref": p.Ref,
-		"claimed_done": nil, "claimed_done_reason": "claim verification ships in M1 (trace-spec section 5.5)",
+		"phase": "assistant_end", "final_message_hash": p.Hash, "final_message_bytes": p.Bytes, "final_message_ref": p.Ref, "final_message_inline": p.Inline,
+		"claimed_done": nil, "claimed_done_reason": "no claim detector wired",
+	}
+	if s.l.ClaimedDone != nil {
+		claimed, reason := s.l.ClaimedDone(in.LastAssistantMessage)
+		body["claimed_done"], body["claimed_done_reason"] = claimed, reason
 	}
 	mc := p.MaskedCount
 	if err := s.append(&Event{Type: TypeTurn, Source: src, Body: body, MaskedCount: &mc}); err != nil {

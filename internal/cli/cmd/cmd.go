@@ -23,6 +23,7 @@ import (
 	"github.com/ddh4r4m/saga/internal/hookio"
 	"github.com/ddh4r4m/saga/internal/store"
 	"github.com/ddh4r4m/saga/internal/trace"
+	"github.com/ddh4r4m/saga/internal/trace/claims"
 )
 
 const usage = `saga: a local, model-agnostic layer for coding agents
@@ -37,6 +38,7 @@ usage: saga <command> [flags]
   trace ledger [session] [--json]
   trace budget [--show] [--session-usd x] [--json]
   trace verify <session>
+  trace claims [session|run-dir] [--session id] [--turn n] [--status] [--json]
   trace prices show | use <file>
   trace doctor [--json]                 trace's subset of saga doctor
   doctor [--json]                       environment, hooks, usage source, pins
@@ -253,13 +255,15 @@ func (a *App) cmdHook(args []string) error {
 		}
 	}
 	stderr := func(m string) { fmt.Fprintln(a.Stderr, m) }
-	layer := &trace.Layer{Store: s, Version: a.Version, Config: cfg, Components: []string{"trace", "gate", "doctor"}, Stderr: stderr}
+	layer := &trace.Layer{Store: s, Version: a.Version, Config: cfg, Components: []string{"trace", "gate", "doctor"}, Stderr: stderr, ClaimedDone: claimedDone}
+	gateLayer := &gate.Layer{Store: s, Stderr: stderr}
 	// Order of contracts section 1: trace records first, gate decides,
-	// trace's Finalize records the merged decision. Gate is inactive
-	// without a contract, so it is always in the chain.
+	// trace's claim step cites gate's status (Stop only), trace's
+	// Finalize records the merged decision. Gate is inactive without a
+	// contract, so it is always in the chain.
 	entry := &hook.Entry{
 		Harness: harness, Parse: claude.Parse, Render: claude.Render,
-		Layers: []hookio.Layer{layer, &gate.Layer{Store: s, Stderr: stderr}}, Deadline: time.Duration(cfg.Hook.DeadlineMS) * time.Millisecond,
+		Layers: []hookio.Layer{layer, gateLayer, &claims.Layer{Store: s, Gate: gateLayer, Stderr: stderr}}, Deadline: time.Duration(cfg.Hook.DeadlineMS) * time.Millisecond,
 		Stdin: a.Stdin, Stdout: a.Stdout, Stderr: a.Stderr,
 	}
 	code := entry.Run(event)
@@ -269,13 +273,25 @@ func (a *App) cmdHook(args []string) error {
 	return nil
 }
 
+// claimedDone is the section 5.6 detector the recorder calls at turn end.
+func claimedDone(final string) (*bool, string) {
+	l, err := claims.Default()
+	if err != nil {
+		return nil, "claims list invalid"
+	}
+	d := claims.Detect(l, final, "")
+	return d.ClaimedDone, d.Reason
+}
+
 func (a *App) cmdTrace(args []string) error {
 	if len(args) == 0 {
-		return cli.Errorf(cli.ExitUsage, "usage: saga trace <tail|ledger|budget|verify|prices|doctor>")
+		return cli.Errorf(cli.ExitUsage, "usage: saga trace <tail|ledger|budget|verify|claims|prices|doctor>")
 	}
 	switch args[0] {
 	case "tail":
 		return a.traceTail(args[1:])
+	case "claims":
+		return a.traceClaims(args[1:])
 	case "ledger":
 		return a.traceLedger(args[1:])
 	case "budget":
@@ -595,4 +611,73 @@ func writeJSON(w io.Writer, v any) error {
 	enc.SetIndent("", "  ")
 	enc.SetEscapeHTML(false)
 	return enc.Encode(v)
+}
+
+// traceClaims is `saga trace claims [session|run-dir] [--session id]
+// [--turn n] [--status] [--json]` (trace-spec section 9.1): read-only,
+// the section 5.9 verdict over a recorded session or a bench archive
+// directory, exit per the section 5.9 table with --status.
+func (a *App) traceClaims(args []string) error {
+	fs := a.flags("trace claims")
+	sessionFlag := fs.String("session", "", "session id (default: the newest)")
+	turn := fs.Int("turn", 0, "turn to judge (default: the last turn end)")
+	status := fs.Bool("status", false, "exit per the section 5.9 table")
+	asJSON := fs.Bool("json", false, "emit saga.trace.claims/1")
+	if err := parseFlags(fs, args); err != nil {
+		return err
+	}
+	target := positional(fs)
+	if *sessionFlag != "" {
+		target = *sessionFlag
+	}
+	var in *claims.Input
+	if target != "" {
+		if fi, err := os.Stat(target); err == nil && fi.IsDir() {
+			ri, err := claims.FromRunDir(target)
+			if err != nil {
+				return err
+			}
+			in = ri
+		} else if p := filepath.Join(a.Cwd, target); !filepath.IsAbs(target) && isDir(p) && !isDir(filepath.Join(p, "..", "..")) {
+			ri, err := claims.FromRunDir(p)
+			if err != nil {
+				return err
+			}
+			in = ri
+		}
+	}
+	if in == nil {
+		s, err := a.store()
+		if err != nil {
+			return err
+		}
+		session, err := a.pickSession(s, target)
+		if err != nil {
+			return err
+		}
+		in, err = claims.FromSession(s, session, *turn)
+		if err != nil {
+			return err
+		}
+	}
+	res := claims.Judge(in)
+	body := res.Body(in)
+	body["schema"] = claims.Schema
+	body["session"] = in.Session
+	if *asJSON {
+		if err := writeJSON(a.Stdout, body); err != nil {
+			return err
+		}
+	} else {
+		fmt.Fprint(a.Stdout, claims.Render(in, res))
+	}
+	if *status && res.Exit != 0 {
+		return &cli.Error{Code: cli.Code(res.Exit), Msg: "claims: " + res.Verdict}
+	}
+	return nil
+}
+
+func isDir(p string) bool {
+	fi, err := os.Stat(p)
+	return err == nil && fi.IsDir()
 }

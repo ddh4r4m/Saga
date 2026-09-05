@@ -16,6 +16,9 @@
     "outcome_reason": {"type": ["string", "null"]},
     "claimed_done": {"type": ["boolean", "null"]},
     "claimed_done_reason": {"type": ["string", "null"]},
+    "claimed_done_structural": {"type": ["boolean", "null"]},
+    "claim_verdict": {"type": ["string", "null"], "enum": ["verified", "unverified", "contradicted", null]},
+    "claims": {"type": "integer", "minimum": 0},
     "oracle": {
       "type": "object",
       "required": ["exit", "tests", "pass", "regressed", "ceiling_band", "apply_error"],

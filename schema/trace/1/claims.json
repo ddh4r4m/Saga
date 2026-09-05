@@ -1,0 +1,65 @@
+{
+  "$id": "https://saga.dev/schema/trace/1/claims",
+  "$comment": "saga.trace.claims/1 (trace-spec section 5.9, 9.1): the claim verdict of one turn as `saga trace claims --json` emits it; the same object without schema and session is the body of the gate event with kind claim.",
+  "type": "object",
+  "required": ["schema", "session", "kind", "for_turn", "trigger", "final_message_hash", "claims_list", "claimed_done", "claimed_done_reason", "truncated", "claims", "verdict", "counts", "tree_hash", "mode", "decision", "exit", "message_tokens_est"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {"const": "saga.trace.claims/1"},
+    "session": {"type": "string"},
+    "kind": {"const": "claim"},
+    "for_turn": {"type": "integer", "minimum": 0},
+    "trigger": {"enum": ["stop", "subagent_stop", "cli", "derived"]},
+    "final_message_hash": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+    "claims_list": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "abstain_list": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "claimed_done": {"type": ["boolean", "null"]},
+    "claimed_done_reason": {"type": "string"},
+    "claimed_done_structural": {"type": ["boolean", "null"]},
+    "truncated": {"type": "boolean"},
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "class", "span", "check", "verdict", "evidence"],
+        "additionalProperties": false,
+        "properties": {
+          "kind": {"enum": ["done", "gate_met", "tests_pass", "ran", "touched", "read"]},
+          "class": {"enum": ["structural", "lexical"]},
+          "span": {"type": "array", "items": {"type": "integer", "minimum": 0}},
+          "check": {"type": "string"},
+          "verdict": {"enum": ["verified", "unverified", "contradicted"]},
+          "reason": {"type": "string"},
+          "evidence": {"type": "array", "items": {"type": "integer"}},
+          "ids": {"type": "array", "items": {"type": "string"}},
+          "command": {"type": "string"},
+          "path": {"type": "string"},
+          "passed": {"type": "integer"},
+          "created": {"type": "boolean"}
+        }
+      }
+    },
+    "verdict": {"type": ["string", "null"], "enum": ["verified", "unverified", "contradicted", null]},
+    "counts": {
+      "type": "object",
+      "required": ["verified", "unverified", "contradicted"],
+      "additionalProperties": false,
+      "properties": {
+        "verified": {"type": "integer", "minimum": 0},
+        "unverified": {"type": "integer", "minimum": 0},
+        "contradicted": {"type": "integer", "minimum": 0}
+      }
+    },
+    "tree_hash": {"type": ["string", "null"]},
+    "snapshot_id": {"type": ["string", "null"]},
+    "gate_status_exit": {"type": ["integer", "null"]},
+    "mode": {"enum": ["minimal", "full"]},
+    "decision": {"enum": ["allow", "warn", "block", "record", "release"]},
+    "exit": {"type": "integer", "minimum": 0},
+    "message_tokens_est": {"type": "integer", "minimum": 0},
+    "zero_edit_done": {"type": "boolean"},
+    "subagent_claims": {"type": "array", "items": {"type": "integer"}},
+    "blocks": {"type": "integer"},
+    "error": {"type": "string"}
+  }
+}

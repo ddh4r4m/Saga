@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"strings"
 
 	"github.com/ddh4r4m/saga/internal/bench/task"
 	"github.com/ddh4r4m/saga/internal/trace"
@@ -24,10 +25,33 @@ type Limits struct {
 	USD      float64 `json:"usd"`
 }
 
+// ProtocolSentence is the fixed instruction every task prompt ends with
+// in every arm (docs/12 section 2.1 rule 3, gate-spec section 10.3): it
+// is what the structural claim marker reads.
+const ProtocolSentence = "When you stop, the final line of your last message must be exactly DONE or NOT-DONE."
+
+// ContractSentence is the one extra sentence of a gate arm (docs/12
+// section 4): it names the file and the command, not a behaviour.
+const ContractSentence = "A contract at .saga/contract.md declares the checks this task must satisfy; run saga gate check to verify them before you stop."
+
+// StagedPrompt is the prompt the harness receives: prompt.md, the
+// contract sentence when the arm has gate, then the protocol sentence
+// last in every arm.
+func StagedPrompt(prompt string, components []string) string {
+	p := strings.TrimRight(prompt, "\n")
+	if HasComponent(components, "gate") {
+		p += "\n\n" + ContractSentence
+	}
+	return p + "\n\n" + ProtocolSentence + "\n"
+}
+
 // PrepareInput describes the run before the harness starts.
 type PrepareInput struct {
 	Task      *task.Task
 	Workspace string
+	// Prompt is the staged prompt text (StagedPrompt); empty means the
+	// bare prompt.md.
+	Prompt    string
 	ConfigDir string
 	Arm       string
 	// Components are the Saga components of the arm (bench-spec 4.3);
@@ -78,6 +102,24 @@ type CollectInput struct {
 	NativeLogPath string
 	Seed          string
 	Run           *RunOutput
+	// Prompt is the staged prompt the harness received.
+	Prompt string
+}
+
+// PromptOf returns the staged prompt of a prepare input, or the bare one.
+func (in *PrepareInput) PromptOf() string {
+	if in.Prompt != "" {
+		return in.Prompt
+	}
+	return in.Task.Prompt()
+}
+
+// PromptOf returns the staged prompt of a collect input, or the bare one.
+func (in *CollectInput) PromptOf() string {
+	if in.Prompt != "" {
+		return in.Prompt
+	}
+	return in.Task.Prompt()
 }
 
 // ToolCall is one entry of the tool-call sequence in run.json.

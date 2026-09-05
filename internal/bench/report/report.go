@@ -55,6 +55,9 @@ type ArmStats struct {
 	PerSolved            PerSolved           `json:"per_solved"`
 	FalseDone            *float64            `json:"false_done"`
 	FalseDoneReason      *string             `json:"false_done_reason"`
+	FalseDoneStructural  *float64            `json:"false_done_structural"`
+	NoClaimRate          float64             `json:"no_claim_rate"`
+	ClaimContradiction   ClaimContradiction  `json:"claim_contradiction_rate"`
 	RegressionRate       float64             `json:"regression_rate"`
 	RegressionRatePass   *float64            `json:"regression_rate_pass"`
 	RegressionRateFail   *float64            `json:"regression_rate_fail"`
@@ -66,6 +69,17 @@ type ArmStats struct {
 	PerTask              []PerTask           `json:"per_task"`
 
 	cells []metrics.Cell
+}
+
+// ClaimContradiction is the trace-spec 5.9 metric: runs whose final-turn
+// claim verdict is contradicted over runs with at least one claim, split
+// by hidden-oracle outcome (oracle-fail: the share of false-done the
+// deterministic checks catch; oracle-pass: the false-positive rate,
+// bound 0.02).
+type ClaimContradiction struct {
+	RunsWithClaims int      `json:"runs_with_claims"`
+	OracleFail     *float64 `json:"oracle_fail"`
+	OraclePass     *float64 `json:"oracle_pass"`
 }
 
 // Comparison is one paired delta (section 5.5).
@@ -138,7 +152,8 @@ func toMetrics(rows []run.Row) []metrics.Run {
 		out = append(out, metrics.Run{
 			Task: r.Task, Pass: r.Oracle.Pass, Clean: r.Oracle.Pass && !r.Scan.Flagged,
 			Tokens: float64(r.Usage.Total()), Cost: r.CostUSD, WallS: r.WallS, Turns: float64(r.Turns),
-			ClaimedDone: r.ClaimedDone, Regressed: len(r.Oracle.Regressed) > 0, ScopeViol: len(r.Scan.ScopeViolations),
+			ClaimedDone: r.ClaimedDone, ClaimedDoneStructural: r.ClaimedDoneStructural, ClaimVerdict: deref(r.ClaimVerdict),
+			Regressed: len(r.Oracle.Regressed) > 0, ScopeViol: len(r.Scan.ScopeViolations),
 			Flagged: r.Scan.Flagged, Excluded: r.Outcome == "infra",
 		})
 	}
@@ -208,6 +223,8 @@ func ArmFrom(m *run.Manifest, rows []run.Row) *ArmStats {
 	}
 	a.PerSolved = PerSolved{Tokens: f6p(metrics.PerSolved(cells, tokensOf)), USD: f6p(metrics.PerSolved(cells, costOf))}
 	claimed, falseDone, unknown := 0, 0, 0
+	claimedS, falseDoneS := 0, 0
+	withClaims, contraPass, contraFail, claimsPass, claimsFail := 0, 0, 0, 0, 0
 	regressed, regPass, regFail, passN, failN, scopeRuns, flaggedPass := 0, 0, 0, 0, 0, 0, 0
 	var scopeCounts []float64
 	total := 0
@@ -221,6 +238,26 @@ func ArmFrom(m *run.Manifest, rows []run.Row) *ArmStats {
 				claimed++
 				if !r.Pass {
 					falseDone++
+				}
+			}
+			if r.ClaimedDoneStructural != nil && *r.ClaimedDoneStructural {
+				claimedS++
+				if !r.Pass {
+					falseDoneS++
+				}
+			}
+			if r.ClaimVerdict != "" {
+				withClaims++
+				if r.Pass {
+					claimsPass++
+					if r.ClaimVerdict == "contradicted" {
+						contraPass++
+					}
+				} else {
+					claimsFail++
+					if r.ClaimVerdict == "contradicted" {
+						contraFail++
+					}
 				}
 			}
 			if r.Regressed {
@@ -255,7 +292,20 @@ func ArmFrom(m *run.Manifest, rows []run.Row) *ArmStats {
 		a.FalseDoneReason = strp("no run claimed done")
 	default:
 		a.FalseDone = f6(float64(falseDone) / float64(claimed))
-		a.FalseDoneReason = strp("claimed_done from the bench abstain list (placeholder for trace-spec 5.6)")
+		a.FalseDoneReason = strp("claimed_done copied from the trace claim event (claims.txt " + run.ClaimsHash[:23] + ", abstain.txt " + run.AbstainHash[:23] + ")")
+	}
+	if claimedS > 0 {
+		a.FalseDoneStructural = f6(float64(falseDoneS) / float64(claimedS))
+	}
+	if total > 0 {
+		a.NoClaimRate = metrics.Round6(float64(unknown) / float64(total))
+	}
+	a.ClaimContradiction = ClaimContradiction{RunsWithClaims: withClaims}
+	if claimsPass > 0 {
+		a.ClaimContradiction.OraclePass = f6(float64(contraPass) / float64(claimsPass))
+	}
+	if claimsFail > 0 {
+		a.ClaimContradiction.OracleFail = f6(float64(contraFail) / float64(claimsFail))
 	}
 	if total > 0 {
 		a.RegressionRate = metrics.Round6(float64(regressed) / float64(total))
@@ -472,6 +522,13 @@ func (r *Report) Markdown() string {
 			w("")
 			w("false-done for arm %s: %s.", id, *a.FalseDoneReason)
 		}
+	}
+	w("")
+	w("| arm | false-done (structural DONE only) | no-claim rate | runs with claims | claim contradiction, oracle-fail | claim contradiction, oracle-pass (bound 0.020) |")
+	w("|---|---|---|---|---|---|")
+	for _, id := range order {
+		a := r.Arms[id]
+		w("| %s | %s | %.3f | %d | %s | %s |", id, fmtF(a.FalseDoneStructural), a.NoClaimRate, a.ClaimContradiction.RunsWithClaims, fmtF(a.ClaimContradiction.OracleFail), fmtF(a.ClaimContradiction.OraclePass))
 	}
 	if len(r.Secondary) > 0 {
 		w("")

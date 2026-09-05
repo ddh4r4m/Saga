@@ -45,6 +45,18 @@
           },
           "false_done": {"type": ["number", "null"]},
           "false_done_reason": {"type": ["string", "null"]},
+          "false_done_structural": {"type": ["number", "null"]},
+          "no_claim_rate": {"type": "number"},
+          "claim_contradiction_rate": {
+            "type": "object",
+            "required": ["runs_with_claims", "oracle_fail", "oracle_pass"],
+            "additionalProperties": false,
+            "properties": {
+              "runs_with_claims": {"type": "integer", "minimum": 0},
+              "oracle_fail": {"type": ["number", "null"]},
+              "oracle_pass": {"type": ["number", "null"]}
+            }
+          },
           "regression_rate": {"type": "number"},
           "regression_rate_pass": {"type": ["number", "null"]},
           "regression_rate_fail": {"type": ["number", "null"]},

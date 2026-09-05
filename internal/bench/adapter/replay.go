@@ -59,7 +59,7 @@ func (r *Replay) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOutput,
 	d.Block("tools")["names"] = []string{"apply_patch"}
 	Set(d.Block("tools"), "sha256", BytesSHA256([]byte("apply_patch")), "")
 	Set(d.Block("system_prompt"), "sha256", nil, "replay has no model and no prompt")
-	prompt := BytesSHA256([]byte(in.Task.Prompt()))
+	prompt := BytesSHA256([]byte(in.PromptOf()))
 	cfg := BytesSHA256([]byte("replay:" + r.Patch))
 	return &PrepareOutput{ConfigHash: cfg, PromptHash: prompt, ToolsHash: d.Block("tools")["sha256"].(string), Disclosure: d}, nil
 }
@@ -106,6 +106,9 @@ func (r *Replay) Collect(ctx context.Context, in *CollectInput) (*CollectOutput,
 	}
 	argsHash := BytesSHA256([]byte("patch:" + log.Patch))
 	out.ToolSequence = []ToolCall{{Tool: "apply_patch", ArgsHash: argsHash, Error: log.Error != ""}}
+	// The synthetic final message follows the gate-spec 10.3 convention
+	// every bench prompt ends with (last line DONE or NOT-DONE), so the
+	// trace claim detector reads it the way it reads a model's message.
 	switch {
 	case log.Patch == "abandon":
 		out.Outcome = "abandon"
@@ -113,14 +116,18 @@ func (r *Replay) Collect(ctx context.Context, in *CollectInput) (*CollectOutput,
 		if in.Task.Terminal != nil && len(in.Task.Terminal.ReasonMustMention) > 0 {
 			out.FinalMessage += " Contradiction between " + strings.Join(in.Task.Terminal.ReasonMustMention, " and ") + "."
 		}
+		out.FinalMessage += "\n\nNOT-DONE"
 		out.ToolCalls = 0
 		out.ToolSequence = nil
 	case log.Error != "":
-		out.FinalMessage = fmt.Sprintf("Attempted to apply %s but it did not apply: %s. Done.", log.Patch, log.Error)
+		out.FinalMessage = fmt.Sprintf("Attempted to apply %s but it did not apply: %s.\n\nDONE", log.Patch, log.Error)
 	case log.Patch == "none":
-		out.FinalMessage = "Reviewed the repository and made no changes. Done."
+		// A zero-edit done: no tool call, nothing changed, still DONE.
+		out.FinalMessage = "Reviewed the repository and made no changes.\n\nDONE"
+		out.ToolCalls = 0
+		out.ToolSequence = nil
 	default:
-		out.FinalMessage = fmt.Sprintf("Applied %s. Done.", log.Patch)
+		out.FinalMessage = fmt.Sprintf("Applied %s.\n\nDONE", log.Patch)
 	}
 	trace, err := replayTrace(in, out)
 	if err != nil {
@@ -164,7 +171,7 @@ func replayTrace(in *CollectInput, out *CollectOutput) ([]byte, error) {
 	}
 	cwd := BytesSHA256([]byte(in.Workspace))
 	emit(0, trace.TypeSession, map[string]any{"phase": "start", "harness": "replay", "cwd_hash": cwd, "config_hash": BytesSHA256([]byte("replay")), "changed": []string{}})
-	emit(1, trace.TypeTurn, map[string]any{"phase": "user", "prompt_hash": BytesSHA256([]byte(in.Task.Prompt())), "prompt_bytes": len(in.Task.Prompt())})
+	emit(1, trace.TypeTurn, map[string]any{"phase": "user", "prompt_hash": BytesSHA256([]byte(in.PromptOf())), "prompt_bytes": len(in.PromptOf())})
 	for _, tc := range out.ToolSequence {
 		emit(1, trace.TypeToolCall, map[string]any{"tool": tc.Tool, "args_hash": tc.ArgsHash, "component": "harness", "cwd_rel": ".", "index_version": nil})
 		exit := 0
@@ -175,7 +182,7 @@ func replayTrace(in *CollectInput, out *CollectOutput) ([]byte, error) {
 		}
 		emit(1, trace.TypeToolResult, map[string]any{"for_seq": seq, "exit": exit, "error": errStr, "result_hash": BytesSHA256(nil), "result_bytes": 0, "truncated": false, "wall_ms": 0, "served": "live"})
 	}
-	emit(1, trace.TypeTurn, map[string]any{"phase": "assistant_end", "final_message_hash": BytesSHA256([]byte(out.FinalMessage)), "final_message_bytes": len(out.FinalMessage), "claimed_done": nil, "claimed_done_reason": "computed by the bench from the abstain list"})
+	emit(1, trace.TypeTurn, map[string]any{"phase": "assistant_end", "final_message_hash": BytesSHA256([]byte(out.FinalMessage)), "final_message_bytes": len(out.FinalMessage), "claimed_done": nil, "claimed_done_reason": "derived by saga trace claims over final_message.txt"})
 	emit(1, trace.TypeSession, map[string]any{"phase": "end", "harness": "replay", "cwd_hash": cwd, "config_hash": BytesSHA256([]byte("replay")), "changed": []string{}})
 	return buf, firstErr
 }

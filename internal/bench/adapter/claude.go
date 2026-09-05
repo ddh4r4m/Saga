@@ -327,8 +327,8 @@ func (c *ClaudeCode) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOut
 	}
 	d["env_vars"] = envMap
 	d["config_hash"] = BytesSHA256(settings)
-	d["prompt_hash"] = BytesSHA256([]byte(in.Task.Prompt()))
-	return &PrepareOutput{ConfigHash: BytesSHA256(settings), PromptHash: BytesSHA256([]byte(in.Task.Prompt())), ToolsHash: canon.SHA256(toolsCanon), Disclosure: d}, nil
+	d["prompt_hash"] = BytesSHA256([]byte(in.PromptOf()))
+	return &PrepareOutput{ConfigHash: BytesSHA256(settings), PromptHash: BytesSHA256([]byte(in.PromptOf())), ToolsHash: canon.SHA256(toolsCanon), Disclosure: d}, nil
 }
 
 // stageShim writes the control arm's PATH shim (bench-spec 4.2): `saga`
@@ -393,7 +393,7 @@ func (c *ClaudeCode) stageGate(ctx context.Context, in *PrepareInput) error {
 	if err := st.WriteManifest(man); err != nil {
 		return fmt.Errorf("manifest: %w", err)
 	}
-	if err := store.WriteFileAtomic(st.Path("request.md"), []byte(in.Task.Prompt()), 0o644); err != nil {
+	if err := store.WriteFileAtomic(st.Path("request.md"), []byte(in.PromptOf()), 0o644); err != nil {
 		return fmt.Errorf("request: %w", err)
 	}
 	contract, err := os.ReadFile(filepath.Join(in.Task.Dir, "contract.md"))

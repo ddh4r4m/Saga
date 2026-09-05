@@ -42,3 +42,44 @@ func TestReplayTraceValid(t *testing.T) {
 		}
 	}
 }
+
+// TestStagedPromptInBothArms: the DONE/NOT-DONE instruction ends the prompt
+// identically in every arm; a gate arm carries the one contract sentence
+// before it; both adapters disclose the staged prompt's hash.
+func TestStagedPromptInBothArms(t *testing.T) {
+	bare := StagedPrompt("Fix the thing.\n", nil)
+	gated := StagedPrompt("Fix the thing.\n", []string{"gate"})
+	for _, p := range []string{bare, gated} {
+		if !strings.HasSuffix(p, ProtocolSentence+"\n") || !strings.HasPrefix(p, "Fix the thing.\n\n") {
+			t.Errorf("staged prompt: %q", p)
+		}
+	}
+	if strings.Contains(bare, ContractSentence) || !strings.Contains(gated, ContractSentence) {
+		t.Errorf("contract sentence placement: bare %q gated %q", bare, gated)
+	}
+	if strings.Index(gated, ContractSentence) > strings.Index(gated, ProtocolSentence) {
+		t.Error("protocol sentence must be last")
+	}
+	tk := fixtureTask(t)
+	root := t.TempDir()
+	cfg := filepath.Join(root, "cfg")
+	os.MkdirAll(cfg, 0o755)
+	staged := StagedPrompt(tk.Prompt(), nil)
+	in := &PrepareInput{Task: tk, Workspace: filepath.Join(root, "ws"), ConfigDir: cfg, Prompt: staged, Limits: Limits{WallS: 60, MaxTurns: 5, USD: 1}}
+	ro, err := (&Replay{Patch: "gold"}).Prepare(context.Background(), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := BytesSHA256([]byte(staged))
+	if ro.PromptHash != want || ro.Disclosure["prompt_hash"] != nil && ro.Disclosure["prompt_hash"] != want {
+		t.Errorf("replay prompt hash %s, want %s", ro.PromptHash, want)
+	}
+	c := &ClaudeCode{Version: "test", SagaBinary: "saga"}
+	co, err := c.Prepare(context.Background(), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if co.PromptHash != want || co.Disclosure["prompt_hash"] != want {
+		t.Errorf("claude prompt hash %s, want %s", co.PromptHash, want)
+	}
+}

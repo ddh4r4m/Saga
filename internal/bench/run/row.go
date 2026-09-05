@@ -66,32 +66,35 @@ type Drift struct {
 
 // Row is one saga.bench.run/1 record.
 type Row struct {
-	Schema               string             `json:"schema"`
-	Manifest             string             `json:"manifest"`
-	Task                 string             `json:"task"`
-	Model                string             `json:"model"`
-	Harness              string             `json:"harness"`
-	Arm                  string             `json:"arm"`
-	I                    int                `json:"i"`
-	Seed                 string             `json:"seed"`
-	Outcome              string             `json:"outcome"`
-	OutcomeReason        *string            `json:"outcome_reason"`
-	ClaimedDone          *bool              `json:"claimed_done"`
-	ClaimedDoneReason    *string            `json:"claimed_done_reason"`
-	Oracle               OracleRow          `json:"oracle"`
-	Scan                 task.ScanResult    `json:"scan"`
-	Usage                Usage              `json:"usage"`
-	CostUSD              *float64           `json:"cost_usd"`
-	CostUSDReason        *string            `json:"cost_usd_reason"`
-	WallS                float64            `json:"wall_s"`
-	Turns                int                `json:"turns"`
-	ToolCalls            int                `json:"tool_calls"`
-	Drift                Drift              `json:"drift"`
-	Compliance           []any              `json:"compliance"`
-	BlockedReachAttempts int                `json:"blocked_reach_attempts"`
-	ComponentUsed        *bool              `json:"component_used"`
-	ToolSequence         []adapter.ToolCall `json:"tool_sequence"`
-	Artifacts            map[string]string  `json:"artifacts"`
+	Schema                string             `json:"schema"`
+	Manifest              string             `json:"manifest"`
+	Task                  string             `json:"task"`
+	Model                 string             `json:"model"`
+	Harness               string             `json:"harness"`
+	Arm                   string             `json:"arm"`
+	I                     int                `json:"i"`
+	Seed                  string             `json:"seed"`
+	Outcome               string             `json:"outcome"`
+	OutcomeReason         *string            `json:"outcome_reason"`
+	ClaimedDone           *bool              `json:"claimed_done"`
+	ClaimedDoneReason     *string            `json:"claimed_done_reason"`
+	ClaimedDoneStructural *bool              `json:"claimed_done_structural"`
+	ClaimVerdict          *string            `json:"claim_verdict"`
+	Claims                int                `json:"claims"`
+	Oracle                OracleRow          `json:"oracle"`
+	Scan                  task.ScanResult    `json:"scan"`
+	Usage                 Usage              `json:"usage"`
+	CostUSD               *float64           `json:"cost_usd"`
+	CostUSDReason         *string            `json:"cost_usd_reason"`
+	WallS                 float64            `json:"wall_s"`
+	Turns                 int                `json:"turns"`
+	ToolCalls             int                `json:"tool_calls"`
+	Drift                 Drift              `json:"drift"`
+	Compliance            []any              `json:"compliance"`
+	BlockedReachAttempts  int                `json:"blocked_reach_attempts"`
+	ComponentUsed         *bool              `json:"component_used"`
+	ToolSequence          []adapter.ToolCall `json:"tool_sequence"`
+	Artifacts             map[string]string  `json:"artifacts"`
 }
 
 // Validate checks the row against the embedded schema.
@@ -119,6 +122,7 @@ type Manifest struct {
 	BootstrapSeed         int64             `json:"bootstrap_seed"`
 	PriceTableSHA256      *string           `json:"price_table_sha256"`
 	AbstainListSHA256     string            `json:"abstain_list_sha256"`
+	ClaimsListSHA256      string            `json:"claims_list_sha256"`
 	Isolation             string            `json:"isolation"`
 	Images                map[string]string `json:"images"`
 	Host                  Host              `json:"host"`

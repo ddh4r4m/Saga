@@ -21,10 +21,14 @@ type Run struct {
 	WallS       float64
 	Turns       float64
 	ClaimedDone *bool
-	Regressed   bool
-	ScopeViol   int
-	Flagged     bool
-	Excluded    bool // outcome infra: not a result (section 3.3)
+	// ClaimedDoneStructural is the docs/12 sensitivity value (DONE marker only).
+	ClaimedDoneStructural *bool
+	// ClaimVerdict is the final-turn claim verdict ("" without claims).
+	ClaimVerdict string
+	Regressed    bool
+	ScopeViol    int
+	Flagged      bool
+	Excluded     bool // outcome infra: not a result (section 3.3)
 }
 
 // Cell is the K runs of one task.

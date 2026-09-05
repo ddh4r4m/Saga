@@ -26,6 +26,7 @@ var Registry = map[string]string{
 	"saga.trace/1":          "trace/1/envelope.json",
 	"saga.trace.ledger/1":   "trace/1/ledger.json",
 	"saga.trace.pins/1":     "trace/1/pins.json",
+	"saga.trace.claims/1":   "trace/1/claims.json",
 	"saga.doctor/1":         "doctor/1/doctor.json",
 	"saga.gate.status/1":    "gate/1/status.json",
 	"saga.gate.evidence/1":  "gate/1/evidence.json",

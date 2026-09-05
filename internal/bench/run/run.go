@@ -29,6 +29,7 @@ import (
 	"github.com/ddh4r4m/saga/internal/cli"
 	"github.com/ddh4r4m/saga/internal/schema"
 	"github.com/ddh4r4m/saga/internal/trace"
+	"github.com/ddh4r4m/saga/internal/trace/claims"
 )
 
 // BootstrapSeed is the fixed RNG seed for the section 5.5 bootstrap.
@@ -213,7 +214,7 @@ func open(ctx context.Context, opts Options) (*session, error) {
 		Arms:    []Arm{armOf(opts)},
 		Models:  []Model{{ID: opts.Model}},
 		K:       opts.K, RunSeed: opts.Seed, BootstrapSeed: BootstrapSeed,
-		AbstainListSHA256: AbstainHash, Isolation: "worktree", Images: map[string]string{},
+		AbstainListSHA256: AbstainHash, ClaimsListSHA256: ClaimsHash, Isolation: "worktree", Images: map[string]string{},
 		Host:   Host{OS: runtime.GOOS, Arch: runtime.GOARCH},
 		Budget: Budget{EstimateUSD: estimate, CapUSD: cap},
 	}
@@ -248,6 +249,9 @@ func open(ctx context.Context, opts Options) (*session, error) {
 	}
 	if err := os.WriteFile(filepath.Join(opts.Out, "manifest.json"), append(manifestJSON, '\n'), 0o644); err != nil {
 		return nil, cli.Wrap(cli.ExitEnvironment, "manifest", err)
+	}
+	if err := os.WriteFile(filepath.Join(opts.Out, "claims.txt"), []byte(ClaimsList), 0o644); err != nil {
+		return nil, cli.Wrap(cli.ExitEnvironment, "claims.txt", err)
 	}
 	if err := os.WriteFile(filepath.Join(opts.Out, "abstain.txt"), []byte(AbstainList), 0o644); err != nil {
 		return nil, err
@@ -466,11 +470,15 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 	if err := task.Setup(ctx, t, ws); err != nil {
 		return infra("setup", err)
 	}
+	// The prompt the harness receives: prompt.md plus the fixed sentences
+	// of docs/12 (the DONE/NOT-DONE instruction in every arm, the contract
+	// sentence in a gate arm); its hash is disclosed per run.
+	prompt := adapter.StagedPrompt(t.Prompt(), opts.Components)
 	promptPath := filepath.Join(cfg, "prompt.md")
-	if err := os.WriteFile(promptPath, []byte(t.Prompt()), 0o644); err != nil {
+	if err := os.WriteFile(promptPath, []byte(prompt), 0o644); err != nil {
 		return infra("prompt", err)
 	}
-	prep, err := opts.Adapter.Prepare(ctx, &adapter.PrepareInput{Task: t, Workspace: ws, ConfigDir: cfg, Arm: opts.Arm, Components: opts.Components, Blocks: []string{}, Seed: seed, Limits: limits, SagaBinary: opts.SagaBinary})
+	prep, err := opts.Adapter.Prepare(ctx, &adapter.PrepareInput{Task: t, Workspace: ws, ConfigDir: cfg, Arm: opts.Arm, Components: opts.Components, Blocks: []string{}, Seed: seed, Limits: limits, SagaBinary: opts.SagaBinary, Prompt: prompt})
 	if err != nil {
 		return infra("prepare", err)
 	}
@@ -486,7 +494,7 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 	if err != nil {
 		return infra("harness", err)
 	}
-	col, err := opts.Adapter.Collect(ctx, &adapter.CollectInput{Task: t, Workspace: ws, ConfigDir: cfg, NativeLogPath: ro.NativeLogPath, Seed: seed, Run: ro})
+	col, err := opts.Adapter.Collect(ctx, &adapter.CollectInput{Task: t, Workspace: ws, ConfigDir: cfg, NativeLogPath: ro.NativeLogPath, Seed: seed, Run: ro, Prompt: prompt})
 	if err != nil {
 		return infra("collect", err)
 	}
@@ -540,13 +548,29 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 		row.Outcome = "budget"
 		row.OutcomeReason = strp(fmt.Sprintf("cost %.4f over the cap %.4f", *row.CostUSD, limits.USD))
 	}
-	claimed, why := ClaimedDone(row.Outcome, col.FinalMessage)
-	row.ClaimedDone, row.ClaimedDoneReason = &claimed, &why
-
-	// Diff, grade on a clean checkout, scan.
+	// Diff, then the derived claim verdict (docs/12 section 2.1 rule 1:
+	// computed once by trace over the final message, identically in
+	// every arm, and copied into the row), then grade on a clean checkout
+	// and scan.
 	diff, err := task.Diff(ctx, ws)
 	if err != nil {
 		return infra("diff", err)
+	}
+	j, err := JudgeRun(claims.RunDirInput{FinalMessage: col.FinalMessage, FinalAvailable: col.FinalMessage != "", TraceJSONL: col.TraceJSONL, WorkspaceDiff: diff, Workspace: ws})
+	if err != nil {
+		return infra("claims", err)
+	}
+	row.ClaimedDone, row.ClaimedDoneReason = j.ClaimedDone, strp(j.ClaimedDoneReason)
+	row.ClaimedDoneStructural, row.ClaimVerdict, row.Claims = j.Structural, j.Verdict, j.Claims
+	if row.Outcome == "abandon" {
+		// An ABANDON terminal is never a claim of completion (bench-spec 5.4).
+		f := false
+		row.ClaimedDone, row.ClaimedDoneReason = &f, strp("harness ended in the ABANDON terminal; trace claim event: "+j.ClaimedDoneReason)
+	}
+	if withClaim, err := AppendDerived(col.TraceJSONL, "bench-"+seed[:16], 0, j.Event); err == nil {
+		col.TraceJSONL = withClaim
+	} else {
+		opts.logf("%s arm %s run %d: derived claim event not appended: %v", t.ID, opts.Arm, i, err)
 	}
 	grade := filepath.Join(base, "grade")
 	var oracle *task.OracleResult

@@ -33,6 +33,12 @@
       ],
       "pattern": "^sha256:[0-9a-f]{64}$"
     },
+    "final_message_inline": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "final_message_ref": {
       "type": [
         "string",

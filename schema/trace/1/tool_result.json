@@ -26,6 +26,12 @@
     "result_bytes": {
       "type": "integer"
     },
+    "result_inline": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "result_ref": {
       "type": [
         "string",
