@@ -8,11 +8,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/ddh4r4m/saga/internal/bench/adapter"
 	"github.com/ddh4r4m/saga/internal/bench/task"
+	"github.com/ddh4r4m/saga/internal/guard"
 )
 
 // fakeAgent tries every reach path of bench-spec 4.2 in order and
@@ -143,11 +147,32 @@ func TestControlArmBlocking(t *testing.T) {
 	if err := json.Unmarshal(raw, &settings); err != nil {
 		t.Fatal(err)
 	}
-	if h, _ := settings["hooks"].(map[string]any); len(h) != 0 {
-		t.Errorf("hooks in the bare arm's settings: %v", h)
+	// The bare arm carries exactly one hook and it is the safety hook of
+	// docs/12 row 6: no Saga component hook, and nothing else.
+	h, _ := settings["hooks"].(map[string]any)
+	if len(h) != 1 {
+		t.Errorf("%d hook events in the bare arm's settings: %v", len(h), h)
+	}
+	bareCmds := settingsHookCommands(t, settings)
+	wantCmd := adapter.SafetyHookCommand(c.SagaBinary)
+	if len(bareCmds) != 1 || bareCmds[0] != wantCmd {
+		t.Errorf("bare arm hooks %v, want only %q", bareCmds, wantCmd)
 	}
 	if _, ok := settings["mcpServers"]; ok {
 		t.Error("mcpServers in the bare arm's settings")
+	}
+	// The safety hook denies a destructive command here, and says which
+	// rule denied it. This is the hook the harness would invoke: the
+	// command string out of the arm's own settings, run with the arm's
+	// own environment and working directory.
+	if reason := fireSafetyHook(t, c, cfg, ws, "rm -rf "+ws); !strings.Contains(reason, "saga guard: D") {
+		t.Errorf("rm -rf of the workspace root was not denied in the bare arm: %q", reason)
+	}
+	if reason := fireSafetyHook(t, c, cfg, ws, "go test ./..."); reason != "" {
+		t.Errorf("ordinary work denied in the bare arm: %q", reason)
+	}
+	if n := guard.CountDenies(filepath.Join(cfg, "guard.jsonl")); n != 1 {
+		t.Errorf("%d denies logged in the bare arm, want 1", n)
 	}
 	// Every surface is named in the disclosure's blocks list.
 	blocks, _ := prep.Disclosure["blocks"].([]string)
@@ -160,6 +185,9 @@ func TestControlArmBlocking(t *testing.T) {
 	col := collectBare(t, c, tk, ws, cfg)
 	if col.BlockedReachAttempts != 2 {
 		t.Errorf("blocked_reach_attempts %d, want 2", col.BlockedReachAttempts)
+	}
+	if col.GuardDenies != 1 {
+		t.Errorf("guard_denies %d, want 1", col.GuardDenies)
 	}
 	// The sentinel does not change the graded diff: removing it leaves a
 	// tree byte-identical to one that never carried it.
@@ -197,6 +225,106 @@ func TestControlArmBlocking(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(cfg2, "blocked.log")); err == nil {
 		t.Error("the gate arm must have no shim log")
 	}
+	// The safety hook is the same entry with the same command string in
+	// the gate arm, and it denies the same command. That identity is what
+	// keeps it a safety net rather than part of the treatment.
+	raw2, err := os.ReadFile(filepath.Join(cfg2, "settings.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var settings2 map[string]any
+	if err := json.Unmarshal(raw2, &settings2); err != nil {
+		t.Fatal(err)
+	}
+	gateCmds := settingsHookCommands(t, settings2)
+	if !contains(gateCmds, wantCmd) {
+		t.Errorf("the gate arm does not register the safety hook %q: %v", wantCmd, gateCmds)
+	}
+	if reason := fireSafetyHook(t, c, cfg2, ws2, "rm -rf "+ws2); !strings.Contains(reason, "saga guard: D") {
+		t.Errorf("rm -rf of the workspace root was not denied in the gate arm: %q", reason)
+	}
+	if n := guard.CountDenies(filepath.Join(cfg2, "guard.jsonl")); n != 1 {
+		t.Errorf("%d denies logged in the gate arm, want 1", n)
+	}
+}
+
+// settingsHookCommands lists every hook command in a settings object.
+func settingsHookCommands(t *testing.T, settings map[string]any) []string {
+	t.Helper()
+	var out []string
+	hooks, _ := settings["hooks"].(map[string]any)
+	for _, list := range hooks {
+		for _, entry := range list.([]any) {
+			for _, hk := range entry.(map[string]any)["hooks"].([]any) {
+				out = append(out, hk.(map[string]any)["command"].(string))
+			}
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+func contains(list []string, want string) bool {
+	for _, s := range list {
+		if s == want {
+			return true
+		}
+	}
+	return false
+}
+
+// fireSafetyHook invokes the arm's registered PreToolUse hook the way the
+// harness would: the command string out of the arm's own settings, the
+// arm's own environment and working directory, and a PreToolUse payload
+// on stdin. It returns the deny reason, or "" when the hook allowed.
+func fireSafetyHook(t *testing.T, c *adapter.ClaudeCode, cfg, ws, command string) string {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(cfg, "settings.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var settings map[string]any
+	if err := json.Unmarshal(raw, &settings); err != nil {
+		t.Fatal(err)
+	}
+	var hookCmd string
+	for _, s := range settingsHookCommands(t, settings) {
+		if strings.Contains(s, " guard hook ") {
+			hookCmd = s
+		}
+	}
+	if hookCmd == "" {
+		t.Fatal("no safety hook in the arm's settings")
+	}
+	payload, err := json.Marshal(map[string]any{
+		"session_id": "blocking-test", "cwd": ws, "hook_event_name": "PreToolUse",
+		"tool_name": "Bash", "tool_use_id": "tu", "tool_input": map[string]any{"command": command},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("/bin/sh", "-c", hookCmd)
+	cmd.Dir = ws
+	cmd.Env = c.Env(cfg)
+	cmd.Stdin = bytes.NewReader(payload)
+	var out, errb bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &errb
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("safety hook %q: %v\n%s", hookCmd, err, errb.String())
+	}
+	var res struct {
+		Out struct {
+			Decision string `json:"permissionDecision"`
+			Reason   string `json:"permissionDecisionReason"`
+		} `json:"hookSpecificOutput"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &res); err != nil {
+		t.Fatalf("safety hook output %q: %v", out.String(), err)
+	}
+	if res.Out.Decision != "deny" {
+		return ""
+	}
+	return res.Out.Reason
 }
 
 // fakeSaga stands in for the CLI. The bare arm never reaches it (the
@@ -204,14 +332,58 @@ func TestControlArmBlocking(t *testing.T) {
 // arm needs only a binary that answers --version and returns an unmet
 // baseline, because `gate check --approve` is a human act that refuses
 // under an agent shell (docs/12 row 7) and cannot run inside `go test`.
+// `guard` is the exception: it is delegated to a real build, so the
+// safety hook the arms register is the real classifier and the command
+// string under test is the one the settings actually carry.
 func fakeSaga(t *testing.T) string {
 	t.Helper()
 	p := filepath.Join(t.TempDir(), "saga")
-	script := "#!/bin/sh\ncase \"$1\" in --version) echo 'saga 0.0.0-test'; exit 0;; esac\necho '{}'\nexit 1\n"
+	real := buildSaga(t)
+	script := "#!/bin/sh\ncase \"$1\" in\n  --version) echo 'saga 0.0.0-test'; exit 0;;\n  guard) exec '" + real + "' \"$@\";;\nesac\necho '{}'\nexit 1\n"
 	if err := os.WriteFile(p, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	return p
+}
+
+// buildSaga compiles the CLI once per test binary.
+var sagaBuild struct {
+	path string
+	err  error
+	once sync.Once
+}
+
+func buildSaga(t *testing.T) string {
+	t.Helper()
+	sagaBuild.once.Do(func() {
+		dir, err := os.MkdirTemp("", "saga-build")
+		if err != nil {
+			sagaBuild.err = err
+			return
+		}
+		out := filepath.Join(dir, "saga")
+		cmd := exec.Command("go", "build", "-o", out, "./cmd/saga")
+		cmd.Dir = repoRootOf(t)
+		if b, err := cmd.CombinedOutput(); err != nil {
+			sagaBuild.err = fmt.Errorf("go build: %v\n%s", err, b)
+			return
+		}
+		sagaBuild.path = out
+	})
+	if sagaBuild.err != nil {
+		t.Fatal(sagaBuild.err)
+	}
+	return sagaBuild.path
+}
+
+// repoRootOf finds the module root from this test file's location.
+func repoRootOf(t *testing.T) string {
+	t.Helper()
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("no caller")
+	}
+	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", ".."))
 }
 
 // collectBare runs the adapter's Collect over an empty native log, which
@@ -235,6 +407,15 @@ func collectBare(t *testing.T, c *adapter.ClaudeCode, tk *task.Task, ws, cfg str
 	}
 	if m := detail[0].(map[string]any); m["surface"] != "cli_binary" || m["count"] != col.BlockedReachAttempts {
 		t.Errorf("cli_binary surface: %v", m)
+	}
+	var hooksSurface map[string]any
+	for _, e := range detail {
+		if m := e.(map[string]any); m["surface"] == "hooks" {
+			hooksSurface = m
+		}
+	}
+	if hooksSurface == nil || hooksSurface["block"] != "settings:no-saga-hooks-but-safety" || hooksSurface["count"] != col.GuardDenies {
+		t.Errorf("hooks surface: %v (guard_denies %d)", hooksSurface, col.GuardDenies)
 	}
 	return col
 }

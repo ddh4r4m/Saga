@@ -154,6 +154,11 @@ type CollectOutput struct {
 	// BlockedReachAttempts counts control-arm reaches for the component
 	// (bench-spec 4.2), from the PATH shim's log.
 	BlockedReachAttempts int
+	// GuardDenies counts the safety hook's denials (docs/12 row 6), from
+	// its log. It is filled in every arm, because the hook runs in every
+	// arm; a non-zero figure on either side is a fact about the run, not
+	// about the component.
+	GuardDenies int
 	// StreamTraceJSONL is the saga.trace/1 chain synthesised from the
 	// harness's own native log; it is what the derived claim event is
 	// reconciled against, in every arm (docs/12 section 13, amendment of

@@ -19,7 +19,7 @@
       "type": "object",
       "additionalProperties": {
         "type": "object",
-        "required": ["runs", "tasks", "k", "model", "harness", "pass_at_1", "pass_at_1_ci95", "clean_pass_at_1", "pass_k", "instability", "medians", "per_solved", "false_done", "false_done_reason", "regression_rate", "regression_rate_pass", "regression_rate_fail", "scope_violation_rate", "scope_files_median", "cheat_rate", "integrity_fail_rate", "integrity_fail_count", "outcomes", "blocked_reach_attempts", "per_task"],
+        "required": ["runs", "tasks", "k", "model", "harness", "pass_at_1", "pass_at_1_ci95", "clean_pass_at_1", "pass_k", "instability", "medians", "per_solved", "false_done", "false_done_reason", "regression_rate", "regression_rate_pass", "regression_rate_fail", "scope_violation_rate", "scope_files_median", "cheat_rate", "integrity_fail_rate", "integrity_fail_count", "outcomes", "blocked_reach_attempts", "guard_denies", "per_task"],
         "additionalProperties": false,
         "properties": {
           "runs": {"type": "integer"},
@@ -67,6 +67,7 @@
           "integrity_fail_count": {"type": "integer"},
           "outcomes": {"type": "object", "additionalProperties": {"type": "integer"}},
           "blocked_reach_attempts": {"type": "integer"},
+          "guard_denies": {"$comment": "safety-hook denials over the arm (docs/12 row 6); the hook is identical in every arm", "type": "integer"},
           "per_task": {
             "type": "array",
             "items": {

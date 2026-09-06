@@ -279,7 +279,8 @@
         "type": "object",
         "required": [
           "event",
-          "script_sha256"
+          "script_sha256",
+          "role"
         ],
         "additionalProperties": false,
         "properties": {
@@ -294,6 +295,17 @@
           },
           "command": {
             "type": "string"
+          },
+          "role": {
+            "$comment": "gate for a hook of the component under test, safety for the deny-only safety hook that runs identically in every arm (docs/12 row 6)",
+            "enum": [
+              "gate",
+              "safety"
+            ]
+          },
+          "deviation_from_bare": {
+            "$comment": "true when this hook runs in a bare arm, which no component hook may; deviation_reason says why",
+            "type": "boolean"
           }
         },
         "patternProperties": {

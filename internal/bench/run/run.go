@@ -529,6 +529,7 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 	row.Usage = UsageFrom(col.Usage)
 	row.Turns, row.ToolCalls = col.Turns, col.ToolCalls
 	row.BlockedReachAttempts = col.BlockedReachAttempts
+	row.GuardDenies = col.GuardDenies
 	if col.ToolSequence != nil {
 		row.ToolSequence = col.ToolSequence
 	}

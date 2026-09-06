@@ -203,7 +203,7 @@ runs/<manifest-hash>/<task>/<model>/<harness>/<arm>/<i>/
 
 `cost_usd` is the harness's own figure when it reports one (§10.1, docs/12 §9: the same source for every arm); the pinned price table's figure is recorded beside it as `cost_usd_pinned` with `cost_ratio_pinned`. The 2026-09-06 smoke found the pinned figure 1.5 times the harness's on all twelve runs, constant across arms, so the ratio is recorded per run and the table is left for a separate reconciliation.
 
-`run.json` carries: tokens as the trace-spec §3.1 usage object `{input_fresh, cache_read, cache_write_5m, cache_write_1h, output, reasoning}` as reported by the harness's own accounting (the same source for every arm), wall time from container start to harness exit, cost computed from the pinned price table, tool-call sequence as `[(tool, args_hash, exit_or_error)]`, outcome, oracle result, guard flags, and `blocked_reach_attempts` (§4.2).
+`run.json` carries: tokens as the trace-spec §3.1 usage object `{input_fresh, cache_read, cache_write_5m, cache_write_1h, output, reasoning}` as reported by the harness's own accounting (the same source for every arm), wall time from container start to harness exit, cost computed from the pinned price table, tool-call sequence as `[(tool, args_hash, exit_or_error)]`, outcome, oracle result, guard flags, `blocked_reach_attempts` (§4.2) and `guard_denies` (§4.2.1).
 
 Grading happens in a **separate grading container**: the agent's `workspace.diff` is applied to a clean checkout of `ref`, then `oracle/` is copied in and `run.sh` executed. The agent's container never sees the oracle and cannot alter the tree the oracle runs on.
 
@@ -223,11 +223,13 @@ Every comparison is **paired**: same task, same model, same harness, same seed i
 |---|---|---|
 | CLI binary (`saga …`) | `PATH` shim `saga` that logs the invocation to `blocked.log` and exits 127 | `blocked_reach_attempts` |
 | MCP server | Not registered in the bench-generated harness config; the MCP port is closed in the container's network policy | Connection attempts logged by the policy |
-| Hooks | Absent from config; hook script path replaced by a logging no-op that returns "allow" | Invocation count |
+| Hooks | No Saga component hook in the generated config, with one exception: the deny-only safety hook of §4.2.1 | `guard_denies` |
 | Files (`.saga/`, `AGENTS.md` sections, memory stores) | Path is absent; a read-denied sentinel directory exists with the same name so an attempt errors rather than silently creating | Denied-open count via the sandbox audit log |
 | Prompt text (thin adapter) | Removed from the generated config; prompt hash differs and is recorded | none |
 
 **Host substitute (docs/12 §10 row 5, worktree instead of a container).** Without a sandbox there is no audit log, so the files row's "denied-open count" cannot be produced. The substitute is a sentinel: `.saga` is created in the bare arm's workspace as an empty directory with mode `0o000` before the agent starts, so a read or a write under it fails with `EACCES` instead of silently creating the layout, and it is removed (mode restored, then deleted) after collect and before the workspace diff. Its instrumentation is disclosed per run as `sentinel: "present"` with `sentinel_open_count: null` and the reason `no audit log on host`; a directory the agent somehow populated is left in place as evidence, and `Diff` excludes `.saga` in either case, so the sentinel never reaches the oracle. Every surface's block and instrumentation status is recorded per run in `harness.json.blocks_detail`, so the report states what was blocked rather than implying it.
+
+**The safety-hook exception (§4.2.1, docs/12 §10 row 6).** Row 5 takes the worktree substitute for containers, so the agent runs on the owner's machine with no sandbox around it. One hook is therefore registered in **every** arm, bare included: `saga guard hook claude-code PreToolUse`, the deny-only safety net of guard-spec §8. It is not the component under test and cannot act as one, because the command string, the binary and the rules are identical on both sides; anything it stops it stops symmetrically. It reads no policy file and touches nothing under `.saga`, so it works unchanged in a bare arm whose `.saga` is an unreadable sentinel, and it names the saga binary by absolute path, so the PATH shim (which blocks the agent's reach, not the bench's own instrumentation) does not answer for it. Its decisions are appended to the file named by `SAGA_GUARD_LOG`, set on the harness process so hook children inherit it; each line carries the verdict, the rule ids and the sha256 of the command, never the command text. The per-run count of denials is `run.json.guard_denies`, present in every arm, and the report prints the per-arm total beside `blocked_reach_attempts`. The bare arm discloses the hook in `harness.json.hooks` with `role: "safety"`, `deviation_from_bare: true` and a reason, so the deviation is stated rather than inferred; the gate arm discloses the same entry with `role: "safety"` and no deviation flag. The bare arm's block for the hooks surface is named `settings:no-saga-hooks-but-safety` for the same reason.
 
 The report prints `blocked_reach_attempts` per control run. A control arm with zero attempts across all runs is normal; a treatment arm with zero *uses* of the component (as seen in the trace) is flagged **`component_unused`** and the comparison is reported as "no exposure" rather than "no effect" (ponytail self-activated zero times when passive, doc 04 §3).
 
@@ -403,7 +405,7 @@ Following 2605.23950, a run without a complete block is invalid (exit 5 at `coll
   "context": {"window": 200000, "compaction": "auto", "compaction_threshold": 0.92, "rewind": false},
   "permissions": {"mode": "acceptEdits", "sandbox": "none", "allow": ["Bash(*)"], "deny": []},
   "instructions": {"CLAUDE.md_sha256": "…", "AGENTS.md_sha256": null},
-  "hooks": [{"event": "Stop", "script_sha256": "…"}],
+  "hooks": [{"event": "Stop", "script_sha256": "…", "role": "gate"}],
   "mcp_servers": [],
   "limits": {"max_turns": 200, "wall_s": 2160, "usd": 2.55},
   "retries": {"policy": "harness-internal", "count": null, "count_reason": "…"},
@@ -559,7 +561,7 @@ Precedence when several apply: 6, 7, 2, 3, 4, 5, 1 (contracts §4).
   "cost_usd": 1.41, "wall_s": 812, "turns": 47, "tool_calls": 63,
   "drift": {"repeat": 1, "edit_fail_streak": 0, "oscillation": 0, "out_of_scope_read": 2, "late_scope_expansion": 0},
   "compliance": [{"rule": "pnpm-only", "turns": [1, 9, 22], "ok": [1, 1, 0]}],
-  "blocked_reach_attempts": 0, "component_used": true,
+  "blocked_reach_attempts": 0, "guard_denies": 0, "component_used": true,
   "artifacts": {"trace": "sha256:…", "diff": "sha256:…", "harness": "sha256:…"}
 }
 ```
@@ -612,7 +614,7 @@ Precedence when several apply: 6, 7, 2, 3, 4, 5, 1 (contracts §4).
 | **Determinism** | `report` run twice on the same `rows.jsonl` on two hosts | Byte-identical `report.json` and `report.md` |
 | **Task verification** | A corpus of 12 deliberately defective tasks (oracle passes on baseline, gold fails, missing absence control, leaked gold line in prompt, missing canary, non-deterministic oracle, impossible task with a gold patch) | Each rejected with the §2.4 exit code; the 3 valid twins pass |
 | **Fake harness end-to-end** | A scripted adapter driving a deterministic fake model through 4 tasks × 2 arms × K=3; asserts archive layout, hashes, disclosure completeness, interleaving order, budget stop at cap | All; `verify` exits 0; `replay --strict` exits 0 |
-| **Blocking** | Fake agent that tries every reach path in §4.2 in the control arm | Every attempt logged, none succeeds, `blocked_reach_attempts` equals the attempt count |
+| **Blocking** | Fake agent that tries every reach path in §4.2 in the control arm | Every attempt logged, none succeeds, `blocked_reach_attempts` equals the attempt count; the bare arm's settings carry exactly the §4.2.1 safety hook and nothing else, and `rm -rf` of the workspace root is denied and logged in both arms |
 | **Ledger reconciliation** | `saga bench reconcile <archive> [--workspaces <kept-root>]` over the arm B sessions of a smoke | Ledger within 5% of the harness's `total_cost_usd` per session (docs/12 row 13); token deltas reported per component. Measured 2026-09-06 over nine sessions of two smokes: cost error 0.000000, see `bench/results/RECONCILIATION.md` |
 | **Cheating scan** | The gate-spec §10.1 labelled diff corpus plus each task's `cheat-*.patch` | Recall ≥ 0.95 on skip/delete/env-tamper; `hard_coded` precision reported and printed in the report footer |
 | **Drift and compliance** | Synthetic traces with known event counts; rule checkers with positive-control traces | Exact counts; every rule scores 0 on its violating trace |

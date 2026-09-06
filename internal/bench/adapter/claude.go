@@ -19,6 +19,8 @@ import (
 	claudecode "github.com/ddh4r4m/saga/adapters/claude-code"
 	"github.com/ddh4r4m/saga/internal/canon"
 	"github.com/ddh4r4m/saga/internal/gate"
+	"github.com/ddh4r4m/saga/internal/guard"
+	"github.com/ddh4r4m/saga/internal/hookio"
 	"github.com/ddh4r4m/saga/internal/store"
 	"github.com/ddh4r4m/saga/internal/trace"
 )
@@ -121,12 +123,36 @@ func (c *ClaudeCode) Settings(components []string) map[string]any {
 	if HasComponent(components, "gate") {
 		hooks = claudecode.Fragment(saga)["hooks"].(map[string]any)
 	}
+	// The deny-only safety hook of docs/12 row 6 is registered in every
+	// arm with the same command string. Row 5 takes the worktree
+	// substitute for containers, so the agent runs on the owner's
+	// machine; a destructive command has to be refused by the same code
+	// on both sides or the safety net becomes a treatment. It is not the
+	// composed chain: it takes no snapshot, reads no policy and touches
+	// nothing under .saga, so it works unchanged in a bare arm whose
+	// .saga is an unreadable sentinel.
+	var pre []any
+	if list, ok := hooks[hookio.EventPreToolUse].([]any); ok {
+		pre = list
+	}
+	pre = append(pre, map[string]any{"hooks": []any{map[string]any{
+		"type": "command", "command": SafetyHookCommand(saga), "timeout": claudecode.Timeout,
+	}}})
+	hooks[hookio.EventPreToolUse] = pre
 	return map[string]any{
 		"hooks":               hooks,
 		"permissions":         map[string]any{"allow": allow, "deny": []string{}},
 		"includeCoAuthoredBy": false,
 		"env":                 map[string]string{"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"},
 	}
+}
+
+// SafetyHookCommand is the command string both arms register for the
+// safety hook. It names the saga binary by absolute path, so it runs in
+// the bare arm too: the PATH shim blocks the agent's reach for the
+// component, not the bench's own safety net.
+func SafetyHookCommand(binary string) string {
+	return binary + " guard hook " + claudecode.Harness + " " + hookio.EventPreToolUse
 }
 
 // Per-run files under the config dir that Env reads back, so Prepare,
@@ -136,6 +162,7 @@ const (
 	binDir      = "bin"      // treatment arm: symlink to the saga binary
 	approvedDir = "approved" // treatment arm: SAGA_APPROVAL_DIR
 	blockedLog  = "blocked.log"
+	guardLog    = "guard.jsonl" // both arms: the safety hook's decision log
 )
 
 func exists(p string) bool {
@@ -162,6 +189,12 @@ func (c *ClaudeCode) Env(configDir string) []string {
 		"DISABLE_TELEMETRY":                        "1",
 		"DISABLE_ERROR_REPORTING":                  "1",
 		"CI":                                       "1",
+		// The safety hook appends here. It is set on the harness process
+		// rather than in the settings `env` block because a hook is a
+		// child of that process and inherits its environment, which needs
+		// no harness fact to hold; the settings block's reach into hook
+		// processes is not one of the pinned facts.
+		guard.LogEnv: filepath.Join(configDir, guardLog),
 	}
 	for _, k := range passthrough {
 		if v, ok := os.LookupEnv(k); ok {
@@ -307,7 +340,17 @@ func (c *ClaudeCode) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOut
 		for _, entry := range list.([]any) {
 			for _, hk := range entry.(map[string]any)["hooks"].([]any) {
 				cmd := hk.(map[string]any)["command"].(string)
-				hm := map[string]any{"event": ev, "command": cmd}
+				hm := map[string]any{"event": ev, "command": cmd, "role": "gate"}
+				if cmd == SafetyHookCommand(saga) {
+					// The one hook a bare arm carries. It is named as a
+					// deviation there rather than left to be inferred from
+					// the block list (bench-spec 4.2).
+					hm["role"] = "safety"
+					if !withGate {
+						hm["deviation_from_bare"] = true
+						hm["deviation_reason"] = "docs/12 row 5 takes the worktree substitute for containers, so the agent runs on the owner's machine; the deny-only safety hook runs with the same command string in the gate arm, so it cannot be the treatment"
+					}
+				}
 				if sagaSum != "" {
 					hm["script_sha256"] = sagaSum
 				} else {
@@ -319,7 +362,13 @@ func (c *ClaudeCode) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOut
 		}
 	}
 	sort.Slice(hooks, func(i, j int) bool {
-		return hooks[i].(map[string]any)["event"].(string) < hooks[j].(map[string]any)["event"].(string)
+		a, b := hooks[i].(map[string]any), hooks[j].(map[string]any)
+		if a["event"].(string) != b["event"].(string) {
+			return a["event"].(string) < b["event"].(string)
+		}
+		// PreToolUse carries two entries in the gate arm, so the command
+		// breaks the tie and the block stays byte-stable.
+		return a["command"].(string) < b["command"].(string)
 	})
 	d["hooks"] = hooks
 	envMap := map[string]string{}
@@ -332,7 +381,7 @@ func (c *ClaudeCode) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOut
 	}
 	d["env_vars"] = envMap
 	if !withGate {
-		d["blocks_detail"] = BlocksDetail(nil)
+		d["blocks_detail"] = BlocksDetail(nil, nil)
 	}
 	// Claude Code retries inside the harness and emits no retry event in
 	// stream-json, so the bench records the terminal failure only
@@ -349,12 +398,14 @@ func (c *ClaudeCode) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOut
 
 // ControlBlocks are the bench-spec 4.2 blocks applied in a bare arm, one
 // per surface the component lives at: the CLI binary behind a PATH shim,
-// hooks and MCP servers absent from the generated settings and the
-// private config dir, and .saga present as an unreadable sentinel so a
-// reach errors rather than silently creating the layout. The prompt
+// MCP servers absent from the generated settings and the private config
+// dir, no Saga hook but the deny-only safety hook of docs/12 row 6
+// (registered identically in both arms, so it is not a treatment), and
+// .saga present as an unreadable sentinel so a reach errors rather than
+// silently creating the layout. The prompt
 // surface needs no block: the bare arm's prompt is prompt.md plus the
 // protocol sentence, and prompt_hash records it.
-var ControlBlocks = []string{"path-shim:saga", "settings:no-hooks", "settings:no-mcp", "sentinel:.saga"}
+var ControlBlocks = []string{"path-shim:saga", "settings:no-saga-hooks-but-safety", "settings:no-mcp", "sentinel:.saga"}
 
 // sentinelDir is the store path the bare arm blocks.
 const sentinelDir = ".saga"
@@ -398,19 +449,25 @@ func RemoveSentinel(workspace string) error {
 // The worktree substitute of docs/12 row 5 has no sandbox audit log, so
 // the sentinel reports its presence and a null open count with a reason
 // rather than a number it cannot produce.
-func BlocksDetail(shimHits *int) []any {
+func BlocksDetail(shimHits, guardDenies *int) []any {
 	cli := map[string]any{"surface": "cli_binary", "block": "path-shim:saga", "instrumentation": "blocked_reach_attempts", "count": nil}
 	if shimHits != nil {
 		cli["count"] = *shimHits
 	} else {
 		cli["count_reason"] = "counted at collect from the shim log"
 	}
+	hk := map[string]any{"surface": "hooks", "block": "settings:no-saga-hooks-but-safety", "instrumentation": "guard_denies", "count": nil,
+		"block_reason": "the generated settings carry no Saga hook in a bare arm; the one exception is the deny-only safety hook of docs/12 row 6, registered with the same command string in both arms so it is never a treatment"}
+	if guardDenies != nil {
+		hk["count"] = *guardDenies
+	} else {
+		hk["count_reason"] = "counted at collect from the safety hook's log"
+	}
 	return []any{
 		cli,
 		map[string]any{"surface": "mcp_server", "block": "settings:no-mcp", "instrumentation": nil,
 			"instrumentation_reason": "no MCP server is registered in the generated settings or the private config dir, so there is nothing to connect to and no attempt to log"},
-		map[string]any{"surface": "hooks", "block": "settings:no-hooks", "instrumentation": nil,
-			"instrumentation_reason": "the generated settings carry no hooks in a bare arm, so no hook is invoked"},
+		hk,
 		map[string]any{"surface": "files", "block": "sentinel:.saga", "instrumentation": "sentinel",
 			"sentinel": "present", "sentinel_open_count": nil, "sentinel_open_count_reason": "no audit log on host"},
 		map[string]any{"surface": "prompt_text", "block": "none", "instrumentation": "prompt_hash",
@@ -885,6 +942,8 @@ func (c *ClaudeCode) Collect(ctx context.Context, in *CollectInput) (*CollectOut
 	out.Pins = PinsFromStream(sr, c.Model, settingsHash, hooksHash, time.Now())
 	// The bare arm is recognised by its own shim: the same signal Env
 	// uses. Its per-surface block account carries the reach count.
+	// The safety hook runs in every arm, so its log is read in every arm.
+	out.GuardDenies = guard.CountDenies(filepath.Join(in.ConfigDir, guardLog))
 	if exists(filepath.Join(in.ConfigDir, shimDir, "saga")) {
 		if raw, err := os.ReadFile(filepath.Join(in.ConfigDir, blockedLog)); err == nil {
 			out.BlockedReachAttempts = len(strings.Split(strings.TrimRight(string(raw), "\n"), "\n"))
@@ -892,7 +951,7 @@ func (c *ClaudeCode) Collect(ctx context.Context, in *CollectInput) (*CollectOut
 				out.BlockedReachAttempts = 0
 			}
 		}
-		out.Disclosure["blocks_detail"] = BlocksDetail(&out.BlockedReachAttempts)
+		out.Disclosure["blocks_detail"] = BlocksDetail(&out.BlockedReachAttempts, &out.GuardDenies)
 	}
 	out.Disclosure["native_log"] = filepath.Base(in.NativeLogPath)
 	if out.TranscriptPath != "" {

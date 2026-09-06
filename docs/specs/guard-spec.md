@@ -547,6 +547,22 @@ Per gate-spec §6.3; `turn_id` is the snapshot turn id, `permission_mode` maps t
 
 Guard records `sandbox = <kind|none>` per decision so the bench can stratify; it does not detect escapes.
 
+### 8.4.1 The bench safety hook (deny-only)
+
+`saga guard hook <harness> <event>` is a second, deliberately smaller entry point, separate from the composed `saga hook` chain of §8. It exists for the bench: docs/12 §10 row 5 takes a git worktree instead of a container, so the agent runs on the owner's machine, and bench-spec §4.2.1 registers this one hook in **every** arm, bare included, with the same command string on both sides. Only `claude-code` and `PreToolUse` are implemented; another harness is a usage error.
+
+It is deny-only and stateless:
+
+- it acts only when `tool_name` is `Bash` or `PowerShell`, and passes every other tool through untouched;
+- it runs `Check` with the built-in `DefaultPolicy` and honours the hard-deny rules D1 to D11 alone. An `ask` verdict is an **allow** here, because a hook that stopped work in one arm and not the other would be a treatment rather than a safety net;
+- it takes no snapshot, reads no policy file (a repo policy in the workspace, loosened or absent, never moves a verdict) and touches nothing under `.saga`, so it runs unchanged in a bare arm whose `.saga` is an unreadable sentinel at mode `0o000`;
+- a deny renders `hookSpecificOutput` with `permissionDecision: "deny"` and a `permissionDecisionReason` of `saga guard: <rule ids>: <segment>`; everything else renders `{}`. Both exit 0;
+- any internal error, including an unreadable payload and a shell the parser does not implement, allows and is recorded as `error`. A false deny in one arm is worse than a missed one, because the classifier here is a safety net over a machine the owner already trusts, not the mechanism under test.
+
+Every decision is one JSON line appended to the file named by `SAGA_GUARD_LOG`: `ts`, `session_id`, `tool_use_id`, `verdict` (`allow`, `deny`, `error`), `rules`, and the `sha256` of the command. **The command text is never written**, so a run's guard log can be published with its archive. An unset variable is not an error: the hook still decides. `guard.CountDenies` reads the log back for `run.json.guard_denies`.
+
+The composed chain's own guard step (snapshots, `ask`, masking, the `updatedInput` rewrite, the D11 path checks of §8.1) remains **unwired**: this entry is the only guard code the bench runs, and installing the composed chain is not what closing docs/12 row 6 did.
+
 ### 8.5 Windows
 
 M1 CI matrix: `windows-latest` with PowerShell 7, Windows PowerShell 5.1, cmd, Git Bash and WSL2. Windows rules: case-insensitive paths; drive and UNC roots are deny roots; reserved device names; `Remove-Item -Recurse -Force`, `rd /s /q`, `del /s /q` in D1; `/mnt/<drive>` out of scope under WSL2 (the #10077 environment); `%USERPROFILE%` as `$HOME`; CRLF-safe files.
@@ -561,6 +577,7 @@ M1 CI matrix: `windows-latest` with PowerShell 7, Windows PowerShell 5.1, cmd, G
 
 ```
 saga guard check-cmd  [--shell bash|zsh|pwsh|cmd] [--cwd DIR] [--env-file F] [--policy F] [--json] -- <command>
+saga guard hook       <harness> <event>          deny-only safety hook (§8.4.1); payload on stdin, always exit 0
 saga guard exec       [--mask] [--no-snapshot] [--json] -- <command>
 saga guard mask       [--file F | --stdin | --clipboard | --watch-clipboard] [--types T,..] [--json]
 saga guard unmask     [--file F | --stdin] [--placeholder P]... [--json]

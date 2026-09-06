@@ -108,17 +108,21 @@ type Row struct {
 	// number the cost source for both arms; the pinned figure stays
 	// beside it because the third smoke found it 1.5 times the harness's
 	// on all twelve runs (2026-09-06, finding 5).
-	CostUSDPinned        *float64           `json:"cost_usd_pinned"`
-	CostRatioPinned      *float64           `json:"cost_ratio_pinned"`
-	WallS                float64            `json:"wall_s"`
-	Turns                int                `json:"turns"`
-	ToolCalls            int                `json:"tool_calls"`
-	Drift                Drift              `json:"drift"`
-	Compliance           []any              `json:"compliance"`
-	BlockedReachAttempts int                `json:"blocked_reach_attempts"`
-	ComponentUsed        *bool              `json:"component_used"`
-	ToolSequence         []adapter.ToolCall `json:"tool_sequence"`
-	Artifacts            map[string]string  `json:"artifacts"`
+	CostUSDPinned        *float64 `json:"cost_usd_pinned"`
+	CostRatioPinned      *float64 `json:"cost_ratio_pinned"`
+	WallS                float64  `json:"wall_s"`
+	Turns                int      `json:"turns"`
+	ToolCalls            int      `json:"tool_calls"`
+	Drift                Drift    `json:"drift"`
+	Compliance           []any    `json:"compliance"`
+	BlockedReachAttempts int      `json:"blocked_reach_attempts"`
+	// GuardDenies is the safety hook's denial count for this run, in
+	// every arm (docs/12 row 6). The hook is identical on both sides, so
+	// a difference between arms is a difference in what the agent tried.
+	GuardDenies   int                `json:"guard_denies"`
+	ComponentUsed *bool              `json:"component_used"`
+	ToolSequence  []adapter.ToolCall `json:"tool_sequence"`
+	Artifacts     map[string]string  `json:"artifacts"`
 }
 
 // Validate checks the row against the embedded schema.

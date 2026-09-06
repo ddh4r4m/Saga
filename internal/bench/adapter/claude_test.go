@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -60,8 +61,18 @@ func TestClaudeArgsAndEnv(t *testing.T) {
 	if _, ok := hooks["PreToolUse"]; !ok || len(hooks) < 8 {
 		t.Errorf("hooks fragment incomplete: %d events", len(hooks))
 	}
-	if bare := c.Settings(nil)["hooks"].(map[string]any); len(bare) != 0 {
-		t.Errorf("bare arm settings carry hooks: %v", bare)
+	// The bare arm carries exactly one hook: the deny-only safety hook of
+	// docs/12 row 6, with the same command string the gate arm registers.
+	bare := c.Settings(nil)["hooks"].(map[string]any)
+	if len(bare) != 1 {
+		t.Errorf("bare arm settings carry %d hook events: %v", len(bare), bare)
+	}
+	bareCmds := hookCommands(t, bare)
+	if len(bareCmds) != 1 || bareCmds[0] != SafetyHookCommand("/opt/saga") {
+		t.Errorf("bare arm hooks %v, want only %q", bareCmds, SafetyHookCommand("/opt/saga"))
+	}
+	if !containsCmd(hookCommands(t, hooks), bareCmds[0]) {
+		t.Errorf("the gate arm does not register the same safety hook: %v", hookCommands(t, hooks))
 	}
 	cmd := hooks["Stop"].([]any)[0].(map[string]any)["hooks"].([]any)[0].(map[string]any)["command"].(string)
 	if cmd != "/opt/saga hook claude-code Stop" {
@@ -106,8 +117,18 @@ func TestClaudePrepareDisclosure(t *testing.T) {
 	if h["version"] != "2.1.259 (Claude Code)" || h["binary_sha256"] != nil || h["binary_sha256_reason"] == nil {
 		t.Errorf("harness block %v", h)
 	}
-	if hooks := out.Disclosure["hooks"].([]any); len(hooks) != 0 {
-		t.Errorf("%d hooks disclosed in the control arm", len(hooks))
+	// The bare arm discloses its one hook as a deviation, with a reason,
+	// rather than leaving it to be inferred from the block list.
+	hks := out.Disclosure["hooks"].([]any)
+	if len(hks) != 1 {
+		t.Fatalf("%d hooks disclosed in the control arm: %v", len(hks), hks)
+	}
+	hk := hks[0].(map[string]any)
+	if hk["role"] != "safety" || hk["deviation_from_bare"] != true || hk["deviation_reason"] == nil {
+		t.Errorf("safety hook disclosure %v", hk)
+	}
+	if hk["event"] != "PreToolUse" || !strings.Contains(hk["command"].(string), "guard hook claude-code PreToolUse") {
+		t.Errorf("safety hook disclosure %v", hk)
 	}
 	if blocks := out.Disclosure["blocks"].([]string); strings.Join(blocks, ",") != strings.Join(ControlBlocks, ",") {
 		t.Errorf("blocks %v, want %v", blocks, ControlBlocks)
@@ -211,8 +232,30 @@ func TestClaudePrepareDisclosure(t *testing.T) {
 	if !strings.HasPrefix(string(got), "gate check --approve --json\n"+filepath.Join(cfg2, approvedDir)) {
 		t.Errorf("baseline check argv/env:\n%s", got)
 	}
-	if hooks := out2.Disclosure["hooks"].([]any); len(hooks) != 11 {
-		t.Errorf("%d hooks disclosed", len(hooks))
+	// Eleven gate hooks plus the safety hook, which is the same entry the
+	// bare arm carries: identical command string, so it cannot be the
+	// treatment.
+	hks2 := out2.Disclosure["hooks"].([]any)
+	if len(hks2) != 12 {
+		t.Errorf("%d hooks disclosed", len(hks2))
+	}
+	var safety int
+	for _, e := range hks2 {
+		m := e.(map[string]any)
+		if m["role"] == "safety" {
+			safety++
+			if _, ok := m["deviation_from_bare"]; ok {
+				t.Errorf("the gate arm called the safety hook a deviation: %v", m)
+			}
+			if m["command"] != SafetyHookCommand(fake) {
+				t.Errorf("safety hook command %q, want %q", m["command"], SafetyHookCommand(fake))
+			}
+		} else if m["role"] != "gate" {
+			t.Errorf("hook without a role: %v", m)
+		}
+	}
+	if safety != 1 {
+		t.Errorf("%d safety hooks in the gate arm, want 1", safety)
 	}
 	if blocks := out2.Disclosure["blocks"].([]string); len(blocks) != 0 {
 		t.Errorf("treatment arm blocks %v", blocks)
@@ -380,4 +423,28 @@ func TestRetriesDisclosure(t *testing.T) {
 	if r == nil || r["policy"] != "harness-internal" || r["count"] != nil || r["count_reason"] == nil {
 		t.Errorf("retries block %v", r)
 	}
+}
+
+// hookCommands lists every command string in a settings hooks object.
+func hookCommands(t *testing.T, hooks map[string]any) []string {
+	t.Helper()
+	var out []string
+	for _, list := range hooks {
+		for _, entry := range list.([]any) {
+			for _, hk := range entry.(map[string]any)["hooks"].([]any) {
+				out = append(out, hk.(map[string]any)["command"].(string))
+			}
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+func containsCmd(list []string, want string) bool {
+	for _, c := range list {
+		if c == want {
+			return true
+		}
+	}
+	return false
 }
