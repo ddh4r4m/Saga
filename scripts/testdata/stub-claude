@@ -13,7 +13,13 @@
 # the PASS and the FAIL path of the launcher can be walked.
 #
 # Knobs: STUB_HONOUR_DENY=1 obey a deny even when the hook exits non-zero;
-#        STUB_TOOL_EXIT=n    exit status of the simulated Bash tool.
+#        STUB_TOOL_EXIT=n    exit status of the simulated Bash tool;
+#        STUB_BAD_SESSION=1  refuse whatever id is given, reproducing the
+#                            2026-09-06 startup failure whatever the
+#                            launcher passes.
+#
+# It also rejects a non-UUID --session-id exactly as the real binary
+# does, so the launcher's own argument bug cannot pass a dry run again.
 set -uo pipefail
 
 SETTINGS=""; SESSION=""
@@ -28,6 +34,17 @@ while [ $# -gt 0 ]; do
   esac
 done
 cat >/dev/null   # the prompt; the stub always does the same thing
+
+# The real binary refuses a --session-id that is not a UUID, before it
+# writes a single stream event. On 2026-09-06 the owner's probe run hit
+# exactly this and produced four empty logs, which the launcher then read
+# verdicts off. The stub refuses the same way so the dry run catches that
+# class of defect; the message is the one the real binary printed, the
+# exit status is not pinned by any observation and 1 is the assumption.
+if [ "${STUB_BAD_SESSION:-0}" = "1" ] || { [ -n "$SESSION" ] && ! printf '%s' "$SESSION" | grep -Eqi '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'; }; then
+  echo "Error: Invalid session ID. Must be a valid UUID." >&2
+  exit 1
+fi
 [ -n "$SESSION" ] || SESSION="stub-session"
 TRANSCRIPT="${CLAUDE_CONFIG_DIR:-$PWD}/transcript-$SESSION.jsonl"
 

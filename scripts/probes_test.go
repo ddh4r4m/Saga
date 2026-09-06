@@ -22,6 +22,20 @@ func needTools(t *testing.T) {
 }
 
 // runProbes drives scripts/harness-probes.sh against the stub harness.
+// verdicts pulls the launcher's own verdict lines out of its output, so
+// a dry run's result is readable in `go test -v` without the evidence
+// paths that dominate the log.
+func verdicts(out string) string {
+	var keep []string
+	for _, line := range strings.Split(out, "\n") {
+		l := strings.TrimSpace(line)
+		if strings.HasPrefix(l, "P9 ") || strings.HasPrefix(l, "P10 ") || strings.HasPrefix(l, "P17 ") {
+			keep = append(keep, "  "+l)
+		}
+	}
+	return strings.Join(keep, "\n")
+}
+
 func runProbes(t *testing.T, env ...string) (string, int) {
 	t.Helper()
 	root, err := filepath.Abs("..")
@@ -70,6 +84,7 @@ func TestHarnessProbesDryRun(t *testing.T) {
 
 	// A harness that honours the JSON deny on a non-zero hook exit.
 	out, code := runProbes(t, "STUB_HONOUR_DENY=1")
+	t.Logf("honouring stub, exit %d:\n%s", code, verdicts(out))
 	for _, want := range []string{"P9 PASS", "P10 hooks_fire PASS", "uninstall --dry-run PASS", "P17 PASS"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("honouring stub: missing %q in:\n%s", want, out)
@@ -87,6 +102,7 @@ func TestHarnessProbesDryRun(t *testing.T) {
 	// A harness that fails open on a non-zero hook exit: the launcher
 	// must call that FAIL and say the exit-2 path is the one to use.
 	out, code = runProbes(t)
+	t.Logf("failing-open stub, exit %d:\n%s", code, verdicts(out))
 	if !strings.Contains(out, "P9 FAIL") || !strings.Contains(out, "fail-open on exit 1") {
 		t.Errorf("failing-open stub: P9 should FAIL:\n%s", out)
 	}
@@ -98,6 +114,79 @@ func TestHarnessProbesDryRun(t *testing.T) {
 	// launcher never edits harness-facts itself.
 	if !strings.Contains(out, "harness-facts-proposed.md") {
 		t.Errorf("no proposed harness-facts row:\n%s", out)
+	}
+}
+
+// TestProbesRefuseToReadAnEmptyTranscript is the 2026-09-06 defect: the
+// owner's run passed a session id that was not a UUID, every claude
+// invocation exited on its arguments, every native.jsonl was empty, and
+// the launcher still printed one PASS and one FAIL. A verdict read off
+// a transcript that does not exist is worse than no verdict, so every
+// probe must now degrade to INCONCLUSIVE and quote what the harness
+// said. STUB_BAD_SESSION makes the stub refuse whatever id it is given,
+// which reproduces the failure whatever the launcher passes.
+func TestProbesRefuseToReadAnEmptyTranscript(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
+	needTools(t)
+	out, code := runProbes(t, "STUB_BAD_SESSION=1", "STUB_HONOUR_DENY=1")
+	t.Logf("refused session ids, exit %d:\n%s", code, verdicts(out))
+	for _, want := range []string{"P9 INCONCLUSIVE", "P10 hooks_fire INCONCLUSIVE", "P17 INCONCLUSIVE"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("a probe read a verdict off an empty transcript: missing %q in:\n%s", want, out)
+		}
+	}
+	// The harness's own first line is quoted, so the owner sees the cause
+	// rather than a bare "inconclusive".
+	if !strings.Contains(out, "Invalid session ID") {
+		t.Errorf("the cause is not quoted:\n%s", out)
+	}
+	for _, never := range []string{"P9 PASS", "P9 FAIL", "P10 hooks_fire PASS", "P10 hooks_fire FAIL", "P17 PASS"} {
+		if strings.Contains(out, never) {
+			t.Errorf("%q survived an empty transcript:\n%s", never, out)
+		}
+	}
+	if code != 2 {
+		t.Errorf("exit %d, want 2 (inconclusive)", code)
+	}
+}
+
+// TestLauncherPassesAUUIDSessionID: the stub rejects a non-UUID id
+// exactly as the real binary does, so a launcher that builds its own id
+// out of a probe name cannot pass a dry run again.
+func TestLauncherPassesAUUIDSessionID(t *testing.T) {
+	needTools(t)
+	root, err := filepath.Abs("..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stub := filepath.Join(root, "scripts", "testdata", "stub-claude")
+	// The stub writes its transcript beside CLAUDE_CONFIG_DIR, so it is
+	// pointed at a scratch dir: a test must not leave a file in the repo.
+	scratch := t.TempDir()
+	run := func(id string) ([]byte, error) {
+		cmd := exec.Command("bash", stub, "-p", "--session-id", id)
+		cmd.Dir = scratch
+		cmd.Env = append(os.Environ(), "CLAUDE_CONFIG_DIR="+scratch)
+		cmd.Stdin = strings.NewReader("")
+		return cmd.CombinedOutput()
+	}
+	// What the launcher used to pass.
+	b, err := run("p9-json-exit1-0000-0000-0000-000000000000")
+	if err == nil {
+		t.Errorf("the stub accepted a non-UUID session id:\n%s", b)
+	}
+	if !strings.Contains(string(b), "Invalid session ID") {
+		t.Errorf("the stub's refusal does not match the real binary's: %s", b)
+	}
+	// What it passes now.
+	b, err = run("3f2a9c14-8b7d-4e21-9f60-1c2d3e4f5a6b")
+	if err != nil {
+		t.Errorf("the stub rejected a valid UUID: %v\n%s", err, b)
+	}
+	if !strings.Contains(string(b), `"subtype":"init"`) || !strings.Contains(string(b), `"type":"result"`) {
+		t.Errorf("a valid id produced no usable transcript:\n%s", b)
 	}
 }
 

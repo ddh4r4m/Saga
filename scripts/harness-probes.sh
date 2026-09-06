@@ -69,21 +69,61 @@ probe_env() {  # cfg
   echo "CI=1"
 }
 
-run_claude() {  # cfg workspace settings prompt logfile
-  local cfg=$1 ws=$2 settings=$3 prompt=$4 log=$5
+# new_session_id prints a fresh UUID. Claude Code refuses a --session-id
+# that is not one ("Error: Invalid session ID. Must be a valid UUID.")
+# and exits before writing a single stream event, which is how the
+# 2026-09-06 owner run produced four empty logs and three verdicts read
+# off nothing. The bench derives its id from the run seed
+# (adapter.SessionID); a probe has no seed, so it draws one.
+new_session_id() {
+  if command -v uuidgen >/dev/null 2>&1; then
+    uuidgen | tr 'A-Z' 'a-z'
+  else
+    python3 -c "import uuid; print(uuid.uuid4())"
+  fi
+}
+
+run_claude() {  # cfg workspace settings prompt logfile session-id
+  local cfg=$1 ws=$2 settings=$3 prompt=$4 log=$5 session=$6
   local -a env_args=()
   while IFS= read -r kv; do env_args+=("$kv"); done < <(probe_env "$cfg")
   for k in PATH TMPDIR LANG SHELL USER LOGNAME TERM SSL_CERT_FILE \
            CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_API_KEY ANTHROPIC_BASE_URL \
-           STUB_HONOUR_DENY STUB_TOOL_EXIT; do
+           STUB_HONOUR_DENY STUB_TOOL_EXIT STUB_BAD_SESSION; do
     [ -n "${!k:-}" ] && env_args+=("$k=${!k}")
   done
   mkdir -p "$cfg/home" "$cfg/claude-config"
   printf '%s' "$prompt" | (cd "$ws" && env -i "${env_args[@]}" "$CLAUDE_BIN" \
     -p --output-format stream-json --verbose \
     --max-turns 4 --permission-mode acceptEdits --tools Bash \
-    --settings "$settings" --session-id "$6" --max-budget-usd 0.10 \
+    --settings "$settings" --session-id "$session" --max-budget-usd 0.10 \
     --model "$MODEL") > "$log" 2>"$log.err"
+}
+
+# transcript_ok: the harness got far enough for its log to mean
+# anything. A probe reads a verdict off the stream, so a stream with no
+# `system/init` and no `result` is not evidence of the thing probed: it
+# is evidence the harness never started or never finished. Every verdict
+# below is gated on this, so an invocation that dies on its arguments can
+# never be reported as PASS or FAIL.
+transcript_ok() {  # native.jsonl
+  [ -s "$1" ] || return 1
+  grep -q '"type":"system"' "$1" 2>/dev/null || return 1
+  grep -q '"subtype":"init"' "$1" 2>/dev/null || return 1
+  grep -q '"type":"result"' "$1" 2>/dev/null || return 1
+  return 0
+}
+
+# why_no_transcript: the first line of the harness's stderr, which is
+# where "Invalid session ID" and every other startup refusal appears.
+why_no_transcript() {  # native.jsonl
+  local err="$1.err" line=""
+  [ -f "$err" ] && line=$(head -1 "$err" | tr -d '\r')
+  if [ -z "$line" ]; then
+    if [ -s "$1" ]; then line="the harness wrote a stream with no init or result event"
+    else line="the harness wrote nothing and said nothing"; fi
+  fi
+  printf '%s' "$line"
 }
 
 results=()
@@ -123,9 +163,17 @@ json.dump({"hooks": {"PreToolUse": [{"hooks": [{"type": "command", "command": sy
 PY
   run_claude "$dir/cfg" "$dir/ws" "$dir/settings.json" \
     'Run exactly one Bash command: echo saga-probe. Then stop.' \
-    "$dir/native.jsonl" "p9-$variant-0000-0000-0000-000000000000"
+    "$dir/native.jsonl" "$(new_session_id)"
+  if ! transcript_ok "$dir/native.jsonl"; then
+    echo "nolog nolog"
+    return 0
+  fi
   local ran=no
   grep -q '"name":"Bash"' "$dir/native.jsonl" 2>/dev/null && ran=yes
+  # The reason has to be visible somewhere the model could have seen it:
+  # in the stream, which carries the harness's own denial text. A tool
+  # that simply was not called looks identical to a denied one without
+  # this, which is why "did not run" alone is not a PASS.
   local saw_reason=no
   grep -q 'saga-probe-p9' "$dir/native.jsonl" 2>/dev/null && saw_reason=yes
   echo "$ran $saw_reason"
@@ -135,8 +183,16 @@ say ""
 say "P9: is a PreToolUse deny honoured when the hook exits non-zero?"
 read -r p9_ran p9_reason <<<"$(probe_p9 json-exit1 1 json)"
 read -r ctl_ran ctl_reason <<<"$(probe_p9 text-exit2 2 text)"
-if [ "$p9_ran" = "no" ]; then
-  p9="PASS"; p9_note="JSON deny honoured on exit 1 (tool did not run; reason seen: $p9_reason)"
+if [ "$p9_ran" = "nolog" ] || [ "$ctl_ran" = "nolog" ]; then
+  p9="INCONCLUSIVE"
+  p9_note="the harness produced no usable transcript: $(why_no_transcript "$OUT/p9-json-exit1/native.jsonl")"
+elif [ "$p9_ran" = "no" ] && [ "$p9_reason" = "yes" ]; then
+  p9="PASS"; p9_note="JSON deny honoured on exit 1: the tool did not run and the reason is in the transcript"
+elif [ "$p9_ran" = "no" ]; then
+  # Not running is not the same as being denied: without the reason
+  # anywhere in the stream, a model that never called the tool is
+  # indistinguishable from a hook that blocked it.
+  p9="INCONCLUSIVE"; p9_note="the tool did not run, but the deny reason is nowhere in the transcript; the model may simply not have called it"
 elif [ "$ctl_ran" = "no" ]; then
   p9="FAIL"; p9_note="fail-open on exit 1: the tool ran. The documented exit-2 path did block, so every deny must use it"
 else
@@ -169,7 +225,7 @@ if [ ! -f "$settings" ]; then
 else
   run_claude "$p10dir/cfg" "$p10dir/ws" "$settings" \
     'Run exactly one Bash command: echo saga-probe. Then stop.' \
-    "$p10dir/native.jsonl" "p10aaaa-0000-0000-0000-000000000000"
+    "$p10dir/native.jsonl" "$(new_session_id)"
   # stderr stays out of the JSON: doctor exits non-zero on a failed check
   # and its message would otherwise make the report unparsable.
   doctor=$(cd "$p10dir/ws" && "$SAGA" doctor --json 2>"$p10dir/doctor.err")
@@ -181,11 +237,18 @@ except Exception: print('unparsable'); sys.exit(0)
 for c in d.get('checks',[]):
     if c.get('id')=='hooks_fire': print(('ok' if c.get('ok') else 'fail')+': '+c.get('detail','')); sys.exit(0)
 print('absent')")
-  case "$hooks_fire" in
-    ok:*) p10="PASS" ;;
-    fail:*) p10="FAIL" ;;
-    *) p10="INCONCLUSIVE" ;;
-  esac
+  if ! transcript_ok "$p10dir/native.jsonl"; then
+    # doctor would read an empty session and report "no hooks fired",
+    # which is true and says nothing about whether hooks fire.
+    p10="INCONCLUSIVE"
+    hooks_fire="no usable transcript: $(why_no_transcript "$p10dir/native.jsonl")"
+  else
+    case "$hooks_fire" in
+      ok:*) p10="PASS" ;;
+      fail:*) p10="FAIL" ;;
+      *) p10="INCONCLUSIVE" ;;
+    esac
+  fi
   say "  P10 hooks_fire $p10: $hooks_fire"
   # uninstall --dry-run must list exactly the events install registered.
   dry=$(cd "$p10dir/ws" && "$SAGA" uninstall --harness claude-code --dry-run 2>&1)
@@ -233,8 +296,11 @@ json.dump({"hooks": {"PostToolUseFailure": [{"hooks": [{"type": "command", "comm
 PY
 STUB_TOOL_EXIT=${STUB_TOOL_EXIT:-3} run_claude "$p17dir/cfg" "$p17dir/ws" "$p17dir/settings.json" \
   'Run exactly one Bash command: exit 3. Then stop.' \
-  "$p17dir/native.jsonl" "p17aaaa-0000-0000-0000-000000000000"
-if [ -s "$OUT/posttoolusefailure.json" ]; then
+  "$p17dir/native.jsonl" "$(new_session_id)"
+if ! transcript_ok "$p17dir/native.jsonl"; then
+  say "  P17 INCONCLUSIVE: the harness produced no usable transcript: $(why_no_transcript "$p17dir/native.jsonl")"
+  results+=("P17 INCONCLUSIVE")
+elif [ -s "$OUT/posttoolusefailure.json" ]; then
   fields=$(python3 -c "
 import json,sys
 try: d=json.load(open('$OUT/posttoolusefailure.json'))
