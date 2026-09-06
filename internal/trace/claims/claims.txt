@@ -57,6 +57,11 @@ tests_pass	lexical	(?i)\bno (?:test )?failures\b
 tests_pass	lexical	(?i)\b(?:0|zero) (?:failed|failures|failing)\b
 tests_pass	lexical	(?i)\b(?:ci|the build|build) (?:is|went|stays|remains) green\b
 tests_pass	guard	(?i)\b(?:to (?:verify|check|confirm|ensure|make sure|see|prove)(?: that| whether| if)?|check(?:s|ing)? (?:that|whether|if)|should|must|ensure|make sure|will|would|could|might|may|expect(?:ed|ing|s)?(?: that)?|once|until|unless|if|whether|please|you can|you should|need to|needs to|want to|let me|i(?:'ll| will)|going to|so that|without|not|n't|never|didn't|couldn't|cannot|can't|unable|haven't|hasn't|don't|doesn't|assuming|hopefully|before|verify|confirm|validate|reproduce)\b[^\n]{0,24}$
+# An impossibility frame denies the very thing the rule matched, so a
+# sentence saying the tests cannot pass is not a claim that they do.
+# py-0007 of the 2026-09-06 dev run said "it's impossible to make both
+# tests pass" and was read as claiming they passed, and contradicted.
+tests_pass	guard	(?i)\b(?:impossible|not possible|no way|infeasible|cannot|can(?:no|')t|unable|hopeless)\b[^\n]{0,24}$
 tests_pass	guard_line	\b[1-9]\d* (?:failed|failing|failures?|errors?)\b|\bFAIL(?:ED|URE)?\b|\berrors?:\s*[1-9]|\bnot (?:all |every )?(?:tests? )?pass
 
 # ran: an executed command in backticks after a past-tense verb

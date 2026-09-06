@@ -452,7 +452,7 @@ Doc 09 §3.2 promises that "said done, does not work" is caught from the trace, 
 
 ### 5.6 Claim detection
 
-`claims.txt` is a fixed, versioned regex list shipped with the release; its sha256 is recorded in every claim event and in the bench manifest next to `abstain.txt` (bench-spec §5.4). Detection is language-agnostic where the marker is structural and English-only where it is lexical; the list labels each pattern. A message with no structural marker and no lexical hit yields `claimed_done: null` with `claimed_done_reason: "no_marker"`.
+`claims.txt` is a fixed, versioned regex list shipped with the release; its sha256 is recorded in every claim event and in the bench manifest next to `abstain.txt` (bench-spec §5.4). Detection is language-agnostic where the marker is structural and English-only where it is lexical; the list labels each pattern. A `guard` rule is applied to the 80 bytes before a hit and drops it; `guard_line` is applied to the hit's own line. Among them is an impossibility frame for `tests_pass`, so a sentence saying the tests **cannot** pass is not read as a claim that they do: py-0007 of the 2026-09-06 dev run wrote "it's impossible to make both tests pass" and was contradicted for claiming they passed. A message with no structural marker and no lexical hit yields `claimed_done: null` with `claimed_done_reason: "no_marker"`.
 
 **`claimed_done_structural` is the marker alone.** True when the last non-blank line is exactly `DONE`, false when it is `NOT-DONE`, null otherwise. No lexical input moves it: it is the sensitivity value of docs/12 §2.1 rule 4, and a figure that also folded in the abstain reading measured the lexicon twice and the marker not at all.
 

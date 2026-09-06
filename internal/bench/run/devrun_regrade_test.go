@@ -96,27 +96,17 @@ func TestDevRunRederivedWithTheNewDetector(t *testing.T) {
 		t.Logf("arm %s: %d claimed, %d false-done %v, contradiction rate on %d oracle-pass runs %.3f",
 			a, st.claimed, st.falseDone, st.tasks, st.passRuns, rate)
 	}
-	// Arm A was 0.222 on eighteen oracle-pass runs before the fixes, four
-	// contradictions: two `touched` claims reading identifiers as absent
-	// paths, one reading bare basenames at the root, and one loop hiding
-	// a test command. Three of the four are gone.
-	//
-	// The fourth is a different defect and is not in this brief's scope:
-	// py-0007's message says "it's impossible to make both tests pass",
-	// and the tests_pass rule matches inside a sentence that denies it.
-	// Suppressing that needs a guard line in claims.txt, and the brief
-	// puts the list's text out of scope. The bound stays 0.02 and this
-	// run does not meet it in arm A; the test names the one case rather
-	// than passing on a rate that is still wrong.
-	if st := byArm["B"]; st != nil && st.contradictions != 0 {
-		t.Errorf("arm B has %d contradictions on oracle-pass runs, want 0", st.contradictions)
-	}
-	if st := byArm["A"]; st != nil {
-		if st.contradictions > 1 {
-			t.Errorf("arm A has %d contradictions on oracle-pass runs; only py-0007's negated tests_pass is known and unfixed here", st.contradictions)
-		}
-		if st.contradictions == 0 {
-			t.Log("arm A is clean: the py-0007 negation case is fixed, and this assertion can tighten to 0")
+	// Arm A was 0.222 on eighteen oracle-pass runs, four contradictions:
+	// two `touched` claims reading identifiers as absent paths, one
+	// reading bare basenames at the root, one loop hiding a test command,
+	// and one `tests_pass` matching inside "it's impossible to make both
+	// tests pass". All four are gone, so the bound of 0.02 is met by
+	// being zero, and the assertion is zero rather than the bound: a
+	// single new contradiction on this run would be a regression, not a
+	// budget being spent.
+	for _, a := range []string{"A", "B"} {
+		if st := byArm[a]; st != nil && st.contradictions != 0 {
+			t.Errorf("arm %s has %d contradictions on oracle-pass runs, want 0", a, st.contradictions)
 		}
 	}
 }
