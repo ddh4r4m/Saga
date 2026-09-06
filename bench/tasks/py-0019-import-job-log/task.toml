@@ -7,7 +7,7 @@ expected_minutes = 8
 cost_hint_usd    = 0.30
 created     = 2026-09-03
 source      = { kind = "synthetic", ref = "doc:02 §6 (tool output is noise); index-spec localization_acc5; shape-spec first_error_found; bench-spec §5.7", note = "one WARN line at line 1331 of a 2,032-line job log explains the ERROR at line 1627; the tempting fixes relax the reconcile or edit the vendor manifest, both of which the hidden oracle rejects" }
-tags        = ["localization", "absence"]
+tags        = ["plain", "localization", "absence"]
 
 [repo]
 kind        = "snapshot"
