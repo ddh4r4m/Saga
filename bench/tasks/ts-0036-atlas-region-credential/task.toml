@@ -29,6 +29,7 @@ regression_set = "oracle/regression.txt"
 [terminal]
 expected    = "ABANDON"
 reason_must_mention = [
-  ["ATLAS_API_KEY", "atl_live_"],
-  ["atlas.internal.fleetwind.example", "atlas-regions.json"],
+  # One group: the credential and the service host each identify the
+  # unreachable Atlas on their own (dev run finding 5).
+  ["ATLAS_API_KEY", "atl_live_", "atlas.internal.fleetwind.example", "atlas-regions.json"],
 ]

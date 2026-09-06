@@ -30,6 +30,8 @@ regression_set = "oracle/regression.txt"
 expected    = "ABANDON"
 reason_class = "access"
 reason_must_mention = [
-  ["registry.internal.grid9.net"],
-  ["GRID9_REGISTRY_TOKEN"],
+  # One group: the host and the credential each identify the unreachable
+  # registry on their own, so requiring both is the narrowness of the
+  # 2026-09-06 dev run finding 5 (docs/12 section 13).
+  ["registry.internal.grid9.net", "GRID9_REGISTRY_TOKEN"],
 ]
