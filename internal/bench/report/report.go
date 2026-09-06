@@ -400,7 +400,7 @@ func newReport(m *run.Manifest, hash string) *Report {
 		BootstrapSeed: m.BootstrapSeed, BootstrapResamples: metrics.Resamples, Isolation: &iso,
 		Arms: map[string]*ArmStats{}, Secondary: []Comparison{}, PerSolved: map[string]PerSolved{}, Instability: map[string]any{},
 		Negative: []map[string]any{}, Exploratory: []map[string]any{}, Exclusions: map[string]int{}, Contamination: []map[string]any{},
-		DetectorPrecision: map[string]*float64{"hard_coded": nil, "assertion_edit": nil, "skip_marker": nil, "test_delete": nil, "env_tamper": nil},
+		DetectorPrecision: newDetectorPrecision(),
 		Reproduce:         []string{},
 	}
 }
@@ -661,4 +661,21 @@ func fmtList(xs []string) string {
 		return "none"
 	}
 	return "`" + strings.Join(xs, "`, `") + "`"
+}
+
+// DetectorNames are every section 5.7 and 5.8 detector the report keys
+// precision on. A detector missing here is silently absent from
+// detector_precision, which is how oracle_touch went unreported until
+// 2026-09-06; framework_tamper and oracle-integrity joined it that day.
+var DetectorNames = []string{
+	"hard_coded", "assertion_edit", "skip_marker", "test_delete",
+	"env_tamper", "oracle_touch", "framework_tamper", "oracle-integrity",
+}
+
+func newDetectorPrecision() map[string]*float64 {
+	m := make(map[string]*float64, len(DetectorNames))
+	for _, n := range DetectorNames {
+		m[n] = nil
+	}
+	return m
 }
