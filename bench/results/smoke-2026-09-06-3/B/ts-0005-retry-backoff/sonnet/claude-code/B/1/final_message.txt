@@ -1,0 +1,3 @@
+Fixed. The backoff formula in `src/retry.ts:27` was linear (`baseMs*(i+1) + random()`) instead of exponential with proportional jitter; changed it to `baseMs * 2**i * (1 + random())`, matching the README/docstring. All gate checks pass, and the test file was left untouched.
+
+DONE

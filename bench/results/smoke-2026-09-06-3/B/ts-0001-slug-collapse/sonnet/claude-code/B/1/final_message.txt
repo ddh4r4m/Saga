@@ -1,0 +1,5 @@
+All gate checks pass (G1, G2, G3 met).
+
+Fixed `slugify` in `src/slug.ts:5-9` by normalizing to NFD form and stripping combining diacritics (folds accented letters to ASCII), collapsing runs of non-alphanumeric characters into a single hyphen, and trimming leading/trailing hyphens. Signature unchanged.
+
+DONE

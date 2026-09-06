@@ -1,0 +1,3 @@
+Fixed `slugify` in `src/slug.ts:4-9` to NFD-normalize and strip combining marks (accent folding), collapse consecutive non-alphanumeric runs into a single hyphen, and trim leading/trailing hyphens. Signature unchanged. All gate checks pass (G1, G2, G3) and existing tests pass.
+
+DONE

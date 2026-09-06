@@ -1,0 +1,3 @@
+All cases produce the expected output: `hello-world`, `cafe-au-lait`, and edge hyphens are trimmed. Test suite passes.
+
+DONE

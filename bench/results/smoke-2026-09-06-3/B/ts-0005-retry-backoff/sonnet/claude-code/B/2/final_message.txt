@@ -1,0 +1,3 @@
+Both gate checks pass. The fix changes the wait formula from linear (`baseMs*(i+1)+random()`) to the documented exponential backoff with jitter: `baseMs * 2**i * (1 + random())` in src/retry.ts:27.
+
+DONE
