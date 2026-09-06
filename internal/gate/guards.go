@@ -126,6 +126,14 @@ func PredictScope(in GuardInput, path string) *Finding {
 
 func scopeOf(in GuardInput, status, p string) *Finding {
 	fold := FoldCase()
+	// A byte-code or build cache is not an edit. The third smoke
+	// reported three __pycache__ .pyc files as out-of-scope work on a
+	// run that changed one source file (2026-09-06, finding 4). The list
+	// is in code, never config: a contract that could widen it would be
+	// self-serving (section 5.4).
+	if IsCachePath(p) {
+		return nil
+	}
 	if strings.HasPrefix(p, ".saga/") || MatchAny(in.Config.ScopeExempt, p, fold) {
 		return nil
 	}

@@ -370,6 +370,24 @@ func (l *Layer) stop(in *hookio.Input, out *hookio.Output) (*hookio.Output, erro
 		l.record(in, "stop", body)
 		return out, l.Store.WriteObserved(obs)
 	}
+	// Already released: allow at once and count nothing. Continuing to
+	// block after a release is what turned one honest handoff into a
+	// 29-turn loop (2026-09-06 smoke, finding 1).
+	if obs.GateReleased {
+		return out, l.release(in, obs, body, so, ld)
+	}
+	// An admitted non-completion is the honest outcome the gate exists to
+	// protect: it stops a false DONE, never an agent that has said it
+	// cannot finish. Checked before the counter, so a terminal never
+	// accrues a block (gate-spec section 7, 2026-09-06 finding 2).
+	if NotDone(in.LastAssistantMessage) || rep.Summary.Abandoned > 0 {
+		obs.GateBlocks = 0
+		obs.GateProgress = rep.ProgressHash
+		so.Decision = "abandon"
+		body["decision"], body["terminal"] = "abandon", terminalKind(in.LastAssistantMessage, rep)
+		l.record(in, "stop", body)
+		return out, l.Store.WriteObserved(obs)
+	}
 	if in.StopHookActive && obs.GateProgress == rep.ProgressHash {
 		obs.GateBlocks++
 	} else {
@@ -378,14 +396,16 @@ func (l *Layer) stop(in *hookio.Input, out *hookio.Output) (*hookio.Output, erro
 	obs.GateProgress = rep.ProgressHash
 	so.Blocks = obs.GateBlocks
 	if obs.GateBlocks > ld.Config.MaxBlocks {
-		so.Decision = "release"
-		body["decision"], body["blocks"] = "release", obs.GateBlocks
-		out.AdditionalContext = append(out.AdditionalContext, "HANDOFF REQUIRED: "+fmt.Sprint(ld.Config.MaxBlocks)+" Stop blocks without progress")
-		l.record(in, "stop", body)
-		return out, l.Store.WriteObserved(obs)
+		return out, l.release(in, obs, body, so, ld)
 	}
 	left := SessionShare - obs.Tokens["gate"]
 	msg := rep.StopReason(left)
+	// The first block of a session says how to stop honestly. Once per
+	// session, and only when the budget allows it, so the hint never
+	// crowds out the reason.
+	if obs.GateBlocks == 1 && canon.TokensEstString(msg+" "+AbandonHint) <= left {
+		msg += " " + AbandonHint
+	}
 	if canon.TokensEstString(msg) > left {
 		msg = fmt.Sprintf("saga gate: %d unmet; run saga gate status", rep.Summary.Unmet+rep.Summary.Unproven+rep.Summary.Manual)
 	}
@@ -449,4 +469,39 @@ func (l *Layer) record(in *hookio.Input, kind string, body map[string]any) {
 	if err := w.Append(&trace.Event{Type: trace.TypeGate, Source: "hook:" + in.Event, Turn: obs.Turn, Body: body}); err != nil {
 		l.note("saga gate: trace: %v", err)
 	}
+}
+
+// terminalKind names which terminal the Stop step honoured, so the trace
+// event distinguishes a NOT-DONE message from a contract statement.
+func terminalKind(final string, rep *Report) string {
+	switch {
+	case rep != nil && rep.Summary.Abandoned > 0 && NotDone(final):
+		return "abandon_statement+not_done"
+	case rep != nil && rep.Summary.Abandoned > 0:
+		return "abandon_statement"
+	default:
+		return "not_done"
+	}
+}
+
+// release ends the turn after max_blocks and remembers it for the
+// session. Nothing goes into additionalContext: on Stop that field
+// continues the conversation through the same loop protections as a
+// block (harness-facts C11), so a release carrying it is a block by
+// another name. The handoff line goes to a human on stderr and into the
+// trace event instead, and is emitted once.
+func (l *Layer) release(in *hookio.Input, obs *store.Observed, body map[string]any, so *StopOutcome, ld *Loaded) error {
+	first := !obs.GateReleased
+	obs.GateReleased = true
+	so.Decision = "release"
+	body["decision"], body["blocks"], body["released"] = "release", obs.GateBlocks, true
+	if first {
+		handoff := "saga gate: HANDOFF REQUIRED: " + fmt.Sprint(ld.Config.MaxBlocks) + " Stop blocks without progress; releasing this session"
+		body["handoff"] = handoff
+		if l.Stderr != nil {
+			l.Stderr(handoff)
+		}
+	}
+	l.record(in, "stop", body)
+	return l.Store.WriteObserved(obs)
 }

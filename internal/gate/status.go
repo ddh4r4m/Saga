@@ -545,6 +545,11 @@ func (r *Report) render() []string {
 		lines = append(lines, "APPROVAL REQUIRED")
 	default:
 		lines = append(lines, fmt.Sprintf("%d unmet, %d unproven, %d manual, %d guard findings", r.Summary.Unmet, r.Summary.Unproven, r.Summary.Manual, len(r.Guards)))
+		// An agent reading status because it is stuck has to be able to
+		// find the honest way out here (2026-09-06 smoke, finding 2:
+		// nothing in status, check, gate -h or saga --help said ABANDON
+		// existed, and an honest handoff was held for eleven blocks).
+		lines = append(lines, AbandonHint)
 	}
 	return lines
 }

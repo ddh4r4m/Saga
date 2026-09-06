@@ -24,6 +24,11 @@ const gateUsage = `usage: saga gate <subcommand>
   lint        [--strict] [--json]
   guard-diff  [--base <rev>] [--incremental] [--predict --path <p>] [--guard <id>,...] [--advisory] [--json]
   install | uninstall
+
+If the task cannot be completed as specified, say why and end your message
+with NOT-DONE, or declare it in the contract:
+  ABANDON: <gate id> <reason>
+The Stop step honours either and does not hold an admitted non-completion.
 `
 
 func (a *App) cmdGate(args []string) error {

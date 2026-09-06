@@ -60,6 +60,12 @@ type Observed struct {
 	// section 6).
 	GateBlocks   int    `json:"gate_blocks"`
 	GateProgress string `json:"gate_progress"`
+	// GateReleased records that the Stop step has already released this
+	// session after max_blocks. A release ends the turn, so every later
+	// Stop allows at once without counting: continuing to block after a
+	// release is what turned one honest handoff into a 29-turn loop
+	// (2026-09-06 smoke, finding 1).
+	GateReleased bool `json:"gate_released"`
 }
 
 // ObservedSchema is the schema id of the observed session file.

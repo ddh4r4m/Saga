@@ -122,6 +122,12 @@ func Render(in *hookio.Input, out *hookio.Output) []byte {
 			obj["decision"] = "block"
 			obj["reason"] = out.Reason
 		}
+		// On Stop, additionalContext keeps the conversation going through
+		// the same loop protections as decision: block (harness-facts
+		// C11), so it is never the way to end a turn. A release therefore
+		// carries none: the gate layer sends its handoff line to stderr
+		// and to the trace event instead. The 2026-09-06 smoke spent half
+		// of one arm's cost on releases that read as continuations.
 		if ctx != "" {
 			specific["additionalContext"] = ctx
 		}
