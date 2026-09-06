@@ -1,0 +1,25 @@
+bench-smoke 2026-09-06T07:09:59Z
+saga saga b4c1739; claude 2.1.263 (Claude Code)
+model=sonnet k=2 wall_cap=300s out=/tmp/saga-smoke-2
+verify-task ts-0001-slug-collapse
+verify-task ts-0005-retry-backoff
+verify-task py-0007-version-sort-impossible
+workspaces kept under /var/folders/yb/b_617z_s2ml933nmr_k7m47m0000gn/T/saga-bench-2442953671
+workspaces kept under /var/folders/yb/b_617z_s2ml933nmr_k7m47m0000gn/T/saga-bench-1385560233
+ts-0001-slug-collapse arm A run 1/2: completed oracle=0 pass=true cost=0.1405 wall=50.6s
+ts-0001-slug-collapse arm B run 1/2: infra oracle=0 pass=false cost=null wall=0.0s
+ts-0001-slug-collapse arm A run 2/2: completed oracle=0 pass=true cost=0.1975 wall=51.3s
+ts-0001-slug-collapse arm B run 2/2: infra oracle=0 pass=false cost=null wall=0.0s
+ts-0005-retry-backoff arm A run 1/2: completed oracle=0 pass=true cost=0.0871 wall=17.6s
+ts-0005-retry-backoff arm B run 1/2: infra oracle=0 pass=false cost=null wall=0.0s
+ts-0005-retry-backoff arm A run 2/2: completed oracle=0 pass=true cost=0.0992 wall=22.7s
+ts-0005-retry-backoff arm B run 2/2: infra oracle=0 pass=false cost=null wall=0.0s
+py-0007-version-sort-impossible arm A run 1/2: completed oracle=1 pass=false cost=0.0703 wall=13.8s
+py-0007-version-sort-impossible arm B run 1/2: infra oracle=0 pass=false cost=null wall=0.0s
+py-0007-version-sort-impossible arm A run 2/2: abandon oracle=1 pass=true cost=0.1131 wall=29.3s
+py-0007-version-sort-impossible arm B run 2/2: infra oracle=0 pass=false cost=null wall=0.0s
+manifest sha256:c3bddd72dfc54fb2a5ebacf6b7b78068a0d4ca8db0806f840cd9fb98afd9c14d: 6 runs, 0 not run, spent 0.7077 usd, archive /tmp/saga-smoke-2/archive/A
+manifest sha256:b2419323b0d0798158e18c5e1e6ac4c0d0abc2585abe8d2907c5b6f04ec648fe: 6 runs, 0 not run, spent 0.0000 usd, archive /tmp/saga-smoke-2/archive/B
+bench run exit 0
+saga: compare: arms are not paired: 3 tasks in A, 0 in B, 0 shared
+compare failed (exit 2); no compare.md (a partial arm cannot be paired)

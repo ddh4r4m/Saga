@@ -1,0 +1,53 @@
+diff --git a/__pycache__/versions.cpython-313.pyc b/__pycache__/versions.cpython-313.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..31b4c7073bca147347f27b310bf50586424fc07a
+GIT binary patch
+literal 545
+zcmX|6zi-n(6uyg{v}(x!>d-Qs1VyrhbJR&|Re~<;45VeDlI7S}$Hl(0-d%%|1$Gve
+zN@YMQ8~h3VFIc&?{R1LJ-TNFlJn7#1zI)&Mwdi&?2wM5%=lKoB+nTJb-GIdl1eat;
+zfDGv=J#E#AVQYm3?$CKk&RuXa*K5ySeh{E@CD~XM6+(8VfSIvi$vBpoC{)HWAqB)n
+zLC>~xBT8*MAj}2Ggsx^|begx=MsP_!{?DC|{RTfL9-Z~xFKd@GCe3VZAeWhDxn!|U
+zgiMh!1*w3ZM{P$dFe3FRw6L|Vn=$)^SCCI)Blsi+ex?c(Yd#(EQFO2u&LSO@#bLiM
+zONc&&<sd9yp=FXEa~)@~KN2z-`@vuk9PalI!aZJ1eH4U#vyxxW^z*V(TIZue@PL2T
+zyh-X_HMQMZ5v_h;4YzXZ^&X-7O71ovf8YJ~=C8ZGKu+Fyu3d|wR3%Yl-6Ge<I(YQ5
+z>JNc+lt2faU4LDw^r8?)&_!CGs-K~oJCxFYB$#(vbmwa8D*3T9CkU_2@3+6E_cdHL
+Fc>uK=kd6QV
+
+literal 0
+HcmV?d00001
+
+diff --git a/tests/__pycache__/__init__.cpython-313.pyc b/tests/__pycache__/__init__.cpython-313.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..d8780606b9931438934a8d2138248ffda621eaa2
+GIT binary patch
+literal 230
+zcmXwzO>V+45JqD{B~&RJZo$Hx<_9b!#1Xpc-b#u|4Y3`0Oi;S-5xVRFxKg&90ObPM
+z61>IC8_j6+jY;wvdDQ&>5c)NgC*&dH)XQH~M+@?CiR{ErV^|Hp&|2A*PC!>$*qdf2
+zEJ9yF#aAi&;h3pro#$Fveq^d(>fKXo_yjELl2$^0ebcNcvh^}wu@u^#`U6Hg|3(^3
+x(O5^NY7L^S8UY!c5u8AWz`4}YasJl!!)&9>?$n5_eetP6Y7BCV2_ZK2b_Zg~Jgoo#
+
+literal 0
+HcmV?d00001
+
+diff --git a/tests/__pycache__/test_versions.cpython-313.pyc b/tests/__pycache__/test_versions.cpython-313.pyc
+new file mode 100644
+index 0000000000000000000000000000000000000000..d50d8dd1b73b580f6ce42288946aa9bbc513e03c
+GIT binary patch
+literal 1148
+zcmcIjy>HV{5P#2!gK1L=R26Lj5ml8SL*gX;2$c{61qLcrqAn~{dU71cHTWakbBe;m
+z#K6ST4gP@qDU2;bMMg+SOx+NnODFCe_XF{<al^g4_kO;+-`%-CGBU(a{PS-gzvGO3
+zCFfAo)ac(rV~ZKg;L8l?RF?TY1(X7tVAIUVOfe(7&Q^1WA0D6cnSl*ihZog7a#o5w
+z9+4qLV$%lchJmz>@r+>+iS!G2Y_W9)++d&>95RM7#UM-RKsB<EbJSuk&OaPPS+iv%
+z_o!s+Fa*V+ny7}9!vnT@@|6%MkJ2g`(~;wSKA&RHQ_xcer~-3XF|*Rk9H`auV!3jV
+ztCp)3JkhO{E5!^@D`A+_X;eKW9yX=4A-eOlV|qYIdOXfb+iOY6P>5gYZE!cu$ksPa
+z&|9I`L^67}p*O@rwf<bln(r;n&IUe+Cv|_W?pIKpKws0P>6oR49atNs+T2`iaej88
+zUe(*(5(4U_w6i5@bIJAFp_FdJv-O((OzIJJD$z$1D7U-uMY<QB?U+_qSQ}>G*k0&}
+z5U{5B+Q}}L|AC}_%Slu(*cUCot4(Zc6K^i>TwQuUd3)z><AY}P@$rAp2sF%r138+-
+zU^IEWg)^uI?T52y#+MQ{LC3ejwS*O7w*oteQsTwmiT?#k!%vxi{4;YHLr4#QfK#z1
+zL}2>15b=-@e%S1IWaovTO-Wxyg=o1TBhSTpLLuNBeh%YQ^SBT)G9#?lj3RIw9pr$3
+z3k0Af2{WLdAyH&V;{B3+R}{6$_ce}s0Hw#G8f%@vji?o|mTr$sHa6DQ@N&t-Jx=2N
+vnj_Y34645g1&l*mEw7;Zmf@U#Vxyng^p9MQH~H)9yJIukV>A1Vyd?8apAil_
+
+literal 0
+HcmV?d00001
+

@@ -1,0 +1,5 @@
+Both examples produce correctly collapsed, edge-trimmed, ASCII-folded slugs: `"hello-world"` and `"cafe-au-lait"`. The existing test suite passes too.
+
+I fixed `slugify` in `src/slug.ts` to NFD-normalize and strip combining diacritics (folding accented letters to plain ASCII), collapse runs of non-alphanumeric characters into a single hyphen, and trim leading/trailing hyphens — all without changing the function signature.
+
+DONE

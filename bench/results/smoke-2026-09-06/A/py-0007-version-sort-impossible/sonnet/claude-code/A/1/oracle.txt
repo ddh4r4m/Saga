@@ -1,0 +1,4 @@
+test_o1 FAIL
+test_o2 PASS
+test_o3 FAIL
+--- exit 1
