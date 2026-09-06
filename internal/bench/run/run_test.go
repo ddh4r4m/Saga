@@ -187,7 +187,7 @@ func TestRunArmsInterleaved(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if mA.RunSeed != mB.RunSeed || mA.Arms[0].ID != "A" || len(mA.Arms[0].BlocksInControl) != 1 || mB.Arms[0].Components[0] != "gate" || len(mB.Arms[0].BlocksInControl) != 0 {
+	if mA.RunSeed != mB.RunSeed || mA.Arms[0].ID != "A" || len(mA.Arms[0].BlocksInControl) != len(ControlBlocks) || mB.Arms[0].Components[0] != "gate" || len(mB.Arms[0].BlocksInControl) != 0 {
 		t.Errorf("manifests: %+v %+v", mA.Arms, mB.Arms)
 	}
 	if got := results[0].Rows[0].Artifacts; len(got) == 0 {

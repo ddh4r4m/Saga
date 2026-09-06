@@ -83,8 +83,14 @@ func TestClaudePrepareDisclosure(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, "cfg", "settings.json")); err != nil {
 		t.Error("settings.json not written")
 	}
-	if _, err := os.Stat(filepath.Join(ws, ".saga")); err == nil {
-		t.Error(".saga present in the control arm workspace (bench-spec 4.2)")
+	// The control arm's .saga is an unreadable sentinel, not the layout:
+	// a reach errors instead of silently creating the store (4.2).
+	fi, err := os.Stat(filepath.Join(ws, ".saga"))
+	if err != nil || !fi.IsDir() || fi.Mode().Perm() != 0 {
+		t.Errorf("control arm sentinel: %v %v", fi, err)
+	}
+	if _, err := os.ReadDir(filepath.Join(ws, ".saga")); err == nil {
+		t.Error("the control arm sentinel must not be readable")
 	}
 	if _, err := os.Stat(filepath.Join(root, "cfg", shimDir, "saga")); err != nil {
 		t.Error("control arm has no PATH shim")
@@ -103,8 +109,33 @@ func TestClaudePrepareDisclosure(t *testing.T) {
 	if hooks := out.Disclosure["hooks"].([]any); len(hooks) != 0 {
 		t.Errorf("%d hooks disclosed in the control arm", len(hooks))
 	}
-	if blocks := out.Disclosure["blocks"].([]string); len(blocks) != 1 || blocks[0] != "path-shim:saga" {
-		t.Errorf("blocks %v", blocks)
+	if blocks := out.Disclosure["blocks"].([]string); strings.Join(blocks, ",") != strings.Join(ControlBlocks, ",") {
+		t.Errorf("blocks %v, want %v", blocks, ControlBlocks)
+	}
+	// Every 4.2 surface is accounted for, and the file surface says why
+	// its open count is null on the worktree substitute.
+	detail := out.Disclosure["blocks_detail"].([]any)
+	seen := map[string]map[string]any{}
+	for _, e := range detail {
+		m := e.(map[string]any)
+		seen[m["surface"].(string)] = m
+	}
+	for _, s := range []string{"cli_binary", "mcp_server", "hooks", "files", "prompt_text"} {
+		if seen[s] == nil {
+			t.Errorf("blocks_detail has no %s surface: %v", s, detail)
+		}
+	}
+	if f := seen["files"]; f == nil || f["sentinel"] != "present" || f["sentinel_open_count"] != nil || f["sentinel_open_count_reason"] != "no audit log on host" {
+		t.Errorf("files surface: %v", f)
+	}
+	// Cleanup restores and removes it, and is harmless a second time.
+	for i := 0; i < 2; i++ {
+		if err := RemoveSentinel(ws); err != nil {
+			t.Fatalf("RemoveSentinel %d: %v", i, err)
+		}
+		if _, err := os.Stat(filepath.Join(ws, ".saga")); err == nil {
+			t.Error("sentinel still present after cleanup")
+		}
 	}
 
 	// Treatment arm with gate: .saga/ with contract and request, saga on
@@ -126,6 +157,20 @@ func TestClaudePrepareDisclosure(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(ws2, f)); err != nil {
 			t.Errorf("%s missing", f)
 		}
+	}
+	// The treatment arm's .saga is the real store, never a sentinel, and
+	// cleanup must leave it alone.
+	if fi, err := os.Stat(filepath.Join(ws2, ".saga")); err != nil || fi.Mode().Perm() == 0 {
+		t.Errorf("treatment .saga: %v %v", fi, err)
+	}
+	if err := RemoveSentinel(ws2); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(ws2, ".saga", "contract.md")); err != nil {
+		t.Error("cleanup removed the treatment arm's store")
+	}
+	if out2.Disclosure["blocks_detail"] != nil {
+		t.Errorf("blocks_detail in a treatment arm: %v", out2.Disclosure["blocks_detail"])
 	}
 	if cfgToml, _ := os.ReadFile(filepath.Join(ws2, ".saga", "config.toml")); !strings.Contains(string(cfgToml), "[gate]\nrequire_red = false\n") {
 		t.Errorf("arm B config.toml lacks require_red = false (docs/12 section 4):\n%s", cfgToml)

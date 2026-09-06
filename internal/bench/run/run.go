@@ -104,8 +104,9 @@ func ParseArm(spec string) (ArmSpec, error) {
 }
 
 // ControlBlocks are the section 4.2 blocks the claude-code adapter
-// applies in a bare arm.
-var ControlBlocks = []string{"path-shim:saga"}
+// applies in a bare arm, one per surface the component lives at; the
+// manifest records them as the arm's blocks_in_control.
+var ControlBlocks = adapter.ControlBlocks
 
 // Result is what Run returns.
 type Result struct {
@@ -450,6 +451,10 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 	os.MkdirAll(runDir, 0o755)
 	base := filepath.Join(tmpRoot, t.ID, fmt.Sprint(i))
 	ws := filepath.Join(base, "ws")
+	// The bare arm's .saga sentinel is removed before the diff below; this
+	// is the safety net for a panic or a cancelled context (bench-spec
+	// 4.2). RemoveSentinel is idempotent and never touches a real store.
+	defer adapter.RemoveSentinel(ws)
 	cfg := filepath.Join(base, "cfg")
 	os.MkdirAll(cfg, 0o755)
 	disclosure := adapter.NewDisclosure(opts.Adapter.Name(), limits, []string{})
@@ -579,6 +584,9 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 	// computed once by trace over the final message, identically in
 	// every arm, and copied into the row), then grade on a clean checkout
 	// and scan.
+	if err := adapter.RemoveSentinel(ws); err != nil {
+		return infra("sentinel", err)
+	}
 	diff, err := task.Diff(ctx, ws)
 	if err != nil {
 		return infra("diff", err)

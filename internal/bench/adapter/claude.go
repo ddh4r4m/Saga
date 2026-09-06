@@ -259,7 +259,10 @@ func (c *ClaudeCode) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOut
 		if err := c.stageShim(in.ConfigDir); err != nil {
 			return nil, err
 		}
-		blocks = append(blocks, "path-shim:saga")
+		if err := stageSentinel(in.Workspace); err != nil {
+			return nil, err
+		}
+		blocks = append(blocks, ControlBlocks...)
 	}
 	version, err := c.version(ctx)
 	if err != nil {
@@ -327,9 +330,83 @@ func (c *ClaudeCode) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOut
 		envMap[k] = v
 	}
 	d["env_vars"] = envMap
+	if !withGate {
+		d["blocks_detail"] = BlocksDetail(nil)
+	}
 	d["config_hash"] = BytesSHA256(settings)
 	d["prompt_hash"] = BytesSHA256([]byte(in.PromptOf()))
 	return &PrepareOutput{ConfigHash: BytesSHA256(settings), PromptHash: BytesSHA256([]byte(in.PromptOf())), ToolsHash: canon.SHA256(toolsCanon), Disclosure: d}, nil
+}
+
+// ControlBlocks are the bench-spec 4.2 blocks applied in a bare arm, one
+// per surface the component lives at: the CLI binary behind a PATH shim,
+// hooks and MCP servers absent from the generated settings and the
+// private config dir, and .saga present as an unreadable sentinel so a
+// reach errors rather than silently creating the layout. The prompt
+// surface needs no block: the bare arm's prompt is prompt.md plus the
+// protocol sentence, and prompt_hash records it.
+var ControlBlocks = []string{"path-shim:saga", "settings:no-hooks", "settings:no-mcp", "sentinel:.saga"}
+
+// sentinelDir is the store path the bare arm blocks.
+const sentinelDir = ".saga"
+
+// stageSentinel creates the bare arm's unreadable .saga (bench-spec 4.2
+// files row). A read or a write under it fails with EACCES, which is the
+// signal the agent is meant to see; without it a `Write` to .saga/x
+// would silently create the layout and the arm would stop being bare.
+func stageSentinel(workspace string) error {
+	p := filepath.Join(workspace, sentinelDir)
+	if err := os.Mkdir(p, 0o000); err != nil && !errors.Is(err, os.ErrExist) {
+		return err
+	}
+	return os.Chmod(p, 0o000)
+}
+
+// RemoveSentinel restores and removes the bare arm's sentinel. It runs
+// before the workspace diff and again on the way out, so it must be
+// idempotent, and it never touches a real store: only a directory that
+// is still unreadable and still empty is removed. A directory the agent
+// somehow populated is left in place, readable, as evidence; task.Diff
+// excludes .saga either way.
+func RemoveSentinel(workspace string) error {
+	p := filepath.Join(workspace, sentinelDir)
+	fi, err := os.Lstat(p)
+	if err != nil || !fi.IsDir() || fi.Mode().Perm() != 0 {
+		return nil
+	}
+	if err := os.Chmod(p, 0o700); err != nil {
+		return err
+	}
+	entries, err := os.ReadDir(p)
+	if err != nil || len(entries) > 0 {
+		return err
+	}
+	return os.Remove(p)
+}
+
+// BlocksDetail is the disclosure's per-surface account of bench-spec 4.2
+// in a bare arm: what blocks the surface and what counts the reaches.
+// The worktree substitute of docs/12 row 5 has no sandbox audit log, so
+// the sentinel reports its presence and a null open count with a reason
+// rather than a number it cannot produce.
+func BlocksDetail(shimHits *int) []any {
+	cli := map[string]any{"surface": "cli_binary", "block": "path-shim:saga", "instrumentation": "blocked_reach_attempts", "count": nil}
+	if shimHits != nil {
+		cli["count"] = *shimHits
+	} else {
+		cli["count_reason"] = "counted at collect from the shim log"
+	}
+	return []any{
+		cli,
+		map[string]any{"surface": "mcp_server", "block": "settings:no-mcp", "instrumentation": nil,
+			"instrumentation_reason": "no MCP server is registered in the generated settings or the private config dir, so there is nothing to connect to and no attempt to log"},
+		map[string]any{"surface": "hooks", "block": "settings:no-hooks", "instrumentation": nil,
+			"instrumentation_reason": "the generated settings carry no hooks in a bare arm, so no hook is invoked"},
+		map[string]any{"surface": "files", "block": "sentinel:.saga", "instrumentation": "sentinel",
+			"sentinel": "present", "sentinel_open_count": nil, "sentinel_open_count_reason": "no audit log on host"},
+		map[string]any{"surface": "prompt_text", "block": "none", "instrumentation": "prompt_hash",
+			"block_reason": "the bare arm's prompt is prompt.md plus the protocol sentence; prompt_hash records it"},
+	}
 }
 
 // stageShim writes the control arm's PATH shim (bench-spec 4.2): `saga`
@@ -782,11 +859,16 @@ func (c *ClaudeCode) Collect(ctx context.Context, in *CollectInput) (*CollectOut
 		Set(out.Disclosure.Block("harness"), "version", sr.ClaudeCodeVersion, "")
 	}
 	out.Pins = PinsFromStream(sr, c.Model, settingsHash, hooksHash, time.Now())
-	if raw, err := os.ReadFile(filepath.Join(in.ConfigDir, blockedLog)); err == nil {
-		out.BlockedReachAttempts = len(strings.Split(strings.TrimRight(string(raw), "\n"), "\n"))
-		if len(strings.TrimSpace(string(raw))) == 0 {
-			out.BlockedReachAttempts = 0
+	// The bare arm is recognised by its own shim: the same signal Env
+	// uses. Its per-surface block account carries the reach count.
+	if exists(filepath.Join(in.ConfigDir, shimDir, "saga")) {
+		if raw, err := os.ReadFile(filepath.Join(in.ConfigDir, blockedLog)); err == nil {
+			out.BlockedReachAttempts = len(strings.Split(strings.TrimRight(string(raw), "\n"), "\n"))
+			if len(strings.TrimSpace(string(raw))) == 0 {
+				out.BlockedReachAttempts = 0
+			}
 		}
+		out.Disclosure["blocks_detail"] = BlocksDetail(&out.BlockedReachAttempts)
 	}
 	out.Disclosure["native_log"] = filepath.Base(in.NativeLogPath)
 	if out.TranscriptPath != "" {

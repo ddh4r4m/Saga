@@ -64,6 +64,7 @@ func TestStagedPromptInBothArms(t *testing.T) {
 	root := t.TempDir()
 	cfg := filepath.Join(root, "cfg")
 	os.MkdirAll(cfg, 0o755)
+	os.MkdirAll(filepath.Join(root, "ws"), 0o755)
 	staged := StagedPrompt(tk.Prompt(), nil)
 	in := &PrepareInput{Task: tk, Workspace: filepath.Join(root, "ws"), ConfigDir: cfg, Prompt: staged, Limits: Limits{WallS: 60, MaxTurns: 5, USD: 1}}
 	ro, err := (&Replay{Patch: "gold"}).Prepare(context.Background(), in)

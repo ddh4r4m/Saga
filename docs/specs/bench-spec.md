@@ -223,6 +223,8 @@ Every comparison is **paired**: same task, same model, same harness, same seed i
 | Files (`.saga/`, `AGENTS.md` sections, memory stores) | Path is absent; a read-denied sentinel directory exists with the same name so an attempt errors rather than silently creating | Denied-open count via the sandbox audit log |
 | Prompt text (thin adapter) | Removed from the generated config; prompt hash differs and is recorded | none |
 
+**Host substitute (docs/12 §10 row 5, worktree instead of a container).** Without a sandbox there is no audit log, so the files row's "denied-open count" cannot be produced. The substitute is a sentinel: `.saga` is created in the bare arm's workspace as an empty directory with mode `0o000` before the agent starts, so a read or a write under it fails with `EACCES` instead of silently creating the layout, and it is removed (mode restored, then deleted) after collect and before the workspace diff. Its instrumentation is disclosed per run as `sentinel: "present"` with `sentinel_open_count: null` and the reason `no audit log on host`; a directory the agent somehow populated is left in place as evidence, and `Diff` excludes `.saga` in either case, so the sentinel never reaches the oracle. Every surface's block and instrumentation status is recorded per run in `harness.json.blocks_detail`, so the report states what was blocked rather than implying it.
+
 The report prints `blocked_reach_attempts` per control run. A control arm with zero attempts across all runs is normal; a treatment arm with zero *uses* of the component (as seen in the trace) is flagged **`component_unused`** and the comparison is reported as "no exposure" rather than "no effect" (ponytail self-activated zero times when passive, doc 04 §3).
 
 ### 4.3 Stacking rules
