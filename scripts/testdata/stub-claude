@@ -93,7 +93,11 @@ print(d)" "$2" 2>/dev/null
 
 emit "{\"type\":\"system\",\"subtype\":\"init\",\"session_id\":\"$SESSION\",\"model\":\"stub\",\"tools\":[\"Bash\"],\"permissionMode\":\"acceptEdits\",\"claude_code_version\":\"0.0.0-stub\"}"
 
-CMD="echo saga-probe"
+# The command the "model" asks for. P9 checks a side effect on the
+# filesystem rather than the shape of the transcript, because a denied
+# call and an uncalled one look the same in the stream, so the stub has
+# to actually run the command when it is not blocked.
+CMD="touch p9-ran.txt"
 TEXIT=${STUB_TOOL_EXIT:-0}
 [ "$TEXIT" -eq 0 ] || CMD="exit $TEXIT"
 
@@ -118,6 +122,10 @@ if [ "$blocked" = "1" ]; then
 fi
 
 emit "{\"type\":\"assistant\",\"message\":{\"id\":\"m1\",\"model\":\"stub\",\"content\":[{\"type\":\"tool_use\",\"id\":\"t1\",\"name\":\"Bash\",\"input\":{\"command\":\"$CMD\"}}]}}"
+# Actually run it, in the workspace, so a probe that looks for a side
+# effect sees one. A subshell, so `exit 3` ends the command and not the
+# stub.
+( eval "$CMD" ) >/dev/null 2>&1
 if [ "$TEXIT" -eq 0 ]; then
   call_hook PostToolUse "{\"session_id\":\"$SESSION\",\"transcript_path\":\"$TRANSCRIPT\",\"hook_event_name\":\"PostToolUse\",\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"$CMD\"},\"tool_response\":{\"stdout\":\"saga-probe\\n\",\"stderr\":\"\",\"interrupted\":false,\"isImage\":false},\"cwd\":\"$PWD\"}" >/dev/null
   emit "{\"type\":\"user\",\"message\":{\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"t1\",\"content\":\"saga-probe\"}]}}"

@@ -126,6 +126,25 @@ why_no_transcript() {  # native.jsonl
   printf '%s' "$line"
 }
 
+# write_settings <file> <event> <hook command>: the settings a probe runs
+# under. It mirrors adapter.Settings, which is what the bench stages
+# live: the hook, and a permissions.allow naming the tools the run may
+# use. Without the allow block Claude Code asks for approval and, with
+# no one to ask, reports "the command requires approval and wasn't
+# executed" (2026-09-06 probe run 2, P17), so the tool never runs and
+# the probe measures nothing.
+write_settings() {  # file event command
+  python3 -c '
+import json, sys
+json.dump({
+    "hooks": {sys.argv[2]: [{"hooks": [{"type": "command", "command": sys.argv[3], "timeout": 30}]}]},
+    "permissions": {"allow": ["Bash"], "deny": []},
+    "includeCoAuthoredBy": False,
+    "env": {"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"},
+}, open(sys.argv[1], "w"), indent=2)
+' "$1" "$2" "$3"
+}
+
 results=()
 say() { echo "$1" | tee -a "$OUT/run.log"; }
 
@@ -156,47 +175,58 @@ exit $hook_exit
 EOF
   fi
   chmod +x "$hook"
-  python3 - "$dir/settings.json" "$hook" <<'PY'
-import json, sys
-json.dump({"hooks": {"PreToolUse": [{"hooks": [{"type": "command", "command": sys.argv[2], "timeout": 30}]}]}},
-          open(sys.argv[1], "w"), indent=2)
-PY
+  write_settings "$dir/settings.json" PreToolUse "$hook"
+  # The tool leaves a mark on the filesystem. Reading the transcript
+  # cannot answer this: on 2026-09-06 both variants emitted a `tool_use`
+  # block and then an error `tool_result` carrying the deny reason, so
+  # "the model asked for Bash" and "Bash ran" look identical in the
+  # stream. The file exists only if the command actually executed.
   run_claude "$dir/cfg" "$dir/ws" "$dir/settings.json" \
-    'Run exactly one Bash command: echo saga-probe. Then stop.' \
+    'Run exactly one Bash command: touch p9-ran.txt. Then stop.' \
     "$dir/native.jsonl" "$(new_session_id)"
   if ! transcript_ok "$dir/native.jsonl"; then
-    echo "nolog nolog"
+    echo "nolog"
     return 0
   fi
-  local ran=no
-  grep -q '"name":"Bash"' "$dir/native.jsonl" 2>/dev/null && ran=yes
-  # The reason has to be visible somewhere the model could have seen it:
-  # in the stream, which carries the harness's own denial text. A tool
-  # that simply was not called looks identical to a denied one without
-  # this, which is why "did not run" alone is not a PASS.
-  local saw_reason=no
-  grep -q 'saga-probe-p9' "$dir/native.jsonl" 2>/dev/null && saw_reason=yes
-  echo "$ran $saw_reason"
+  if [ -e "$dir/ws/p9-ran.txt" ]; then echo "yes"; else echo "no"; fi
+}
+
+# p9_result_shape prints the tool_result the harness handed the model,
+# verbatim. Whatever the verdict, the shape is a finding: an exit-1 JSON
+# deny came back as an error result whose content was the reason alone,
+# which is not what a reader would guess from the documentation.
+p9_result_shape() {  # native.jsonl
+  python3 -c '
+import json, sys
+for line in open(sys.argv[1]):
+    try: d = json.loads(line)
+    except Exception: continue
+    if d.get("type") != "user": continue
+    for c in (d.get("message") or {}).get("content") or []:
+        if c.get("type") == "tool_result":
+            print(json.dumps({"is_error": c.get("is_error"), "content": c.get("content")}, sort_keys=True))
+            sys.exit(0)
+print("none")
+' "$1" 2>/dev/null || echo "none"
 }
 
 say ""
 say "P9: is a PreToolUse deny honoured when the hook exits non-zero?"
-read -r p9_ran p9_reason <<<"$(probe_p9 json-exit1 1 json)"
-read -r ctl_ran ctl_reason <<<"$(probe_p9 text-exit2 2 text)"
+p9_ran=$(probe_p9 json-exit1 1 json)
+ctl_ran=$(probe_p9 text-exit2 2 text)
+p9_shape=$(p9_result_shape "$OUT/p9-json-exit1/native.jsonl")
+ctl_shape=$(p9_result_shape "$OUT/p9-text-exit2/native.jsonl")
 if [ "$p9_ran" = "nolog" ] || [ "$ctl_ran" = "nolog" ]; then
   p9="INCONCLUSIVE"
   p9_note="the harness produced no usable transcript: $(why_no_transcript "$OUT/p9-json-exit1/native.jsonl")"
-elif [ "$p9_ran" = "no" ] && [ "$p9_reason" = "yes" ]; then
-  p9="PASS"; p9_note="JSON deny honoured on exit 1: the tool did not run and the reason is in the transcript"
+elif [ "$p9_ran" = "no" ] && [ "$ctl_ran" = "no" ]; then
+  p9="PASS"; p9_note="JSON deny honoured on exit 1: the command left no p9-ran.txt, and neither did the documented exit-2 control"
 elif [ "$p9_ran" = "no" ]; then
-  # Not running is not the same as being denied: without the reason
-  # anywhere in the stream, a model that never called the tool is
-  # indistinguishable from a hook that blocked it.
-  p9="INCONCLUSIVE"; p9_note="the tool did not run, but the deny reason is nowhere in the transcript; the model may simply not have called it"
+  p9="PASS"; p9_note="JSON deny honoured on exit 1: the command left no p9-ran.txt (the exit-2 control did run, which is its own oddity)"
 elif [ "$ctl_ran" = "no" ]; then
-  p9="FAIL"; p9_note="fail-open on exit 1: the tool ran. The documented exit-2 path did block, so every deny must use it"
+  p9="FAIL"; p9_note="fail-open on exit 1: p9-ran.txt exists, so the command ran. The documented exit-2 path did block, so every deny must use it"
 else
-  p9="INCONCLUSIVE"; p9_note="neither variant blocked; the hook may not have run at all (check $OUT/p9-*/hook-stdin.json)"
+  p9="INCONCLUSIVE"; p9_note="neither variant blocked: p9-ran.txt exists in both, so the hook may not have run at all (check $OUT/p9-*/hook-stdin.json)"
 fi
 say "  P9 $p9: $p9_note"
 say "  evidence: $OUT/p9-json-exit1/native.jsonl and $OUT/p9-text-exit2/native.jsonl"
@@ -205,6 +235,7 @@ results+=("P9 $p9")
 cat > "$OUT/harness-facts-proposed.md" <<EOF
 <!-- proposed row for docs/specs/harness-facts.md; saga edits that file, not this script -->
 | C-P9 | PreToolUse JSON decision on a non-zero hook exit | $CLAUDE_VER | $p9_note | probed $(date -u +%Y-%m-%d), scripts/harness-probes.sh, evidence in $OUT/p9-json-exit1/ and $OUT/p9-text-exit2/ |
+| C-P9b | What the model is handed when a PreToolUse hook denies | $CLAUDE_VER | JSON deny, hook exit 1: tool_result $p9_shape. Plain-stderr deny, hook exit 2: tool_result $ctl_shape. The shape is recorded whatever the verdict: a deny reaches the model as an error tool_result, not as an absent call | probed $(date -u +%Y-%m-%d), scripts/harness-probes.sh, evidence in $OUT/p9-json-exit1/native.jsonl and $OUT/p9-text-exit2/native.jsonl |
 EOF
 say "  proposed harness-facts row: $OUT/harness-facts-proposed.md"
 
@@ -289,16 +320,22 @@ cat > "$OUT/posttoolusefailure.json"
 exit 0
 EOF
 chmod +x "$cap"
-python3 - "$p17dir/settings.json" "$cap" <<'PY'
-import json, sys
-json.dump({"hooks": {"PostToolUseFailure": [{"hooks": [{"type": "command", "command": sys.argv[2], "timeout": 30}]}]}},
-          open(sys.argv[1], "w"), indent=2)
-PY
+# The same settings the bench stages, so the command is allowed to run.
+# In run 2 it was not: the model reported "the command requires approval
+# and wasn't executed", the tool never failed, and no PostToolUseFailure
+# could fire.
+write_settings "$p17dir/settings.json" PostToolUseFailure "$cap"
+rm -f "$OUT/posttoolusefailure.json"
 STUB_TOOL_EXIT=${STUB_TOOL_EXIT:-3} run_claude "$p17dir/cfg" "$p17dir/ws" "$p17dir/settings.json" \
   'Run exactly one Bash command: exit 3. Then stop.' \
   "$p17dir/native.jsonl" "$(new_session_id)"
 if ! transcript_ok "$p17dir/native.jsonl"; then
   say "  P17 INCONCLUSIVE: the harness produced no usable transcript: $(why_no_transcript "$p17dir/native.jsonl")"
+  results+=("P17 INCONCLUSIVE")
+elif grep -qi "requires approval\|wasn.t executed" "$p17dir/native.jsonl" 2>/dev/null; then
+  # A tool that never ran cannot fail, so this is a probe defect and not
+  # a fact about PostToolUseFailure.
+  say "  P17 INCONCLUSIVE: the command was never executed (approval was requested despite permissions.allow); the event had nothing to fire on"
   results+=("P17 INCONCLUSIVE")
 elif [ -s "$OUT/posttoolusefailure.json" ]; then
   fields=$(python3 -c "
@@ -310,10 +347,16 @@ print(','.join(sorted(d)))")
   say "  compare with harness-facts C34; the fixture replacement is a separate commit"
   results+=("P17 PASS")
 else
-  say "  P17 INCONCLUSIVE: no PostToolUseFailure payload captured (the event may not fire for this shape)"
+  say "  P17 INCONCLUSIVE: the command ran and failed, but no PostToolUseFailure payload was captured (the event may not fire for this shape)"
   results+=("P17 INCONCLUSIVE")
 fi
-say "  evidence: $OUT/posttoolusefailure.json, $p17dir/native.jsonl"
+# Name the payload only when there is one: run 2's evidence line pointed
+# at a file that did not exist.
+if [ -s "$OUT/posttoolusefailure.json" ]; then
+  say "  evidence: $OUT/posttoolusefailure.json, $p17dir/native.jsonl"
+else
+  say "  evidence: $p17dir/native.jsonl (no payload was captured, so there is no posttoolusefailure.json)"
+fi
 
 say ""
 say "summary:"

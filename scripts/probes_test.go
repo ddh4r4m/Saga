@@ -111,10 +111,105 @@ func TestHarnessProbesDryRun(t *testing.T) {
 	}
 
 	// The proposed harness-facts row is written for saga to read, and the
-	// launcher never edits harness-facts itself.
+	// launcher never edits harness-facts itself. It records what the
+	// model was handed either way, because the shape of a denied call is
+	// a fact whatever the verdict.
 	if !strings.Contains(out, "harness-facts-proposed.md") {
 		t.Errorf("no proposed harness-facts row:\n%s", out)
 	}
+}
+
+// TestP9DecidesOnASideEffect is the 2026-09-06 run-2 defect: both
+// variants emitted a tool_use block and then an error tool_result
+// carrying the deny reason, so reading the transcript could not tell a
+// blocked call from a call that was never made, and the probe went
+// INCONCLUSIVE on a run that had answered the question. The verdict now
+// turns on whether the command left a file behind.
+func TestP9DecidesOnASideEffect(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
+	needTools(t)
+	out, _ := runProbes(t, "STUB_HONOUR_DENY=1")
+	if !strings.Contains(out, "left no p9-ran.txt") {
+		t.Errorf("a blocked command is not decided by its side effect:\n%s", verdicts(out))
+	}
+	out, _ = runProbes(t)
+	if !strings.Contains(out, "p9-ran.txt exists, so the command ran") {
+		t.Errorf("a command that ran is not decided by its side effect:\n%s", verdicts(out))
+	}
+	// The tool_result shape reaches the proposed row whatever the verdict.
+	row := readProposedRow(t, out)
+	if !strings.Contains(row, "C-P9b") || !strings.Contains(row, "is_error") {
+		t.Errorf("the proposed row does not record what the model was handed:\n%s", row)
+	}
+}
+
+// readProposedRow loads the harness-facts row the launcher wrote.
+func readProposedRow(t *testing.T, out string) string {
+	t.Helper()
+	for _, line := range strings.Split(out, "\n") {
+		i := strings.Index(line, "proposed harness-facts row: ")
+		if i < 0 {
+			continue
+		}
+		raw, err := os.ReadFile(strings.TrimSpace(line[i+len("proposed harness-facts row: "):]))
+		if err != nil {
+			t.Fatalf("proposed row: %v", err)
+		}
+		return string(raw)
+	}
+	t.Fatal("the launcher named no proposed row")
+	return ""
+}
+
+// TestP17StagesTheBenchPermissions is the other run-2 defect: the probe
+// settings carried a hook and nothing else, so Claude Code asked for
+// approval, nobody answered, the command never ran and no failure could
+// fire. The settings now mirror adapter.Settings, and a run in which the
+// command was never executed is INCONCLUSIVE for that reason rather than
+// blamed on the event.
+func TestP17StagesTheBenchPermissions(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
+	needTools(t)
+	out, _ := runProbes(t, "STUB_HONOUR_DENY=1")
+	settings := findSettings(t, out)
+	if !strings.Contains(settings, `"allow"`) || !strings.Contains(settings, `"Bash"`) {
+		t.Errorf("P17 settings carry no permissions.allow:\n%s", settings)
+	}
+	if !strings.Contains(out, "P17 PASS: payload captured") {
+		t.Errorf("P17 did not capture a payload:\n%s", verdicts(out))
+	}
+	// The evidence line names the payload only when there is one.
+	if strings.Contains(out, "no payload was captured") {
+		t.Errorf("P17 passed and still reported no payload:\n%s", verdicts(out))
+	}
+}
+
+// findSettings reads the P17 settings file out of the run's evidence.
+func findSettings(t *testing.T, out string) string {
+	t.Helper()
+	for _, line := range strings.Split(out, "\n") {
+		i := strings.Index(line, "evidence: ")
+		if i < 0 || !strings.Contains(line, "/p17/") {
+			continue
+		}
+		for _, p := range strings.Split(line[i+len("evidence: "):], ", ") {
+			p = strings.TrimSpace(p)
+			if !strings.Contains(p, "/p17/") {
+				continue
+			}
+			raw, err := os.ReadFile(filepath.Join(filepath.Dir(p), "settings.json"))
+			if err != nil {
+				t.Fatalf("p17 settings: %v", err)
+			}
+			return string(raw)
+		}
+	}
+	t.Fatal("no p17 evidence line")
+	return ""
 }
 
 // TestProbesRefuseToReadAnEmptyTranscript is the 2026-09-06 defect: the
