@@ -168,3 +168,32 @@ func short16(h string) string {
 	}
 	return "sha256:" + h
 }
+
+// benchEstimate is `saga bench estimate <glob> --k <n> [--arms <n>]`:
+// the runner's own cost estimate for a cell, printed before anything is
+// spent. It reads task.toml and runs nothing, so a launcher can put the
+// number in front of the operator and refuse below it.
+func (a *App) benchEstimate(args []string) error {
+	fs := a.flags("bench estimate")
+	k := fs.Int("k", 1, "runs per task")
+	arms := fs.Int("arms", 2, "arms in the invocation; the estimate is per arm times this")
+	if err := parseFlags(fs, args); err != nil {
+		return err
+	}
+	globs := positionals[fs]
+	if len(globs) == 0 {
+		return cli.Errorf(cli.ExitUsage, "usage: saga bench estimate <tasks-glob>... [--k <n>] [--arms <n>]")
+	}
+	tasks, err := a.loadTasks(globs)
+	if err != nil {
+		return err
+	}
+	if *k < 1 || *arms < 1 {
+		return cli.Errorf(cli.ExitUsage, "estimate: k and arms must be at least 1")
+	}
+	per := run.Estimate(tasks, *k)
+	fmt.Fprintf(a.Stdout, "%.2f\n", per*float64(*arms))
+	fmt.Fprintf(a.Stderr, "estimate: %d tasks, k=%d, %d arms: %.2f usd per arm, %.2f usd total (bench-spec 4.5; the runner caps at 1.5x)\n",
+		len(tasks), *k, *arms, per, per*float64(*arms))
+	return nil
+}

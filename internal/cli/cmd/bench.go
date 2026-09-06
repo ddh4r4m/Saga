@@ -13,7 +13,7 @@ import (
 	"github.com/ddh4r4m/saga/internal/trace"
 )
 
-const benchUsage = `usage: saga bench <verify-task|run|report|reconcile|compare|taskset|approve-corpus|badge>
+const benchUsage = `usage: saga bench <verify-task|run|report|reconcile|compare|taskset|approve-corpus|estimate|badge>
 
   verify-task <task-dir>... [--keep <dir>] [--static] [--json]
   run     --tasks <glob> --adapter <bare|replay|claude-code> [--k <n>] --out <dir>
@@ -26,6 +26,8 @@ const benchUsage = `usage: saga bench <verify-task|run|report|reconcile|compare|
   taskset <tasks-glob>... [--write <file>]   freeze artefact: per-task hashes and the set hash
   approve-corpus <tasks-glob>... [--check] [--saga-bin <path>]
                                             approve the frozen set once (a human act; ADR 0010)
+  estimate <tasks-glob>... [--k <n>] [--arms <n>]
+                                            the runner's own cost estimate, in usd, before spending it
   badge   <run-dir> --metric <m>             refused below tier publish (docs/12 commitment 4)
 `
 
@@ -49,6 +51,8 @@ func (a *App) cmdBench(args []string) error {
 		return a.benchTaskset(args[1:])
 	case "approve-corpus":
 		return a.benchApproveCorpus(args[1:])
+	case "estimate":
+		return a.benchEstimate(args[1:])
 	case "badge":
 		return a.benchBadge(args[1:])
 	case "-h", "--help", "help":

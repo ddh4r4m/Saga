@@ -21,7 +21,9 @@
 # before running. The bench never reads ~/.claude.
 #
 # Environment knobs: OUT (archive root), MODEL (default sonnet), K
-# (default 2), WALL_CAP (seconds per run, default 300), TASKS.
+# (default 2), WALL_CAP (seconds per run, default 300), TASKS, PREREG,
+# BUDGET_USD (passed to `bench run --budget`, which refuses when its own
+# estimate exceeds it).
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -90,7 +92,8 @@ set +e
   --saga-bin "$SAGA" \
   --bench-git "$(git -C "$ROOT" rev-parse --short HEAD)" \
   --keep \
-  --prereg "$ROOT/docs/12-experiment-protocol.md" \
+  --prereg "${PREREG:-$ROOT/docs/12-experiment-protocol.md}" \
+  ${BUDGET_USD:+--budget "$BUDGET_USD"} \
   --out "$OUT/archive" 2>&1 | tee -a "$OUT/run.log"
 code=${PIPESTATUS[0]}
 set -e
