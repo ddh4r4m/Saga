@@ -55,3 +55,7 @@ Every one of the four false contradictions is gone and no verdict moved the wron
 Settled: the launcher, private config, token hand-off, interleaving, per-run pins, cost capture and the ABANDON terminal all work live on 2.1.263. Not settled: anything about the gate arm. The next smoke must run on a commit that carries both fixes; until then no number from arm B exists.
 
 Wall per arm A run was 14 to 51 s at 0.07 to 0.20 usd; six runs cost 0.71 usd, so a full three-task K=2 smoke of both arms should stay near 3 usd once arm B runs.
+
+## Defect 3, found during the row 3 work: the disclosure schema rejected the ABANDON block
+
+`harness.json` is validated with `additionalProperties: false`, and the `abandon` block the runner has written since 2026-09-05 was never declared, so validation failed on every ABANDON run and the runner recorded the failure in `outcome_reason`. In this archive that is py-0007 A/2 only: `run.json.outcome_reason` reads `disclosure schema: $: unknown field "abandon"` where `ABANDON via final_message, reason class contradiction` belongs. `outcome` (`abandon`) and `abandon_reason_class` (`contradiction`) are correct, and `harness.json.abandon` holds the block. Fixed in 4e30d4f by declaring the block; the archived row is left as recorded.
