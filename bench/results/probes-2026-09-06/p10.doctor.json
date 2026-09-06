@@ -36,7 +36,7 @@
     {
       "id": "hooks_registered",
       "ok": true,
-      "detail": "11/11 events bound in /tmp/saga-probes-3/p10/ws/.claude/settings.local.json, /tmp/saga-probes-3/p10/ws/.claude/settings.json, /Users/dharamdhurandhar/.claude/settings.json",
+      "detail": "11/11 events bound in /tmp/saga-probes-3/p10/ws/.claude/settings.local.json, /tmp/saga-probes-3/p10/ws/.claude/settings.json, SAGA_MASK_HOME/.claude/settings.json",
       "fix": null
     },
     {
