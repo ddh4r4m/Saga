@@ -371,7 +371,7 @@ func (l *Layer) stop(in *hookio.Input, out *hookio.Output) (*hookio.Output, erro
 	}
 	body := map[string]any{
 		"for_turn": obs.Turn, "progress_hash": rep.ProgressHash, "tree_hash": rep.TreeHash, "mode": rep.Mode, "exit": rep.Exit,
-		"ids": ids(rep), "states": states(rep),
+		"ids": ids(rep), "states": states(rep), "unproven_ids": rep.UnprovenIDs(),
 		// The claim verdict is the kind: claim event trace writes after
 		// this step (trace-spec section 5.9).
 		"claims": nil, "claim_verdict": nil, "claim_reason": "see the kind: claim event of this turn",
@@ -459,7 +459,9 @@ func ids(r *Report) []string {
 func states(r *Report) []string {
 	var out []string
 	for _, g := range r.Gates {
-		out = append(out, g.State)
+		// The reported state, so a met gate without a red reads
+		// met-unproven in the archive rather than as a plain met.
+		out = append(out, g.ReportedState())
 	}
 	return out
 }

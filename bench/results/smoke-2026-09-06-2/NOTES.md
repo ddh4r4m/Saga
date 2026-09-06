@@ -2,6 +2,9 @@
 
 Status: run by the owner from their terminal with `scripts/bench-smoke.sh` at commit ff2a31a, Claude Code 2.1.263, model alias `sonnet` (served `claude-sonnet-5`), K=2, wall cap 300 s, arms interleaved A₁ B₁ A₂ B₂ per task (`run.json.sequence` 1 to 12). Both arms finished 6 of 6 runs; no exclusions; total 2.40 usd (A 0.79, B 1.61). `compare.md` was written. This directory holds both arm archives, the compare report, the launcher log, and all twelve stream-json transcripts from the kept workspaces (`transcripts/<task>-<arm><i>.native.jsonl`). Scanned for tokens, JWT shapes and the owner's home path: no hits.
 
+**Correction, 2026-09-06.** Arm B in this run read none of its staged gate config: `gate.Load` reads `.saga/config.toml` through `git show <base>:`, `saga init` gitignores `.saga`, and the file was in no commit, so the gate fell back to its own defaults with `require_red` **on** and mode `minimal`. Every arm B figure here was produced under the gate's defaults rather than under docs/12 section 4's config. Found and fixed 2026-09-06 while working the dev run's finding 1; staging now force-adds the config and contract into the base commit and `harness.json` carries `gate_config_present`. Nothing here is recomputed.
+
+
 ## Results
 
 | task | arm | run | outcome | oracle | cost usd | wall s | turns | Stop decisions (arm B) |

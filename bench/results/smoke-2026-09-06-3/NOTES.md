@@ -2,6 +2,9 @@
 
 Status: run by the owner from their terminal with `scripts/bench-smoke.sh` at commit be95ecc, Claude Code 2.1.263, model alias `sonnet` (served `claude-sonnet-5`), K=2, wall cap 300 s, arms interleaved. Both arms 6 of 6, no exclusions, total 1.02 usd (A 0.51, B 0.51; costs are now the harness's own figures, and the pinned table agrees to the cent). First archive carrying the pre-registration: `preregistration.md` in each arm's root, sha256 `1af94af4…` in both manifests and the report header, task set frozen at `2fdff471…`. This directory holds both arm archives, `compare.md`, the launcher log and all twelve transcripts. Scanned for tokens and the owner's home path: no hits.
 
+**Correction, 2026-09-06.** Arm B in this run read none of its staged gate config: `gate.Load` reads `.saga/config.toml` through `git show <base>:`, `saga init` gitignores `.saga`, and the file was in no commit, so the gate fell back to its own defaults with `require_red` **on** and mode `minimal`. Every arm B figure here was produced under the gate's defaults rather than under docs/12 section 4's config. Found and fixed 2026-09-06 while working the dev run's finding 1; staging now force-adds the config and contract into the base commit and `harness.json` carries `gate_config_present`. Nothing here is recomputed.
+
+
 ## Results
 
 | task | arm | run | outcome | oracle | cost usd | wall s | notes |

@@ -4,6 +4,9 @@ Status: run by the owner from their terminal with `scripts/bench-smoke.sh` at co
 
 This directory holds both arm archives verbatim (`A/`, `B/`), the launcher log (`run-log.txt`), and the six arm A stream-json logs from the kept workspaces (`transcripts/<task>-A<i>.native.jsonl`). Scanned for `sk-ant-` tokens, `OAUTH_TOKEN=` lines, JWT shapes and the owner's home path: no hits; the adapter's own `"CLAUDE_CODE_OAUTH_TOKEN": "<redacted>"` entries in `harness.json` are the only mention of the variable.
 
+**Correction, 2026-09-06.** Arm B in this run read none of its staged gate config: `gate.Load` reads `.saga/config.toml` through `git show <base>:`, `saga init` gitignores `.saga`, and the file was in no commit, so the gate fell back to its own defaults with `require_red` **on** and mode `minimal`. Every arm B figure here was produced under the gate's defaults rather than under docs/12 section 4's config. Found and fixed 2026-09-06 while working the dev run's finding 1; staging now force-adds the config and contract into the base commit and `harness.json` carries `gate_config_present`. Nothing here is recomputed.
+
+
 ## Arm A results
 
 | task | run | outcome | oracle | cost usd | wall s | claimed_done | claim_verdict |

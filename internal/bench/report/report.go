@@ -6,6 +6,7 @@
 package report
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"os"
@@ -83,6 +84,11 @@ type ArmStats struct {
 	// 6), so this counts what the agent tried, not what the arm allowed;
 	// on the controls C-01 to C-40 it is zero.
 	GuardDenies int `json:"guard_denies"`
+	// GateConfig says whether the gate read the protocol's config at the
+	// base commit or fell back to its own defaults, with the config hash
+	// when it was there. Empty for an arm without a gate. Until
+	// 2026-09-06 every gate arm silently ran on the defaults.
+	GateConfig string `json:"gate_config,omitempty"`
 	// Overhead is what the hooks cost this arm (docs/12 commitment 7):
 	// null with a reason on an archive whose runs did not record hook
 	// wall time. It is reported beside the primary, not in an appendix.
@@ -432,6 +438,7 @@ func Build(m *run.Manifest, hash string, rows []run.Row, dir string) *Report {
 	}
 	r := newReport(m, hash)
 	a := ArmFrom(m, rows)
+	a.GateConfig = gateConfigNote(dir, rows)
 	r.Arms[arm] = a
 	r.armOrder = []string{arm}
 	if len(m.Arms) > 0 {
@@ -581,6 +588,11 @@ func (r *Report) Markdown() string {
 		}
 	}
 	w("- task set: `%s`%s", deref(r.TaskSetSHA256), frozenNote(r.TaskSetFrozen))
+	for _, id := range order {
+		if a := r.Arms[id]; a != nil && a.GateConfig != "" {
+			w("- arm %s gate config: %s", id, a.GateConfig)
+		}
+	}
 	w("- isolation: %s", deref(r.Isolation))
 	w("- exclusions: %d infra", r.Exclusions["infra"])
 	w("- bootstrap: %d resamples of tasks, seed %d", r.BootstrapResamples, r.BootstrapSeed)
@@ -988,4 +1000,41 @@ func primaryProvenance(r *Report) string {
 		return "default primary; no pre-registration file"
 	}
 	return "default primary; preregistration.md names no PRIMARY line"
+}
+
+// gateConfigNote reads the disclosure of any run of an arm and says
+// whether the gate read the protocol's config at the base commit. A gate
+// arm that fell back to the gate's defaults ran a different treatment
+// than the manifest names, and the setup section is where a reader looks
+// for what was actually run (2026-09-06 dev run finding 1).
+func gateConfigNote(dir string, rows []run.Row) string {
+	for _, r := range rows {
+		matches, _ := filepath.Glob(filepath.Join(dir, r.Task, "*", r.Harness, r.Arm, fmt.Sprint(r.I), "harness.json"))
+		for _, m := range matches {
+			raw, err := os.ReadFile(m)
+			if err != nil {
+				continue
+			}
+			var d struct {
+				Present *bool   `json:"gate_config_present"`
+				SHA     *string `json:"gate_config_sha256"`
+				Reason  *string `json:"gate_config_sha256_reason"`
+			}
+			if json.Unmarshal(raw, &d) != nil || d.Present == nil {
+				continue
+			}
+			if !*d.Present {
+				why := "not at the base commit; the gate ran on its own defaults"
+				if d.Reason != nil {
+					why = *d.Reason
+				}
+				return "**absent** (" + why + ")"
+			}
+			if d.SHA != nil {
+				return *d.SHA + " (read at the base commit)"
+			}
+			return "present"
+		}
+	}
+	return ""
 }

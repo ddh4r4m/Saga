@@ -161,6 +161,7 @@ func Compare(a, b *Archive, epsilon float64) (*Report, error) {
 	}
 	r := newReport(a.Manifest, a.Hash)
 	r.Manifests = map[string]string{armA: a.Hash, armB: b.Hash}
+	sa.GateConfig, sb.GateConfig = gateConfigNote(a.Dir, a.Rows), gateConfigNote(b.Dir, b.Rows)
 	r.Arms[armA], r.Arms[armB] = sa, sb
 	r.armOrder = []string{armA, armB}
 	r.armMeta = map[string]run.Arm{}

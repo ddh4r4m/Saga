@@ -21,12 +21,19 @@ var LedgerExclude = []string{".saga/evidence", ".saga/red", ".saga/contract.md",
 
 // Gate states of saga.gate.status/1.
 const (
-	StateMet       = "met"
-	StateUnmet     = "unmet"
-	StateUnproven  = "unproven"
-	StateAttested  = "attested"
-	StateAbandoned = "abandoned"
-	StateManual    = "manual"
+	StateMet      = "met"
+	StateUnmet    = "unmet"
+	StateUnproven = "unproven"
+	// StateMetUnproven is a reported state, never a stored one: a gate
+	// that is met and whose red proof is absent or was rejected, under
+	// `require_red = false`. It does not block and it is not unmet; it is
+	// named so status, the trace and a reader can all see that the gate
+	// passed without a red rather than with one (gate-spec section 5,
+	// docs/12 section 13 amendment of 2026-09-06).
+	StateMetUnproven = "met-unproven"
+	StateAttested    = "attested"
+	StateAbandoned   = "abandoned"
+	StateManual      = "manual"
 )
 
 // Loaded is a contract with everything the subcommands share: the
@@ -495,6 +502,30 @@ func (r *Report) finish(l *Loaded, opts StatusOptions) {
 	r.Lines = r.render()
 }
 
+// ReportedState is the state a reader is shown: StateMetUnproven for a
+// met runnable gate whose red is not valid, and the stored state
+// otherwise. The stored state is what decides; this is what explains.
+func (gs *GateStatus) ReportedState() string {
+	if gs.State == StateMet && gs.Runnable && !gs.Red.Valid {
+		return StateMetUnproven
+	}
+	return gs.State
+}
+
+// UnprovenIDs lists the gates that are met without a valid red, in
+// contract order. The Stop trace event carries it so a run can be read
+// back and the question "did this pass on evidence or on assertion"
+// answered from the archive alone.
+func (r *Report) UnprovenIDs() []string {
+	out := []string{}
+	for _, gs := range r.Gates {
+		if gs.ReportedState() == StateMetUnproven || gs.State == StateUnproven {
+			out = append(out, gs.ID)
+		}
+	}
+	return out
+}
+
 func (r *Report) render() []string {
 	var lines []string
 	for _, gs := range r.Gates {
@@ -568,6 +599,12 @@ func (r *Report) StopReason(sessionShareLeft int) string {
 	var parts []string
 	var unmet []string
 	for _, gs := range r.Gates {
+		// `unproven` is a blocking state only while require_red is on;
+		// with it off no gate ever carries that state, and a met gate
+		// without a red is reported as met-unproven and never named here.
+		// Three runs of the 2026-09-06 dev run spent four minutes each
+		// hunting for a way to produce a red they could not produce,
+		// because the block message named a gate they could not move.
 		if gs.State == StateUnmet || gs.State == StateUnproven || gs.State == StateManual {
 			unmet = append(unmet, gs.ID+"("+gs.State+")")
 		}
@@ -585,7 +622,13 @@ func (r *Report) StopReason(sessionShareLeft int) string {
 	if len(guards) > 0 {
 		parts = append(parts, "guards "+strings.Join(guards, ", "))
 	}
-	if r.Coverage != nil && len(r.Coverage.Uncovered) > 0 {
+	// The coverage note is advisory: it never contributes to the exit
+	// code (finish adds it only under Strict, which the Stop step does
+	// not use), so naming it in a block the agent cannot clear by acting
+	// on it is tokens spent to no end. It stays in `saga gate status`,
+	// which is where a reader asks for it. It is kept here only when
+	// there is nothing else to say, so the message is never empty.
+	if len(parts) == 0 && r.Coverage != nil && len(r.Coverage.Uncovered) > 0 {
 		var ids []string
 		for _, u := range r.Coverage.Uncovered {
 			ids = append(ids, u.ID)

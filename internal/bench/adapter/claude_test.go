@@ -3,6 +3,7 @@ package adapter
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -162,8 +163,12 @@ func TestClaudePrepareDisclosure(t *testing.T) {
 	// Treatment arm with gate: .saga/ with contract and request, saga on
 	// PATH, the approval store, the baseline check run through the saga
 	// binary (a fake here that records its argv and exits 1 = unmet).
+	// A real git workspace, as task.Stage gives the runner: the gate
+	// reads its config from the base commit, so staging has to commit it
+	// and there has to be a commit to amend.
 	ws2 := filepath.Join(root, "ws2")
 	os.MkdirAll(ws2, 0o755)
+	gitInit(t, ws2)
 	fake := filepath.Join(root, "fake-saga")
 	argv := filepath.Join(root, "argv")
 	os.WriteFile(fake, []byte("#!/bin/sh\necho \"$@\" > '"+argv+"'\necho \"$SAGA_APPROVAL_DIR\" >> '"+argv+"'\necho '{}'\nexit 1\n"), 0o755)
@@ -447,4 +452,20 @@ func containsCmd(list []string, want string) bool {
 		}
 	}
 	return false
+}
+
+// gitInit makes dir a git repository with one commit, the shape
+// task.Stage leaves behind.
+func gitInit(t *testing.T, dir string) {
+	t.Helper()
+	for _, args := range [][]string{
+		{"init", "-q"}, {"config", "user.email", "t@t"}, {"config", "user.name", "t"},
+		{"config", "commit.gpgsign", "false"}, {"commit", "-q", "--allow-empty", "-m", "base"},
+	} {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v %s", args, err, out)
+		}
+	}
 }

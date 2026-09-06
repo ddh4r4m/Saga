@@ -270,6 +270,10 @@ Warnings (exit 0, printed, counted; `lint --strict` promotes to exit 1): slash-w
 
 A gate is **proven-red** when the checker has itself observed the gate's oracle fail against a tree in which the outcome is known to be absent, and has recorded it. Until then it is `unproven`. A green result on an unproven gate prints `MET (UNPROVEN)`; with `require_red` on (the default), an unproven gate is **unmet** for exit-code purposes (exit 5) in `check`, in the Stop adapter, and in CI. `--no-require-red` downgrades this to a printed warning for local iteration only.
 
+**With `require_red` off, an unproven gate is never a Stop reason.** It is not unmet, it does not raise the exit code, and the Stop block message does not name it; its state is reported as `met-unproven` in `saga gate status`, in the `states` list of the Stop trace event, and in that event's `unproven_ids`, so a reader can still tell a gate that passed with a red from one that passed without. Naming a gate the agent has no way to move cost three runs of the 2026-09-06 dev run four minutes each: each read `saga gate attest --help` and `approve --help`, searched for mutation tools, and ran `strings` over the saga binary looking for `require_red`, because the block named `G1(unproven)` and nothing they could do would clear it.
+
+**Where the config is read from.** `gate.Load` reads `.saga/config.toml` through `git show <base>:.saga/config.toml`, at the contract's `BASE:` rev and never from the working tree. That is deliberate: an agent that could edit the config mid-run could loosen its own gate. The consequence for any harness that stages a config is that the file must be **in the base commit**, not merely on disk; `saga init` gitignores `.saga`, so staging it takes a forced add. A config that is not there is not an error and not a warning: `LoadConfig` returns the defaults with `Present = false` and the report's mode reads `minimal`. The bench discloses `gate_config_present` and `gate_config_sha256` per run for exactly this reason, and refuses to grade a gate arm without them (bench-spec §4.3).
+
 ### 3.2 Modes
 
 | Mode | Procedure | Cost | Status |
@@ -661,7 +665,7 @@ Gate's keys live under the `[gate]` table of the shared `.saga/config.toml` (con
 
 | Key | Default | Meaning |
 |---|---|---|
-| `require_red` | `true` | Unproven gates are unmet (exit 5). |
+| `require_red` | `true` | Unproven gates are unmet (exit 5). With it off they are `met-unproven`: reported, never blocking. Read from the base commit, so a staged value not in a commit has no effect (§5). |
 | `timeout_s` | `120` | Per-gate timeout. |
 | `test_globs` | per-language defaults from §5.2 | G-TESTDEL / G-SKIP file set. |
 | `scope_exempt` | `[]` | Globs G-SCOPE ignores (lockfiles, generated). |

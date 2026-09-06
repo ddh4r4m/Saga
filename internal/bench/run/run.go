@@ -500,7 +500,12 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 	row := Row{
 		Schema: RowSchema, Manifest: manifestHash, Task: t.ID, Model: opts.Model, Harness: opts.Adapter.Name(), Arm: opts.Arm, I: i, Seed: seed,
 		Sequence: sequence,
-		Outcome:  "completed", Oracle: OracleRow{Tests: map[string]string{}, Regressed: []string{}},
+		// The integrity probe has not run yet, and "skipped" is what that
+		// is. Leaving it empty made every infra row fail its own schema,
+		// and the schema failure then replaced the reason the run
+		// actually had, which is the third time that has happened
+		// (2026-09-06 decision 7).
+		Outcome: "completed", Oracle: OracleRow{Tests: map[string]string{}, Regressed: []string{}, Integrity: task.IntegritySkipped},
 		Scan:       task.ScanResult{ScopeViolations: []string{}, Detectors: []string{}},
 		Usage:      Usage{Source: "none"},
 		Compliance: []any{}, ToolSequence: []adapter.ToolCall{}, Artifacts: map[string]string{},
@@ -552,6 +557,15 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 	}
 	if prep.Disclosure != nil {
 		disclosure.Merge(prep.Disclosure)
+	}
+	// A gate arm whose config is not at the base commit runs on the
+	// gate's defaults, not on the protocol's config, and grading it would
+	// report a different treatment than the one the manifest names. It is
+	// infra, not a result (2026-09-06 dev run finding 1).
+	if adapter.HasComponent(opts.Components, "gate") {
+		if present, ok := prep.Disclosure["gate_config_present"].(bool); ok && !present {
+			return infra("gate config not at base", nil)
+		}
 	}
 
 	runCtx, cancel := context.WithTimeout(ctx, wall)

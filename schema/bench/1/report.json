@@ -71,6 +71,7 @@
           "integrity_fail_count": {"type": "integer"},
           "outcomes": {"type": "object", "additionalProperties": {"type": "integer"}},
           "blocked_reach_attempts": {"type": "integer"},
+          "gate_config": {"$comment": "whether the gate read the protocol config at the base commit, with its hash; absent for an arm without a gate", "type": "string"},
           "guard_denies": {"$comment": "safety-hook denials over the arm (docs/12 row 6); the hook is identical in every arm", "type": "integer"},
           "overhead": {
             "$comment": "docs/12 commitment 7: measured hook overhead for this arm; null with overhead_reason when no run recorded hook wall time",

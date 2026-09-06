@@ -382,6 +382,17 @@ func (c *ClaudeCode) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOut
 	d["env_vars"] = envMap
 	if !withGate {
 		d["blocks_detail"] = BlocksDetail(nil, nil)
+	} else {
+		// Proof that the gate will read the protocol's config and not its
+		// own defaults. Until 2026-09-06 it read the defaults in every
+		// arm B run and nothing said so (dev run finding 1).
+		sha, present := GateConfigAtBase(ctx, in.Workspace)
+		d["gate_config_present"] = present
+		if present {
+			Set(d, "gate_config_sha256", sha, "")
+		} else {
+			Set(d, "gate_config_sha256", nil, "no .saga/config.toml at the base commit; the gate would run on its defaults")
+		}
 	}
 	// Claude Code retries inside the harness and emits no retry event in
 	// stream-json, so the bench records the terminal failure only
@@ -475,6 +486,42 @@ func BlocksDetail(shimHits, guardDenies *int) []any {
 	}
 }
 
+// commitStore amends the workspace's base commit to carry the staged
+// .saga/config.toml and .saga/contract.md, forced past the store's own
+// gitignore. The gate then reads at BASE: exactly what the bench staged,
+// and `gate_config_present` in the disclosure proves it did.
+func commitStore(ctx context.Context, ws string) error {
+	git := func(args ...string) error {
+		cmd := exec.CommandContext(ctx, "git", args...)
+		cmd.Dir = ws
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("git %s: %w\n%s", strings.Join(args, " "), err, out)
+		}
+		return nil
+	}
+	if err := git("add", "-f", ".saga/config.toml", ".saga/contract.md"); err != nil {
+		return err
+	}
+	// An amend, not a new commit: the contract's BASE: resolves to HEAD
+	// and the task's own base commit stays the thing the diff is taken
+	// against, so the graded diff is unchanged.
+	return git("commit", "-q", "--amend", "--no-edit", "--allow-empty")
+}
+
+// GateConfigAtBase returns the gate config as the gate itself reads it,
+// through `git show <rev>:.saga/config.toml`, and whether it was there.
+// The disclosure carries both, so an arm that silently ran on defaults
+// can never be graded as one that ran on the protocol's config.
+func GateConfigAtBase(ctx context.Context, ws string) (sha string, present bool) {
+	cmd := exec.CommandContext(ctx, "git", "show", "HEAD:.saga/config.toml")
+	cmd.Dir = ws
+	out, err := cmd.Output()
+	if err != nil || len(out) == 0 {
+		return "", false
+	}
+	return BytesSHA256(out), true
+}
+
 // stageShim writes the control arm's PATH shim (bench-spec 4.2): `saga`
 // logs its arguments to blocked.log and exits 127.
 func (c *ClaudeCode) stageShim(configDir string) error {
@@ -551,6 +598,21 @@ func (c *ClaudeCode) stageGate(ctx context.Context, in *PrepareInput) error {
 	if err := store.WriteFileAtomic(st.Path("contract.md"), contract, 0o644); err != nil {
 		return fmt.Errorf("contract: %w", err)
 	}
+	// The gate reads its config and contract from the base commit, not
+	// from the working tree: `gate.Load` calls `LoadConfig(root, base)`,
+	// which is `git show <base>:.saga/config.toml`. `saga init` gitignores
+	// .saga, so until now the staged `require_red = false` was in a file
+	// no commit carried, `LoadConfig` fell back to the defaults with
+	// Present false, and arm B ran with require_red ON and mode
+	// "minimal" in every run to 2026-09-06, which is what held three of
+	// the dev run's arm B runs at a block they could not clear. Reading
+	// the working tree instead would remove the property that an agent
+	// cannot loosen its own gate mid-run, so the fix is here: put the two
+	// files in the base commit before the agent starts.
+	if err := commitStore(ctx, in.Workspace); err != nil {
+		return err
+	}
+
 	// Baseline red with approval, in the agent's environment so the
 	// approval identity (which includes PATH) matches the agent's checks.
 	cmd := exec.CommandContext(ctx, sagaAbs, "gate", "check", "--approve", "--json")
