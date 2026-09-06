@@ -7,17 +7,20 @@ import (
 	"os/signal"
 	"path/filepath"
 
+	"github.com/ddh4r4m/saga/internal/bench/run"
 	"github.com/ddh4r4m/saga/internal/bench/task"
 	"github.com/ddh4r4m/saga/internal/cli"
+	"github.com/ddh4r4m/saga/internal/trace"
 )
 
-const benchUsage = `usage: saga bench <verify-task|run|report|compare>
+const benchUsage = `usage: saga bench <verify-task|run|report|reconcile|compare>
 
   verify-task <task-dir>... [--keep <dir>] [--static] [--json]
   run     --tasks <glob> --adapter <bare|replay|claude-code> [--k <n>] --out <dir>
           [--arm <id>] [--model <id>] [--seed <hex>] [--replay <patch>] [--budget <usd>]
           [--tier smoke|user|dev|publish] [--claude-bin <path>] [--saga-bin <path>]
   report  <run-dir> [--json]
+  reconcile   <archive-dir> --workspaces <kept-root> [--json]
   compare <run-dir-a> <run-dir-b> [--epsilon <x>] [--json]
 `
 
@@ -35,11 +38,47 @@ func (a *App) cmdBench(args []string) error {
 		return a.benchReport(args[1:])
 	case "compare":
 		return a.benchCompare(args[1:])
+	case "reconcile":
+		return a.benchReconcile(args[1:])
 	case "-h", "--help", "help":
 		fmt.Fprint(a.Stdout, benchUsage)
 		return nil
 	}
 	return cli.Errorf(cli.ExitUsage, "bench: unknown subcommand %q", args[0])
+}
+
+// benchReconcile is `saga bench reconcile <archive> --workspaces <root>`
+// (docs/12 row 13): it compares each run's trace ledger with the
+// harness's own accounting, in tokens and in cost. A run whose arm has
+// no hooks has no ledger and is listed as such rather than counted a
+// discrepancy.
+func (a *App) benchReconcile(args []string) error {
+	fs := a.flags("bench reconcile")
+	workspaces := fs.String("workspaces", "", "root of the kept run workspaces (saga bench run --keep); omit when the archive carries its own trace/ledger.jsonl")
+	asJSON := fs.Bool("json", false, "emit saga.bench.reconcile/1")
+	if err := parseFlags(fs, args); err != nil {
+		return err
+	}
+	dirs := positionals[fs]
+	if len(dirs) != 1 {
+		return cli.Errorf(cli.ExitUsage, "usage: saga bench reconcile <archive-dir> --workspaces <kept-root>")
+	}
+	prices := trace.DefaultPrices()
+	rep, err := run.Reconcile(dirs[0], *workspaces, prices)
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		return writeJSON(a.Stdout, rep)
+	}
+	fmt.Fprint(a.Stdout, rep.Text())
+	if rep.Sessions == 0 {
+		return cli.Errorf(cli.ExitUsage, "bench reconcile: no session had a ledger under %s", *workspaces)
+	}
+	if !rep.WithinToleranc {
+		return cli.Errorf(cli.ExitFinding, "bench reconcile: cost error exceeds %.0f%%", rep.Tolerance*100)
+	}
+	return nil
 }
 
 func signalContext() (context.Context, context.CancelFunc) {

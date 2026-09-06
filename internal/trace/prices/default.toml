@@ -40,12 +40,13 @@ source = "doc 06 A.1"
 [[model]]
 id = "claude-sonnet-5"
 vendor = "anthropic"
-in = 3.00
-out = 15.00
-cache_read = 0.30
-cache_write_5m = 3.75
-cache_write_1h = 6.00
-source = "doc 06 A.1"
+in = 2.00
+out = 10.00
+cache_read = 0.20
+cache_write_5m = 2.50
+cache_write_1h = 4.00
+source = "fit of claude-code 2.1.263 total_cost_usd over the 12 runs of bench/results/smoke-2026-09-06-2 (rank 4, residual under 1e-9); cache_write_5m assumed at 1.25 times input, the vendor's stated ratio, unidentified in the data"
+cache_write_5m_reason = "cache_write_5m assumed at 1.25 times input, the vendor's stated ratio, unidentified in the data: Claude Code writes 1h cache, so the component is zero on every observed run"
 
 [[model]]
 id = "claude-haiku-4-5-20251001"

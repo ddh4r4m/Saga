@@ -146,13 +146,13 @@ type Manifest struct {
 	BootstrapSeed         int64        `json:"bootstrap_seed"`
 	PriceTableSHA256      *string      `json:"price_table_sha256"`
 	AbstainListSHA256     string       `json:"abstain_list_sha256"`
-	ClaimsListSHA256      string       `json:"claims_list_sha256"`
+	ClaimsListSHA256      string       `json:"claims_list_sha256,omitempty"`
 	// AbandonLexiconSHA256 pins the closed reason lexicon that classed
 	// this run's ABANDON terminals (docs/12 row 16).
-	AbandonLexiconSHA256 string `json:"abandon_lexicon_sha256"`
+	AbandonLexiconSHA256 string `json:"abandon_lexicon_sha256,omitempty"`
 	// Interleaving names the execution order across arms; the rows'
 	// sequence numbers reconstruct it exactly (docs/12 row 4).
-	Interleaving string            `json:"interleaving"`
+	Interleaving string            `json:"interleaving,omitempty"`
 	Isolation    string            `json:"isolation"`
 	Images       map[string]string `json:"images"`
 	Host         Host              `json:"host"`

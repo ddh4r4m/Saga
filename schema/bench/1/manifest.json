@@ -1,7 +1,7 @@
 {
   "$comment": "saga.bench.manifest/1 (bench-spec section 8.1). The manifest hash is sha256 of the canonical JSON; it is computed before the first run, so spent_usd is null here and lives in the report.",
   "type": "object",
-  "required": ["schema", "created", "tier", "bench_version", "preregistration_sha256", "task_set", "arms", "models", "harnesses", "k", "run_seed", "bootstrap_seed", "price_table_sha256", "abstain_list_sha256", "abandon_lexicon_sha256", "interleaving", "isolation", "images", "host", "budget"],
+  "required": ["schema", "created", "tier", "bench_version", "preregistration_sha256", "task_set", "arms", "models", "harnesses", "k", "run_seed", "bootstrap_seed", "price_table_sha256", "abstain_list_sha256", "isolation", "images", "host", "budget"],
   "additionalProperties": false,
   "properties": {
     "schema": {"const": "saga.bench.manifest/1"},
@@ -83,6 +83,7 @@
     "price_table_sha256": {"type": ["string", "null"]},
     "claims_list_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
     "abstain_list_sha256": {"type": "string"},
+    "$comment_additive": "abandon_lexicon_sha256 and interleaving were added on 2026-09-06 and are written by every run since. They are not required: making them so would make every archive written before that date unreadable, and a manifest is a record of what a run recorded.",
     "abandon_lexicon_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
     "interleaving": {"enum": ["single-arm", "per-task-alternating"]},
     "isolation": {"enum": ["container", "worktree"]},

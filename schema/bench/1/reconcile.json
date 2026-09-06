@@ -1,0 +1,40 @@
+{
+  "$comment": "saga.bench.reconcile/1: the trace ledger against the harness's own accounting, per run (trace-spec section 3.4, docs/12 row 13). A run whose arm has no hooks has no ledger; it carries note \"no ledger\" and is excluded from the footer rather than counted a discrepancy.",
+  "$id": "https://saga.dev/schema/bench/1/reconcile",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["schema", "archive", "price_table", "rows", "sessions", "max_token_delta", "max_cost_error", "tolerance", "within_tolerance"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {"const": "saga.bench.reconcile/1"},
+    "archive": {"type": "string"},
+    "price_table": {"type": "string"},
+    "sessions": {"type": "integer", "minimum": 0},
+    "max_token_delta": {"type": "integer", "minimum": 0},
+    "max_cost_error": {"type": ["number", "null"], "minimum": 0},
+    "tolerance": {"type": "number", "exclusiveMinimum": 0},
+    "within_tolerance": {"type": "boolean"},
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["task", "arm", "i", "session", "ledger", "harness", "delta", "ledger_usd", "harness_usd", "ratio", "cost_error"],
+        "additionalProperties": false,
+        "properties": {
+          "task": {"type": "string"},
+          "arm": {"type": "string"},
+          "i": {"type": "integer", "minimum": 1},
+          "session": {"type": "string"},
+          "ledger": {"type": "object"},
+          "harness": {"type": "object"},
+          "delta": {"type": "object", "additionalProperties": {"type": "integer"}},
+          "ledger_usd": {"type": ["number", "null"]},
+          "harness_usd": {"type": ["number", "null"]},
+          "ratio": {"type": ["number", "null"]},
+          "cost_error": {"type": ["number", "null"]},
+          "note": {"type": "string"}
+        }
+      }
+    }
+  }
+}

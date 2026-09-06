@@ -43,6 +43,11 @@ type ModelPrice struct {
 	OpenWeight     bool         `toml:"open_weight"`
 	Source         string       `toml:"source"`
 	Note           string       `toml:"note"`
+	// CacheWrite5mReason records why a 5m cache-write price is an
+	// assumption rather than a measurement: Claude Code writes 1h cache,
+	// so the component is zero in every observation and its price is not
+	// identified by a fit.
+	CacheWrite5mReason string `toml:"cache_write_5m_reason"`
 }
 
 // LongContext is the tiered rate above a context size (Gemini style).

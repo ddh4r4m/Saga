@@ -238,6 +238,8 @@ Prices are USD per million tokens. Rules: a model id absent from the table costs
 | Google | none for API keys; Cloud Billing export on Vertex | per day | total tokens only; reconciliation marked `partial` |
 | Subscription plans (Max, Plus, Pro) | none | | reconciliation `unavailable`; the ledger is still shown as the only accounting the user has |
 
+**Offline reconciliation (the bench's path).** The Admin API route above is for live use. A bench archive is reconciled against the harness's own accounting instead, which needs no provider credentials: `saga bench reconcile <archive> [--workspaces <kept-root>]` sums each session's `ledger.jsonl`, compares it with the run row's usage component by component, prices the ledger from the pinned table and compares that with the harness's `total_cost_usd`, and reports the maximum token delta and cost error over the archive. It reads a ledger either from the kept workspace root or from `<run-dir>/trace/` inside the archive. A run whose arm has no hooks has no ledger and is excluded from the footer rather than counted a discrepancy. Emits `saga.bench.reconcile/1`.
+
 Output: `tokens_ledger`, `tokens_provider`, `error_pct` per field, and the largest unexplained session. Pre-registered tolerance for the M0 exit criterion: `|error_pct| ≤ 2` on every field where `usage.source ∈ {transcript, stream-json, proxy}`, computed over at least 20 sessions across 3 days. Divergence above tolerance is itself a finding (#46917 was found exactly this way) and is written as a `canary` event with `verdict: "billing_mismatch"`.
 
 ### 3.5 Per-component attribution

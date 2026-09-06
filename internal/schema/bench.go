@@ -7,4 +7,5 @@ func init() {
 	Registry["saga.bench.harness/1"] = "bench/1/harness.json"
 	Registry["saga.bench.manifest/1"] = "bench/1/manifest.json"
 	Registry["saga.bench.report/1"] = "bench/1/report.json"
+	Registry["saga.bench.reconcile/1"] = "bench/1/reconcile.json"
 }
