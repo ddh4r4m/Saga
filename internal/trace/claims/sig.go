@@ -193,6 +193,26 @@ func skipFlags(words []string) []string {
 	return words
 }
 
+// valueFlags are interpreter flags whose value is a separate token, so
+// that token does not end the leading run of flags.
+var valueFlags = map[string]bool{"-X": true, "-W": true, "-O": true}
+
+// leadingFlags returns the length of the run of flag tokens at the head
+// of words, counting the value of a flag that takes one.
+func leadingFlags(words []string) int {
+	i := 0
+	for i < len(words) {
+		switch {
+		case strings.HasPrefix(words[i], "-") && words[i] != "--":
+		case i > 0 && valueFlags[words[i-1]]:
+		default:
+			return i
+		}
+		i++
+	}
+	return i
+}
+
 // signatureOf returns the signature and the remaining tokens.
 func signatureOf(words []string) (string, []string) {
 	head := path.Base(words[0])
@@ -200,16 +220,28 @@ func signatureOf(words []string) (string, []string) {
 		head = a
 	}
 	rest := words[1:]
-	// `python -m pytest ...` signs as the module.
-	if head == "python" && len(rest) >= 2 && rest[0] == "-m" {
-		mod := rest[1]
-		if a, ok := aliases[mod]; ok {
-			mod = a
+	// An interpreter's own flags never hide the subcommand: `python -W
+	// error -m pytest` signs as pytest and `node --experimental-strip-
+	// types --test x` as `node --test`, exactly as the unflagged forms
+	// do. Two of six runs of the 2026-09-06 smoke invoked the runner
+	// this way and were read as "no test run".
+	if head == "python" {
+		for i, n := 0, leadingFlags(rest); i < n; i++ {
+			if rest[i] == "-m" && i+1 < len(rest) {
+				mod := rest[i+1]
+				if a, ok := aliases[mod]; ok {
+					mod = a
+				}
+				return mod, rest[i+2:]
+			}
 		}
-		return mod, rest[2:]
 	}
-	if head == "node" && len(rest) >= 1 && rest[0] == "--test" {
-		return "node --test", rest[1:]
+	if head == "node" {
+		for i, n := 0, leadingFlags(rest); i < n; i++ {
+			if rest[i] == "--test" {
+				return "node --test", append(append([]string{}, rest[:i]...), rest[i+1:]...)
+			}
+		}
 	}
 	if multiplexers[head] {
 		i := 0

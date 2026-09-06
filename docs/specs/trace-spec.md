@@ -460,7 +460,7 @@ One lookup per claim in this session's record (the current session file, or the 
 | `read <path>` | a read-class `tool_call` (guard-spec §2.4 `read`; Read, Grep, Glob without guard) or an `edit` names the path | guard absent and the only reads this session were Bash | no tool call this session names the path and the path exists |
 | `tests_pass` | §5.8 | §5.8 | §5.8 |
 
-Command normalisation is shape-spec §2.2's signature rule (wrapper prefixes, `cd x &&`, variable assignments and shell prefixes stripped, whitespace collapsed); a claimed command matches an executed one when the signatures are equal and every non-flag argument of the claim appears in the executed argv. Quoting style, case of flags and flag order do not matter. The rule is fixed and tested (§11.1).
+Command normalisation is shape-spec §2.2's signature rule (wrapper prefixes, `cd x &&`, variable assignments and shell prefixes stripped, whitespace collapsed); a claimed command matches an executed one when the signatures are equal and every non-flag argument of the claim appears in the executed argv. An interpreter's own leading flags never hide the subcommand: `node <flags> --test <args>` signs as `node --test` and `python <flags> -m <module> <args>` as the module, exactly as the unflagged forms do (found 2026-09-06: `node --experimental-strip-types --test …` signed as `node`, so a real test run read as `no_test_run` and contradicted a true `tests_pass` claim on two of six smoke runs). Quoting style, case of flags and flag order do not matter. The rule is fixed and tested (§11.1).
 
 ### 5.8 Claim-versus-diff consistency
 

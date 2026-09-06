@@ -116,3 +116,38 @@ func TestTestFamilyAndSummary(t *testing.T) {
 		t.Errorf("result text %q", got)
 	}
 }
+
+// TestSignaturePastLeadingFlags (brief 2026-09-06-test-command-past-flags):
+// an interpreter's own flags must not hide the subcommand. ts-0005 A/2 of
+// the 2026-09-06 smoke ran `node --experimental-strip-types --test …` and
+// was read as "no test run", a false contradiction on an oracle-pass run.
+func TestSignaturePastLeadingFlags(t *testing.T) {
+	for _, c := range []struct {
+		raw, sig string
+		args     []string
+		test     bool
+	}{
+		{"node --experimental-strip-types --test test/retry.test.ts 2>&1 | tail -30", "node --test", []string{"test/retry.test.ts", "tail"}, true},
+		{`node --test --test-reporter=tap "test/**/*.test.ts"`, "node --test", []string{"test/**/*.test.ts"}, true},
+		{"node --test", "node --test", []string{}, true},
+		{"node --experimental-strip-types src/index.ts", "node", []string{"src/index.ts"}, false},
+		{"node --experimental-strip-types --test-only src/x.ts", "node", []string{"src/x.ts"}, false},
+		{"python -W error -m pytest -q", "pytest", []string{}, true},
+		{"python3 -X dev -m pytest tests/", "pytest", []string{"tests/"}, true},
+		{"python -u -m unittest discover", "unittest", []string{"discover"}, true},
+		{"python -m http.server 8000", "http.server", []string{"8000"}, false},
+		{`python -c "import x"`, "python", []string{"import x"}, false},
+		{"python script.py -m pytest", "python", []string{"script.py", "pytest"}, false},
+	} {
+		got := ParseCommand(c.raw)
+		if got.Sig != c.sig {
+			t.Errorf("%q: sig %q, want %q", c.raw, got.Sig, c.sig)
+		}
+		if !sameSet(got.Args, c.args) {
+			t.Errorf("%q: args %v, want %v", c.raw, got.Args, c.args)
+		}
+		if IsTestCommand(got) != c.test {
+			t.Errorf("%q: test family %v, want %v", c.raw, !c.test, c.test)
+		}
+	}
+}

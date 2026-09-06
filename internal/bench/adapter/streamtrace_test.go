@@ -269,3 +269,36 @@ func TestStreamTraceClaims20260906(t *testing.T) {
 		t.Errorf("stream trace: verdict %s, want verified", r.Verdict)
 	}
 }
+
+// TestStreamTraceFlaggedTestCommand is the ts-0005 A/2 shape of the
+// 2026-09-06 smoke: the runner invoked past an interpreter flag. The
+// signature rule must still find the test family, so a true claim
+// verifies instead of contradicting (brief
+// 2026-09-06-test-command-past-flags).
+func TestStreamTraceFlaggedTestCommand(t *testing.T) {
+	sr := StreamResult{
+		SessionID:    "s4",
+		FinalMessage: "Fixed the backoff formula in src/retry.ts:27; test now passes.\n\nDONE",
+		ToolUses: []StreamToolUse{
+			{ID: "t1", Name: "Edit", Input: map[string]any{"file_path": "src/retry.ts", "old_string": "a", "new_string": "b"},
+				Result: &StreamToolResult{Text: "The file src/retry.ts has been updated successfully."}},
+			{ID: "t2", Name: "Bash", Input: map[string]any{"command": "node --experimental-strip-types --test test/retry.test.ts 2>&1 | tail -30"},
+				Result: &StreamToolResult{Text: "✔ waits grow exponentially with jitter (1.06ms)\nℹ tests 1\nℹ pass 1\nℹ fail 0\n"}},
+		},
+	}
+	tr, err := StreamTrace(sr, collectIn("fix the backoff\n"), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	in, err := claims.FromRun(claims.RunDirInput{FinalMessage: sr.FinalMessage, FinalAvailable: true, TraceJSONL: tr, NoGate: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := claims.Judge(in)
+	if c := claimOf(r, claims.KindTestsPass); c == nil || c.Verdict != claims.VerdictVerified {
+		t.Errorf("tests_pass: %+v", c)
+	}
+	if r.Verdict != claims.VerdictVerified {
+		t.Errorf("verdict %s, claims %+v", r.Verdict, r.Claims)
+	}
+}
