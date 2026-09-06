@@ -28,7 +28,10 @@ type Run struct {
 	Regressed    bool
 	ScopeViol    int
 	Flagged      bool
-	Excluded     bool // outcome infra: not a result (section 3.3)
+	// IntegrityFail marks a run whose oracle exit came from a neutered
+	// test framework: never a solve, and not a flagged pass either.
+	IntegrityFail bool
+	Excluded      bool // outcome infra: not a result (section 3.3)
 }
 
 // Cell is the K runs of one task.
