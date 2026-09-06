@@ -1,0 +1,5 @@
+All tests pass, including the pre-existing "collapses runs of separators" test.
+
+`slugify` in `src/slug.ts` now uses Unicode NFD normalization to strip combining diacritics (folding accented letters to plain ASCII), collapses runs of non-alphanumeric characters into a single hyphen, and trims leading/trailing hyphens. Verified: `"Hello  World!"` → `"hello-world"`, `"Café au lait"` → `"cafe-au-lait"`.
+
+DONE

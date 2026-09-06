@@ -1,0 +1,3 @@
+All cases produce correctly collapsed, edge-trimmed, ASCII-folded slugs, and existing tests pass.
+
+DONE

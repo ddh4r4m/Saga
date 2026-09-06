@@ -1,0 +1,3 @@
+All gates pass. Fixed `slugify` in `src/slug.ts:4` to NFKD-normalize and strip combining diacritics (accent folding), collapse separator runs with `+`, and trim leading/trailing hyphens — signature unchanged.
+
+DONE

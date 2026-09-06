@@ -1,0 +1,3 @@
+Fixed the wait calculation in `src/retry.ts:27` to `baseMs * 2 ** i * (1 + random())`, matching the documented exponential-backoff-with-jitter formula. Test now passes.
+
+DONE
