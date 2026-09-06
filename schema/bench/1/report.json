@@ -71,6 +71,7 @@
           "integrity_fail_count": {"type": "integer"},
           "outcomes": {"type": "object", "additionalProperties": {"type": "integer"}},
           "blocked_reach_attempts": {"type": "integer"},
+          "approvals": {"$comment": "ADR 0010: where a gate arm's baseline approvals came from, and that no run created one", "type": "string"},
           "gate_config": {"$comment": "whether the gate read the protocol config at the base commit, with its hash; absent for an arm without a gate", "type": "string"},
           "guard_denies": {"$comment": "safety-hook denials over the arm (docs/12 row 6); the hook is identical in every arm", "type": "integer"},
           "overhead": {

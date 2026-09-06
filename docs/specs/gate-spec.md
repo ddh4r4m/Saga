@@ -695,6 +695,8 @@ Gate's keys live under the `[gate]` table of the shared `.saga/config.toml` (con
 | Hook install | Done by `saga install` (contracts §9): atomic write with `.saga.bak`, preserves unrelated hooks, exact managed marker, `saga uninstall` removes only marked entries and `saga gate uninstall` only gate's manifest rows. Embeds absolute paths, so shared-settings targets are non-portable. |
 | CI | No secrets on the gate job; `contents: read`; base-ref config; `reverify` trusts nothing committed. |
 
+**Corpus pre-approval (ADR 0010).** The bench approves a frozen task set once rather than in every run. **Nothing in the table above changes.** `saga bench approve-corpus` runs this same `check --approve`, under this same refusal from an agent shell, and records this same identity, so a later run of that corpus finds the record and proceeds. What changed is on the bench's side: its `saga` now sits at a path derived from the binary's hash, so the `PATH` component of the identity is stable across runs of one binary and different for another, and the store is `~/.saga/bench/approved/<taskset-sha256>/`, owner-private and outside every workspace, which is what the approval-store row already requires of any `SAGA_APPROVAL_DIR`. A bench run calls `check` **without** `--approve`; a gate with no record is the dry run of the table above, exit 4, which the runner records as an excluded run and never as a result. A binary change or a corpus edit invalidates the records by construction, because both are in the key.
+
 **What the checker cannot protect against**, stated as plainly as unlazy states it:
 
 | # | Gap |

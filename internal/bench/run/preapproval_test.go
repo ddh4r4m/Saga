@@ -150,3 +150,72 @@ func TestGateArmWithoutApprovalIsInfra(t *testing.T) {
 		t.Errorf("reason %q", deref(row.OutcomeReason))
 	}
 }
+
+// TestApproveCorpusFillsTheStoreAndIsIdempotent (ADR 0010 decision 2):
+// the owner's one act writes one record per gate, and running it again
+// changes nothing. It is driven with a saga stand-in, because the real
+// command is a human act and this test runs under a harness; what the
+// real `gate check --approve` records is internal/gate's own suite.
+func TestApproveCorpusFillsTheStoreAndIsIdempotent(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
+	needRunners(t)
+	t.Setenv("SAGA_HOME", t.TempDir())
+	tk := loadTasks(t, "ts-0001-slug-collapse")[0]
+	set := "sha256:" + strings.Repeat("ef", 32)
+	store, err := adapter.CorpusStoreDir(set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sagaBin := approveCapableSaga(t)
+
+	approve := func(t *testing.T, check bool) *adapter.ApproveCorpusResult {
+		t.Helper()
+		root := t.TempDir()
+		c := &adapter.ClaudeCode{Binary: "/nonexistent/claude", Version: "test", SagaBinary: sagaBin}
+		res, err := c.ApproveCorpus(context.Background(), &adapter.ApproveCorpusInput{
+			Task: tk, Workspace: filepath.Join(root, "ws"), ConfigDir: root,
+			CorpusStore: store, Check: check,
+		})
+		if err != nil {
+			t.Fatalf("approve-corpus: %v", err)
+		}
+		return res
+	}
+
+	// Before: the check reports the gap and writes nothing.
+	res := approve(t, true)
+	if len(res.Missing) == 0 {
+		t.Error("--check reported no gap on an empty store")
+	}
+	if entries, _ := os.ReadDir(store); len(entries) != 0 {
+		t.Errorf("--check wrote %d records; it must write none", len(entries))
+	}
+
+	// The owner's act fills it.
+	res = approve(t, false)
+	if len(res.Missing) != 0 {
+		t.Errorf("still missing after approving: %v", res.Missing)
+	}
+	if res.Approved == 0 {
+		t.Error("approved nothing")
+	}
+	first, err := os.ReadDir(store)
+	if err != nil || len(first) == 0 {
+		t.Fatalf("store after approving: %v %v", first, err)
+	}
+
+	// Again: same records, nothing added, and the check is now clean.
+	approve(t, false)
+	second, err := os.ReadDir(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(second) != len(first) {
+		t.Errorf("re-running wrote %d records, was %d; approval must be idempotent", len(second), len(first))
+	}
+	if res := approve(t, true); len(res.Missing) != 0 {
+		t.Errorf("--check still reports %v after approving", res.Missing)
+	}
+}

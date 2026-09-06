@@ -285,26 +285,69 @@ func TestLauncherPassesAUUIDSessionID(t *testing.T) {
 	}
 }
 
-// TestLaunchersRefuseInsideAnAgent: both launchers are human acts. The
-// smoke launcher's baseline approval is refused inside an agent shell,
-// and the probes spend money, so neither may run from a harness session.
-func TestLaunchersRefuseInsideAnAgent(t *testing.T) {
+// TestProbesLauncherRefusesInsideAnAgent: the probe launcher spends
+// money on a live model and stays a human act.
+func TestProbesLauncherRefusesInsideAnAgent(t *testing.T) {
 	needTools(t)
 	root, err := filepath.Abs("..")
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, script := range []string{"harness-probes.sh", "bench-smoke.sh"} {
-		cmd := exec.Command("bash", filepath.Join(root, "scripts", script))
-		cmd.Dir = root
-		cmd.Env = append(os.Environ(), "CLAUDECODE=1", "OUT="+t.TempDir())
-		b, err := cmd.CombinedOutput()
-		if err == nil {
-			t.Errorf("%s ran inside an agent shell:\n%s", script, b)
-			continue
-		}
-		if !strings.Contains(string(b), "plain terminal") {
-			t.Errorf("%s: refusal should name the reason:\n%s", script, b)
-		}
+	cmd := exec.Command("bash", filepath.Join(root, "scripts", "harness-probes.sh"))
+	cmd.Dir = root
+	cmd.Env = append(os.Environ(), "CLAUDECODE=1", "OUT="+t.TempDir())
+	b, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Errorf("harness-probes.sh ran inside an agent shell:\n%s", b)
+	}
+	if !strings.Contains(string(b), "plain terminal") {
+		t.Errorf("the refusal should name the reason:\n%s", b)
+	}
+}
+
+// TestSmokeLauncherRefusesOnlyForAMissingApproval (ADR 0010 decision 4):
+// the smoke launcher used to refuse under any harness marker, because
+// arm B's baseline approval was a human act inside every run. It is not
+// any more: the owner approves the corpus once, and the launcher refuses
+// under a marker only when a task lacks a record for the binary it just
+// built. The refusal names the command that fixes it.
+func TestSmokeLauncherRefusesOnlyForAMissingApproval(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
+	needTools(t)
+	root, err := filepath.Abs("..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A stub `claude` so the launcher gets past its tool checks, a dummy
+	// token so it gets past the login check, and a scratch SAGA_HOME so
+	// the corpus store is empty whatever the machine has approved.
+	stubDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(stubDir, "claude"), []byte("#!/bin/sh\necho '0.0.0-stub'\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	env := append(os.Environ(),
+		"CLAUDECODE=1",
+		"OUT="+t.TempDir(),
+		"SAGA_HOME="+t.TempDir(),
+		"CLAUDE_CODE_OAUTH_TOKEN=stub-not-a-real-token",
+		"PATH="+stubDir+string(os.PathListSeparator)+os.Getenv("PATH"),
+		"TASKS="+filepath.Join(root, "bench", "tasks", "ts-0001-slug-collapse"),
+	)
+	cmd := exec.Command("bash", filepath.Join(root, "scripts", "bench-smoke.sh"))
+	cmd.Dir = root
+	cmd.Env = env
+	b, _ := cmd.CombinedOutput()
+	out := string(b)
+	// It must refuse, and for the approval, not for the marker alone.
+	if !strings.Contains(out, "corpus is not approved") {
+		t.Errorf("the launcher did not refuse for a missing approval:\n%s", out)
+	}
+	if !strings.Contains(out, "approve-corpus") {
+		t.Errorf("the refusal does not name the command that fixes it:\n%s", out)
+	}
+	if strings.Contains(out, "the baseline approval is a human act") {
+		t.Errorf("the launcher still refuses for the marker alone:\n%s", out)
 	}
 }

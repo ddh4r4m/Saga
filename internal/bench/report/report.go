@@ -84,6 +84,10 @@ type ArmStats struct {
 	// 6), so this counts what the agent tried, not what the arm allowed;
 	// on the controls C-01 to C-40 it is zero.
 	GuardDenies int `json:"guard_denies"`
+	// Approvals says where a gate arm's baseline approvals came from and
+	// states that no run created one (ADR 0010). Empty for an arm
+	// without a gate.
+	Approvals string `json:"approvals,omitempty"`
 	// GateConfig says whether the gate read the protocol's config at the
 	// base commit or fell back to its own defaults, with the config hash
 	// when it was there. Empty for an arm without a gate. Until
@@ -439,6 +443,7 @@ func Build(m *run.Manifest, hash string, rows []run.Row, dir string) *Report {
 	r := newReport(m, hash)
 	a := ArmFrom(m, rows)
 	a.GateConfig = gateConfigNote(dir, rows)
+	a.Approvals = approvalsNote(dir, rows)
 	r.Arms[arm] = a
 	r.armOrder = []string{arm}
 	if len(m.Arms) > 0 {
@@ -591,6 +596,11 @@ func (r *Report) Markdown() string {
 	for _, id := range order {
 		if a := r.Arms[id]; a != nil && a.GateConfig != "" {
 			w("- arm %s gate config: %s", id, a.GateConfig)
+		}
+	}
+	for _, id := range order {
+		if a := r.Arms[id]; a != nil && a.Approvals != "" {
+			w("- arm %s approvals: %s", id, a.Approvals)
 		}
 	}
 	w("- isolation: %s", deref(r.Isolation))
@@ -1007,6 +1017,65 @@ func primaryProvenance(r *Report) string {
 // arm that fell back to the gate's defaults ran a different treatment
 // than the manifest names, and the setup section is where a reader looks
 // for what was actually run (2026-09-06 dev run finding 1).
+// approvalsNote reads a run's disclosure and says where the arm's
+// approvals came from. The sentence a reader needs is that the run
+// approved nothing, so it is stated rather than left to be inferred
+// from an absence.
+func approvalsNote(dir string, rows []run.Row) string {
+	for _, r := range rows {
+		matches, _ := filepath.Glob(filepath.Join(dir, r.Task, "*", r.Harness, r.Arm, fmt.Sprint(r.I), "harness.json"))
+		for _, m := range matches {
+			raw, err := os.ReadFile(m)
+			if err != nil {
+				continue
+			}
+			var d struct {
+				Store *struct {
+					Kind      string `json:"kind"`
+					TaskSet   string `json:"taskset_sha256"`
+					ByRun     bool   `json:"created_by_run"`
+					Approvals []struct {
+						Gate string `json:"gate"`
+						By   string `json:"approved_by"`
+					} `json:"approvals"`
+				} `json:"approval_store"`
+			}
+			if json.Unmarshal(raw, &d) != nil || d.Store == nil {
+				continue
+			}
+			who := map[string]bool{}
+			for _, a := range d.Store.Approvals {
+				if a.By != "" {
+					who[a.By] = true
+				}
+			}
+			names := make([]string, 0, len(who))
+			for n := range who {
+				names = append(names, n)
+			}
+			sort.Strings(names)
+			note := d.Store.Kind + " " + shortHash(d.Store.TaskSet)
+			if len(names) > 0 {
+				note += ", approved by " + strings.Join(names, ", ")
+			}
+			if d.Store.ByRun {
+				return note + ", **and a run created approvals**, which the protocol forbids"
+			}
+			return note + ", no run approved anything"
+		}
+	}
+	return ""
+}
+
+// shortHash is the first 16 hex characters of a sha256 string.
+func shortHash(h string) string {
+	h = strings.TrimPrefix(h, "sha256:")
+	if len(h) > 16 {
+		h = h[:16]
+	}
+	return "sha256:" + h
+}
+
 func gateConfigNote(dir string, rows []run.Row) string {
 	for _, r := range rows {
 		matches, _ := filepath.Glob(filepath.Join(dir, r.Task, "*", r.Harness, r.Arm, fmt.Sprint(r.I), "harness.json"))

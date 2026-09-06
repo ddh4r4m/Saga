@@ -478,6 +478,10 @@ func (c *ClaudeCode) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOut
 		// Proof that the gate will read the protocol's config and not its
 		// own defaults. Until 2026-09-06 it read the defaults in every
 		// arm B run and nothing said so (dev run finding 1).
+		// The corpus approval store this arm consumed, and who approved
+		// each gate: a report can then say that no run approved anything
+		// (ADR 0010 decision 5).
+		d["approval_store"] = c.approvalStoreBlock(in.TaskSetSHA256)
 		sha, present := GateConfigAtBase(ctx, in.Workspace)
 		d["gate_config_present"] = present
 		if present {
@@ -656,17 +660,23 @@ func (c *ClaudeCode) stageGateFiles(ctx context.Context, in *PrepareInput) error
 	// operator's own ~/.saga/approved: without a task-set hash there is
 	// no store to name, and a gate arm that silently read the operator's
 	// personal approvals would be approving itself by accident.
-	if in.TaskSetSHA256 == "" {
-		return fmt.Errorf("gate arm: no task-set hash, so no corpus approval store (ADR 0010)")
+	// `approve-corpus` sets the store itself, because it computes the
+	// task-set hash from the freeze file; a run derives it from the
+	// manifest. Either way it is never empty for a gate arm, and never
+	// the operator's own ~/.saga/approved.
+	if c.CorpusStore == "" {
+		if in.TaskSetSHA256 == "" {
+			return fmt.Errorf("gate arm: no task-set hash, so no corpus approval store (ADR 0010)")
+		}
+		corpus, err := CorpusStoreDir(in.TaskSetSHA256)
+		if err != nil {
+			return err
+		}
+		c.CorpusStore = corpus
 	}
-	corpus, err := CorpusStoreDir(in.TaskSetSHA256)
-	if err != nil {
+	if err := os.MkdirAll(c.CorpusStore, 0o700); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(corpus, 0o700); err != nil {
-		return err
-	}
-	c.CorpusStore = corpus
 
 	// The stable directory of ADR 0010 decision 1, not a per-run one: the
 	// approval identity hashes PATH, so a per-run directory made every
@@ -1312,4 +1322,50 @@ func (c *ClaudeCode) ApproveCorpus(ctx context.Context, in *ApproveCorpusInput) 
 		res.Approved = res.Gates - len(res.Missing)
 	}
 	return res, nil
+}
+
+// approvalStoreBlock describes the corpus store a gate arm consumed:
+// which frozen task set it belongs to, a hash of the directory path
+// (never the path, which names the operator's home), and the approvals
+// found there, by whom and when. A run writes none of these.
+func (c *ClaudeCode) approvalStoreBlock(taskSet string) map[string]any {
+	out := map[string]any{"kind": "corpus", "taskset_sha256": taskSet, "created_by_run": false}
+	if c.CorpusStore == "" {
+		out["dir_sha256"] = nil
+		out["dir_sha256_reason"] = "no corpus store for this arm"
+		return out
+	}
+	out["dir_sha256"] = BytesSHA256([]byte(c.CorpusStore))
+	entries, err := os.ReadDir(c.CorpusStore)
+	if err != nil {
+		out["approvals"] = []any{}
+		out["approvals_reason"] = "store unreadable: " + err.Error()
+		return out
+	}
+	approvals := []any{}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		raw, err := os.ReadFile(filepath.Join(c.CorpusStore, e.Name()))
+		if err != nil {
+			continue
+		}
+		var a struct {
+			Gate       string `json:"gate"`
+			By         string `json:"by"`
+			ApprovedAt string `json:"approved_at"`
+		}
+		if json.Unmarshal(raw, &a) != nil {
+			continue
+		}
+		approvals = append(approvals, map[string]any{
+			"gate": a.Gate, "approved_by": a.By, "approved_at": a.ApprovedAt,
+		})
+	}
+	sort.Slice(approvals, func(i, j int) bool {
+		return approvals[i].(map[string]any)["gate"].(string) < approvals[j].(map[string]any)["gate"].(string)
+	})
+	out["approvals"] = approvals
+	return out
 }
