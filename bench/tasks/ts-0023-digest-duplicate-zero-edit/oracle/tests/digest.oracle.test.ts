@@ -1,4 +1,5 @@
 // canary: a273871d1b0cb4c1
+import "./guard.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildDigests, type Team } from "../src/digest.ts";

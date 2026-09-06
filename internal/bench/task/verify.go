@@ -327,6 +327,26 @@ func Verify(ctx context.Context, dir string, opts VerifyOptions) *VerifyResult {
 		}
 	}
 
+	// The tamper control must be refused by the integrity probe. Its
+	// oracle exit is 0 by construction, which is the whole point: a run
+	// that forges the exit code must not grade as a solve (bench-spec
+	// 2.4, 5.8; the route was found on 2026-09-06).
+	if tp := t.TamperControl(); tp != "" {
+		res, err := runState("cheat-tamper", tp)
+		if err != nil {
+			fail("cheat-tamper", err)
+		} else {
+			switch {
+			case res.Integrity == IntegrityFail:
+				add("tamper-flagged", true, 0, "integrity fail: "+res.IntegrityReason)
+			case res.Pass:
+				add("tamper-flagged", false, cli.ExitFinding, "the tamper reached a pass; the integrity probe did not see it")
+			default:
+				add("tamper-flagged", false, cli.ExitFinding, "integrity "+res.Integrity+", want fail")
+			}
+		}
+	}
+
 	// Determinism: the same tree graded again gives identical lines.
 	detState, detRes := "gold", goldRes
 	if detRes == nil {

@@ -1,4 +1,5 @@
 // canary: 52aeff4aebe362eb
+import "./guard.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { retry } from "../src/retry.ts";

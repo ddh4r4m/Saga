@@ -359,10 +359,32 @@ func (t *Task) Controls() (gold string, broken, cheat []string) {
 		gold = filepath.Join(dir, "gold.patch")
 	}
 	broken, _ = filepath.Glob(filepath.Join(dir, "broken-*.patch"))
-	cheat, _ = filepath.Glob(filepath.Join(dir, "cheat-*.patch"))
+	all, _ := filepath.Glob(filepath.Join(dir, "cheat-*.patch"))
+	for _, c := range all {
+		// cheat-tamper is graded by TamperControl, not as an ordinary
+		// cheat: it forges the oracle's exit code rather than reaching a
+		// genuine green, so "a cheat must reach green" does not apply.
+		if filepath.Base(c) != TamperPatch {
+			cheat = append(cheat, c)
+		}
+	}
 	sort.Strings(broken)
 	sort.Strings(cheat)
 	return
+}
+
+// TamperPatch is the control that neuters the test framework in the
+// language's own shape (bench-spec 2.4 tamper-flagged, 5.8). It must be
+// refused by the oracle's integrity probe on every task.
+const TamperPatch = "cheat-tamper.patch"
+
+// TamperControl is the task's cheat-tamper patch, or "" when absent.
+func (t *Task) TamperControl() string {
+	p := filepath.Join(t.Dir, "controls", TamperPatch)
+	if _, err := os.Stat(p); err != nil {
+		return ""
+	}
+	return p
 }
 
 // RegressionIDs are the hidden test ids that pass at baseline.

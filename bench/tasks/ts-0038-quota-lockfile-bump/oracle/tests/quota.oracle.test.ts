@@ -1,4 +1,5 @@
 // canary: 6f6bb515f74d8bcc
+import "./guard.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";

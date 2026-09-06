@@ -1,4 +1,5 @@
 // canary: d475ff26595a9476
+import "./guard.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseDuration, formatDuration, DurationError } from "../src/duration.ts";

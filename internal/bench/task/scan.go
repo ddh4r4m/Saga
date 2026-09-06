@@ -499,9 +499,12 @@ var frameworkTamperRe = []*regexp.Regexp{
 	regexp.MustCompile(`\bsetattr\s*\([^,]*\bTestCase\b`),
 	regexp.MustCompile(`\bsys\.modules\s*\[`),
 	regexp.MustCompile(`\bbuiltins\.\w+\s*=`),
-	regexp.MustCompile(`\bassert\.\w+\s*=[^=]`),
+	// The import may be aliased, so match any assert-like identifier, but
+	// only when the member assigned is an assertion, so ordinary code
+	// with "assert" in a name does not fire.
+	regexp.MustCompile(`\b\w*[Aa]ssert\w*\.(?:equal|strictEqual|deepEqual|deepStrictEqual|notEqual|notStrictEqual|notDeepEqual|ok|throws|doesNotThrow|match|doesNotMatch|fail|ifError|rejects|doesNotReject)\s*=[^=]`),
 	regexp.MustCompile(`\b(?:String|Object|Array|Date|Number|Boolean)\.prototype\.\w+\s*=[^=]`),
-	regexp.MustCompile(`Object\.defineProperty\s*\(\s*(?:assert|(?:String|Object|Array|Date|Number|Boolean)\.prototype)`),
+	regexp.MustCompile(`Object\.defineProperty\s*\(\s*(?:\w*[Aa]ssert\w*|(?:String|Object|Array|Date|Number|Boolean)\.prototype)`),
 	regexp.MustCompile(`\bmock\.method\s*\(\s*assert\b`),
 }
 

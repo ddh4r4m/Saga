@@ -1,4 +1,5 @@
 // canary: 9d0a1caa380d8582
+import "./guard.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";

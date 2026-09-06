@@ -1,4 +1,5 @@
 // canary: 79096aee991b23d5
+import "./guard.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dispatchAll } from "../src/dispatch.ts";

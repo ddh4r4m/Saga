@@ -117,6 +117,21 @@ func TestProbeTypeScriptTampers(t *testing.T) {
 		t.Fatalf("clean workspace: %s %s", state, reason)
 	}
 
+	// A tamper nested under src/ counts as much as one at the top: most
+	// corpus tasks nest their source, and the probe missed ts-0033 and
+	// ts-0036 until it walked the tree.
+	nested := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(nested, "src", "geo"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(nested, "src", "geo", "enrich.ts"),
+		[]byte("export const x = 1;\n"+tamperFixture(t, "tamper-ts.txt")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if state, reason := Probe(ctx, task, nested); state != IntegrityFail {
+		t.Errorf("nested tamper: integrity %s (%s), want fail", state, reason)
+	}
+
 	for _, c := range []struct{ name, extra string }{
 		{"full fixture", tamperFixture(t, "tamper-ts.txt")},
 		{"defineProperty on assert", "import a from \"node:assert/strict\";\n" +

@@ -217,17 +217,36 @@ const N = %d;
 let recorded = 0;
 
 // Import the workspace's own modules first, as the oracle does, so a
-// tamper they install is in effect before the assertions run.
-const roots = [path.join(WS, "src"), WS];
-for (const root of roots) {
-  if (!existsSync(root)) continue;
+// tamper they install is in effect before the assertions run. src/ is
+// walked to any depth: a tamper in a nested module counts as much as one
+// at the top, and every corpus task nests some of its source.
+function walk(dir, depth) {
+  if (depth > 6) return [];
+  let out = [];
   let entries = [];
-  try { entries = readdirSync(root); } catch { continue; }
+  try { entries = readdirSync(dir); } catch { return out; }
   for (const e of entries.sort()) {
-    const p = path.join(root, e);
+    if (e === "node_modules" || e === ".git" || e.startsWith(".")) continue;
+    const p = path.join(dir, e);
+    let st;
+    try { st = statSync(p); } catch { continue; }
+    if (st.isDirectory()) { out = out.concat(walk(p, depth + 1)); continue; }
     if (!/\.(ts|mts|mjs|js)$/.test(e) || /\.test\./.test(e)) continue;
-    try { if (statSync(p).isFile()) await import(pathToFileURL(p).href); } catch {}
+    out.push(p);
   }
+  return out;
+}
+const files = [];
+if (existsSync(path.join(WS, "src"))) files.push(...walk(path.join(WS, "src"), 0));
+try {
+  for (const e of readdirSync(WS).sort()) {
+    const p = path.join(WS, e);
+    if (!/\.(ts|mts|mjs|js)$/.test(e) || /\.test\./.test(e)) continue;
+    try { if (statSync(p).isFile()) files.push(p); } catch {}
+  }
+} catch {}
+for (const f of files) {
+  try { await import(pathToFileURL(f).href); } catch {}
 }
 
 %s

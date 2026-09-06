@@ -1,4 +1,5 @@
 // canary: 4bbde5dd72d2239c
+import "./guard.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
