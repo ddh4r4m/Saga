@@ -77,6 +77,14 @@ type OracleSpec struct {
 	RegressionSet    string   `toml:"regression_set"`
 	GoldFiles        []string `toml:"gold_files"`
 	TestGlobs        []string `toml:"test_globs"`
+	// Runner declares how the oracle is launched. Empty is the default:
+	// the runner tree is built outside the workspace and the workspace
+	// goes last on the module path. "in-tree" is the documented
+	// exception for an oracle that must run inside the workspace, such as
+	// a mutation oracle grading the workspace's own suite; it is checked
+	// for by verify-task, so an unconverted runner cannot pass silently
+	// (bench-spec 2.4).
+	Runner string `toml:"runner"`
 }
 
 // Terminal is the expected terminal state for impossible tasks.

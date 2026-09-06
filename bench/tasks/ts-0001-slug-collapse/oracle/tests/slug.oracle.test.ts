@@ -1,4 +1,5 @@
 // canary: 13c4fae5008836ad
+import "./guard.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { slugify } from "../src/slug.ts";

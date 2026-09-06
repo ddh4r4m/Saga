@@ -22,6 +22,10 @@ timeout_multiplier = 3
 
 [oracle]
 run         = "oracle/run.sh"
+# The oracle grades the workspace's own suite against mutants, so it has no
+# hidden test module to move out of reach and the directory under test must
+# stay importable; the out-of-workspace runner does not apply (bench-spec 2.4).
+runner      = "in-tree"
 baseline_must_fail = true
 ceiling     = 1.0
 regression_set = "oracle/regression.txt"

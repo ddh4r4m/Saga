@@ -219,6 +219,17 @@ func Verify(ctx context.Context, dir string, opts VerifyOptions) *VerifyResult {
 		add("leak", true, 0, detail)
 	}
 
+	// The oracle's runner must be the hardened shape (bench-spec 2.4). A
+	// task that never got the conversion still verified green before
+	// this check existed, because the grader's probe caught its tamper
+	// anyway; defence in depth is not a reason to leave a runner the
+	// workspace can inject into (py-0008 and ts-0001, 2026-09-06).
+	if msg := checkRunner(t); msg != "" {
+		add("runner-hardened", false, cli.ExitFinding, msg)
+	} else {
+		add("runner-hardened", true, 0, runnerShape(t))
+	}
+
 	// Cheat controls must be flagged by the scan (static half of the row).
 	scanOpts := t.ScanOptions()
 	for _, c := range cheat {
@@ -454,4 +465,97 @@ func repoNames(dir string) map[string]string {
 		return nil
 	})
 	return out
+}
+
+// runnerShape names the runner arrangement for the verify output.
+func runnerShape(t *Task) string {
+	if t.Oracle.Runner == "in-tree" {
+		return "in-tree (declared)"
+	}
+	if strings.EqualFold(t.Language, "python") {
+		return "out-of-workspace runner tree"
+	}
+	return "entry-cleared run dir, guard first import"
+}
+
+// checkRunner is the static half of the runner rule, so an unconverted
+// oracle cannot pass by leaning on the grader's probe. Python: run.sh
+// must launch saga_oracle_main. TypeScript: run.sh must clear its run
+// directory before creating it, and the first import of every oracle
+// test file must be the guard. A task may declare
+// `[oracle] runner = "in-tree"` to opt out, which is checked for
+// explicitly rather than inferred.
+func checkRunner(t *Task) string {
+	if t.Oracle.Runner == "in-tree" {
+		return ""
+	}
+	if t.Oracle.Runner != "" {
+		return fmt.Sprintf("unknown [oracle] runner %q (want \"in-tree\" or absent)", t.Oracle.Runner)
+	}
+	raw, err := os.ReadFile(t.OraclePath())
+	if err != nil {
+		return "oracle runner unreadable: " + err.Error()
+	}
+	run := string(raw)
+	tests, _ := filepath.Glob(filepath.Join(t.Dir, "oracle", "tests", "*"))
+	switch {
+	case strings.EqualFold(t.Language, "python"):
+		if !strings.Contains(run, "saga_oracle_main") {
+			return "run.sh does not launch saga_oracle_main; the workspace can inject into the runner"
+		}
+		return ""
+	case strings.EqualFold(t.Language, "typescript"), strings.EqualFold(t.Language, "javascript"):
+		if i := strings.Index(run, `mkdir -p "$WS/.oracle-run"`); i >= 0 {
+			if !strings.Contains(run[:i], `rm -rf "$WS/.oracle-run"`) {
+				return "run.sh creates .oracle-run without clearing it first; a planted stub survives into the run"
+			}
+		}
+		var guard string
+		var modules []string
+		for _, p := range tests {
+			b := filepath.Base(p)
+			if strings.HasPrefix(b, "guard.") {
+				guard = b
+			}
+			if strings.Contains(b, ".test.") {
+				modules = append(modules, p)
+			}
+		}
+		if len(modules) == 0 {
+			// The oracle does its own checking in the runner and imports
+			// no assertion module, so there is nothing to freeze.
+			return ""
+		}
+		if guard == "" {
+			return "no oracle/tests/guard file; the assertion object is not frozen before workspace code runs"
+		}
+		for _, p := range modules {
+			b := filepath.Base(p)
+			src, err := os.ReadFile(p)
+			if err != nil {
+				return "oracle test unreadable: " + err.Error()
+			}
+			if first := firstImport(string(src)); !strings.Contains(first, guard[:len(guard)-len(filepath.Ext(guard))]) {
+				return fmt.Sprintf("%s: first import is %q, want the guard", b, first)
+			}
+		}
+		return ""
+	}
+	return ""
+}
+
+// firstImport returns the first import statement of a module, ignoring
+// comments and blank lines.
+func firstImport(src string) string {
+	for _, l := range strings.Split(src, "\n") {
+		l = strings.TrimSpace(l)
+		if l == "" || strings.HasPrefix(l, "//") || strings.HasPrefix(l, "/*") || strings.HasPrefix(l, "*") {
+			continue
+		}
+		if strings.HasPrefix(l, "import ") {
+			return l
+		}
+		return ""
+	}
+	return ""
 }
