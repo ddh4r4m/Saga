@@ -589,6 +589,10 @@ type StreamResult struct {
 	// ServedModels lists the model of every assistant message, in order
 	// (duplicates included); the pin record deduplicates.
 	ServedModels []string
+	// AssistantTexts are the text blocks of every assistant message in
+	// order, so a bare terminal marker can be read against what the model
+	// actually said earlier in the turn (2026-09-06 smoke, finding 3).
+	AssistantTexts []string
 	// APIKeySource is the init event's apiKeySource ("none" when not
 	// logged in, the 2026-09-05 smoke's dry-run finding).
 	APIKeySource string
@@ -700,6 +704,12 @@ func ParseStream(raw []byte) StreamResult {
 			content, _ := msg["content"].([]any)
 			for _, blk := range content {
 				b, _ := blk.(map[string]any)
+				if b["type"] == "text" {
+					if txt, _ := b["text"].(string); strings.TrimSpace(txt) != "" {
+						r.AssistantTexts = append(r.AssistantTexts, txt)
+					}
+					continue
+				}
 				if b["type"] != "tool_use" {
 					continue
 				}
@@ -808,7 +818,7 @@ func (c *ClaudeCode) Collect(ctx context.Context, in *CollectInput) (*CollectOut
 	// NOT-DONE last line; the same detector in every arm.
 	if out.Outcome == "completed" {
 		contract, _ := os.ReadFile(filepath.Join(in.Workspace, ".saga", "contract.md"))
-		if ab := DetectAbandon(sr.FinalMessage, contract); ab != nil {
+		if ab := DetectAbandonWithHistory(sr.FinalMessage, contract, sr.AssistantTexts); ab != nil {
 			out.Outcome, out.Abandon = "abandon", ab
 			out.OutcomeReason = "ABANDON via " + ab.Source + ", reason class " + ab.ReasonClass
 		}

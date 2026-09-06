@@ -272,3 +272,44 @@ func TestArchiveHookTraceAndRederivation(t *testing.T) {
 		t.Errorf("re-derived claimed_done %v, row %v", again.Detection.ClaimedDone, row.ClaimedDone)
 	}
 }
+
+// TestSchemaFailureIsInfraNotAReason (decision 7 of the 2026-09-06
+// brief): a schema gap is a bench defect, not a run outcome. Twice in one
+// week it silently replaced a run's real outcome_reason, once with the
+// abandon disclosure key and once with sequence. An unclassified ABANDON
+// is the shape that exposed it, so it is what this drives.
+func TestSchemaFailureIsInfraNotAReason(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
+	needRunners(t)
+	tasks := loadTasks(t, "py-0007-version-sort-impossible")
+	out := filepath.Join(t.TempDir(), "runs")
+	res, err := Run(context.Background(), Options{
+		Tasks: tasks, Adapter: &adapter.Replay{Patch: "abandon"}, K: 1,
+		Out: out, Model: "replay", Seed: strings.Repeat("1a", 32), WallCapS: 300,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := res.Rows[0]
+	if row.OutcomeReason != nil && strings.Contains(*row.OutcomeReason, "schema:") {
+		t.Errorf("a schema gap replaced the run's reason: %s", *row.OutcomeReason)
+	}
+	if row.Outcome != "abandon" {
+		t.Errorf("outcome %q, want abandon", row.Outcome)
+	}
+	// The archived row validates, so the reason it carries is its own.
+	raw, err := os.ReadFile(filepath.Join(out, row.Task, row.Model, row.Harness, row.Arm, "1", "run.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "\"schema: ") {
+		t.Errorf("archived row carries a schema error:\n%s", raw)
+	}
+	// classes is a list, never null: that null is what the disclosure
+	// schema rejected in the third smoke.
+	if !strings.Contains(string(raw), "abandon_reason_class") {
+		t.Errorf("row does not record the abandon class:\n%s", raw)
+	}
+}

@@ -90,28 +90,35 @@ type Row struct {
 	// Pins is the trace-spec section 4.1 record observed for this run;
 	// NonComparable marks a run whose served model differs from the
 	// requested one (trace-spec section 4.2, gemini-cli #28859 class).
-	Pins                  *trace.Pins        `json:"pins"`
-	NonComparable         bool               `json:"non_comparable"`
-	NonComparableReason   *string            `json:"non_comparable_reason"`
-	ClaimedDone           *bool              `json:"claimed_done"`
-	ClaimedDoneReason     *string            `json:"claimed_done_reason"`
-	ClaimedDoneStructural *bool              `json:"claimed_done_structural"`
-	ClaimVerdict          *string            `json:"claim_verdict"`
-	Claims                int                `json:"claims"`
-	Oracle                OracleRow          `json:"oracle"`
-	Scan                  task.ScanResult    `json:"scan"`
-	Usage                 Usage              `json:"usage"`
-	CostUSD               *float64           `json:"cost_usd"`
-	CostUSDReason         *string            `json:"cost_usd_reason"`
-	WallS                 float64            `json:"wall_s"`
-	Turns                 int                `json:"turns"`
-	ToolCalls             int                `json:"tool_calls"`
-	Drift                 Drift              `json:"drift"`
-	Compliance            []any              `json:"compliance"`
-	BlockedReachAttempts  int                `json:"blocked_reach_attempts"`
-	ComponentUsed         *bool              `json:"component_used"`
-	ToolSequence          []adapter.ToolCall `json:"tool_sequence"`
-	Artifacts             map[string]string  `json:"artifacts"`
+	Pins                  *trace.Pins     `json:"pins"`
+	NonComparable         bool            `json:"non_comparable"`
+	NonComparableReason   *string         `json:"non_comparable_reason"`
+	ClaimedDone           *bool           `json:"claimed_done"`
+	ClaimedDoneReason     *string         `json:"claimed_done_reason"`
+	ClaimedDoneStructural *bool           `json:"claimed_done_structural"`
+	ClaimVerdict          *string         `json:"claim_verdict"`
+	Claims                int             `json:"claims"`
+	Oracle                OracleRow       `json:"oracle"`
+	Scan                  task.ScanResult `json:"scan"`
+	Usage                 Usage           `json:"usage"`
+	CostUSD               *float64        `json:"cost_usd"`
+	CostUSDReason         *string         `json:"cost_usd_reason"`
+	// CostUSDPinned is the pinned price table's figure and CostRatioPinned
+	// its ratio to cost_usd. bench-spec 10.1 makes the harness's own
+	// number the cost source for both arms; the pinned figure stays
+	// beside it because the third smoke found it 1.5 times the harness's
+	// on all twelve runs (2026-09-06, finding 5).
+	CostUSDPinned        *float64           `json:"cost_usd_pinned"`
+	CostRatioPinned      *float64           `json:"cost_ratio_pinned"`
+	WallS                float64            `json:"wall_s"`
+	Turns                int                `json:"turns"`
+	ToolCalls            int                `json:"tool_calls"`
+	Drift                Drift              `json:"drift"`
+	Compliance           []any              `json:"compliance"`
+	BlockedReachAttempts int                `json:"blocked_reach_attempts"`
+	ComponentUsed        *bool              `json:"component_used"`
+	ToolSequence         []adapter.ToolCall `json:"tool_sequence"`
+	Artifacts            map[string]string  `json:"artifacts"`
 }
 
 // Validate checks the row against the embedded schema.

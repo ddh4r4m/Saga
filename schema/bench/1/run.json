@@ -72,6 +72,8 @@
       }
     },
     "cost_usd": {"type": ["number", "null"]},
+    "cost_usd_pinned": {"type": ["number", "null"]},
+    "cost_ratio_pinned": {"type": ["number", "null"]},
     "cost_usd_reason": {"type": ["string", "null"]},
     "wall_s": {"type": "number", "minimum": 0},
     "turns": {"type": "integer", "minimum": 0},

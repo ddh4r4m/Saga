@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -574,20 +575,31 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 		return infra(col.OutcomeReason, nil)
 	}
 
-	// Cost from the pinned table; the harness figure is disclosed beside it.
+	// Cost is the harness's own figure when it reports one (bench-spec
+	// 10.1, docs/12 section 9): it is the same source for every arm, and
+	// the pinned table read 1.5 times higher on all twelve runs of the
+	// 2026-09-06 smoke. The pinned figure stays beside it with the ratio,
+	// so the reconciliation has both numbers.
 	if opts.Prices != nil && row.Model != "" {
 		usd, reason := opts.Prices.Cost(row.Model, col.Usage)
 		if usd.Total != nil {
-			row.CostUSD = usd.Total
+			row.CostUSDPinned = usd.Total
 		} else {
 			row.CostUSDReason = strp(reason)
 		}
 	} else {
 		row.CostUSDReason = strp("no price table")
 	}
-	if row.CostUSD == nil && col.HarnessCostUSD != nil {
+	switch {
+	case col.HarnessCostUSD != nil:
 		row.CostUSD = col.HarnessCostUSD
-		row.CostUSDReason = strp("harness-reported; model unpriced in the pinned table")
+		if row.CostUSDPinned != nil && *col.HarnessCostUSD > 0 {
+			ratio := metricsRound6(*row.CostUSDPinned / *col.HarnessCostUSD)
+			row.CostRatioPinned = &ratio
+		}
+	case row.CostUSDPinned != nil:
+		row.CostUSD = row.CostUSDPinned
+		row.CostUSDReason = strp("pinned table; the harness reported no cost")
 	}
 	if col.HarnessCostUSD != nil {
 		disclosure["harness_cost_usd"] = *col.HarnessCostUSD
@@ -734,7 +746,12 @@ func writeArchive(dir string, row *Row, disclosure adapter.Disclosure, traceJSON
 	write("hook-trace.jsonl", hookTraceJSONL)
 	if v, err := schema.Normalize(disclosure); err == nil {
 		if err := schema.ValidateID("saga.bench.harness/1", v); err != nil {
-			row.OutcomeReason = strp("disclosure schema: " + err.Error())
+			// A schema gap is a bench defect, not a run outcome. Twice in
+			// one week it silently replaced the reason a run actually had
+			// (the abandon key, then sequence), so it now fails the run
+			// where it can be seen (2026-09-06, decision 7).
+			row.Outcome = "infra"
+			row.OutcomeReason = strp("schema: disclosure: " + err.Error())
 		}
 	}
 	hj, _ := json.MarshalIndent(disclosure, "", "  ")
@@ -747,7 +764,8 @@ func writeArchive(dir string, row *Row, disclosure adapter.Disclosure, traceJSON
 	names := []string{"trace.jsonl", "hook-trace.jsonl", "harness.json", "workspace.diff", "oracle.txt", "scan.json", "final_message.txt"}
 	if v, err := schema.Normalize(row); err == nil {
 		if err := schema.ValidateID(RowSchema, v); err != nil {
-			row.OutcomeReason = strp("row schema: " + err.Error())
+			row.Outcome = "infra"
+			row.OutcomeReason = strp("schema: row: " + err.Error())
 		}
 	}
 	rj, _ := json.MarshalIndent(row, "", "  ")
@@ -803,4 +821,10 @@ func interleaving(opts Options) string {
 		return "per-task-alternating"
 	}
 	return "single-arm"
+}
+
+// metricsRound6 rounds a ratio for the row without pulling in the
+// metrics package's whole surface.
+func metricsRound6(f float64) float64 {
+	return math.Round(f*1e6) / 1e6
 }

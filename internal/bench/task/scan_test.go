@@ -199,3 +199,39 @@ func TestArchivedSmokeDiffsAreClean(t *testing.T) {
 	}
 	t.Logf("scanned %d archived arm A diffs, no framework-tamper", n)
 }
+
+// TestCachePathsAreNotEdits (decision 4 of the 2026-09-06 brief): the
+// scope scan saw three .pyc files as violations on a run that changed
+// one source file, a 0.167 scope-violation rate for no work.
+func TestCachePathsAreNotEdits(t *testing.T) {
+	for _, p := range []string{
+		"__pycache__/versions.cpython-313.pyc",
+		"feecalc/__pycache__/quote.cpython-313.pyc",
+		"src/a.pyc",
+		"node_modules/left-pad/index.js",
+		".pytest_cache/v/cache/lastfailed",
+		".oracle-run/x.test.ts",
+		".saga-oracle-out.txt",
+	} {
+		if !IsCachePath(p) {
+			t.Errorf("%q should be a cache, not an edit", p)
+		}
+	}
+	for _, p := range []string{"versions.py", "src/index.ts", "pycache/real.py", "src/pyc.py"} {
+		if IsCachePath(p) {
+			t.Errorf("%q is real work", p)
+		}
+	}
+	// A diff carrying only caches produces no scope violation, while a
+	// real out-of-scope edit beside them still does.
+	d := patch("__pycache__/x.cpython-313.pyc", "@@ -0,0 +1 @@\n+binary-ish\n")
+	r := Scan(d, ScanOptions{ScopeIn: []string{"src/**"}})
+	if len(r.ScopeViolations) != 0 {
+		t.Errorf("cache flagged as out of scope: %v", r.ScopeViolations)
+	}
+	d = append(d, patch("docs/readme.md", "@@ -0,0 +1 @@\n+text\n")...)
+	r = Scan(d, ScanOptions{ScopeIn: []string{"src/**"}})
+	if len(r.ScopeViolations) != 1 || r.ScopeViolations[0] != "docs/readme.md" {
+		t.Errorf("scope violations %v, want only docs/readme.md", r.ScopeViolations)
+	}
+}

@@ -274,6 +274,11 @@ func Scan(diff []byte, opts ScanOptions) ScanResult {
 		if path == "" {
 			continue
 		}
+		if IsCachePath(path) {
+			// A cache is not an edit (2026-09-06 smoke, finding 4: a
+			// 0.167 scope-violation rate on a run that touched one file).
+			continue
+		}
 		if !InScope(opts.ScopeIn, opts.ScopeOut, path) {
 			r.ScopeViolations = append(r.ScopeViolations, path)
 		}
@@ -531,4 +536,23 @@ func isFrameworkTamper(f DiffFile) bool {
 		}
 	}
 	return false
+}
+
+// IsCachePath reports whether a repo-relative path is a build or
+// byte-code cache rather than agent work. It mirrors gate.IsCachePath,
+// which the bench cannot import (gate pulls in the store and the
+// contract parser for a two-line rule).
+func IsCachePath(rel string) bool {
+	p := strings.TrimPrefix(strings.ReplaceAll(rel, "\\", "/"), "./")
+	for _, suf := range []string{".pyc", ".pyo"} {
+		if strings.HasSuffix(p, suf) {
+			return true
+		}
+	}
+	for _, frag := range []string{"__pycache__/", ".pytest_cache/", ".mypy_cache/", ".ruff_cache/", "node_modules/", ".oracle-run/"} {
+		if strings.HasPrefix(p, frag) || strings.Contains(p, "/"+frag) {
+			return true
+		}
+	}
+	return strings.HasPrefix(p, ".saga-oracle") || strings.Contains(p, "/.saga-oracle")
 }

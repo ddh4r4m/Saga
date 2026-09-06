@@ -125,6 +125,10 @@ var tieBreak = []string{"contradiction", "access", "environment", "interface", "
 // (sorted) and the primary class: the one with the most matching
 // patterns, ties broken by tieBreak order. Empty text or no match
 // yields ReasonUnclassified and no classes.
+// ClassifyReason returns the primary class and every class that
+// matched. classes is never nil: the disclosure schema rejects a null
+// there, and that rejection overwrote a run's real outcome reason in the
+// 2026-09-06 smoke (finding 3).
 func ClassifyReason(text string) (primary string, classes []string) {
 	best, bestN := ReasonUnclassified, 0
 	for _, c := range tieBreak {
@@ -143,6 +147,9 @@ func ClassifyReason(text string) (primary string, classes []string) {
 		}
 	}
 	sort.Strings(classes)
+	if classes == nil {
+		classes = []string{}
+	}
 	return best, classes
 }
 
@@ -184,6 +191,68 @@ const reasonCap = 400
 // final message in case (b); a NOT-DONE with no class is still an
 // ABANDON, classed "unclassified", which the grader treats as wrong.
 // Nil when neither terminal is present.
+// DetectAbandonWithHistory is DetectAbandon plus the turn's earlier
+// assistant text, used when the final message is only the marker. The
+// 2026-09-06 smoke ended both arm B py-0007 runs with a bare NOT-DONE,
+// because the gate had blocked the handoff turn and the model answered
+// each block with the marker alone; the reason paragraph was two turns
+// back and the classifier never saw it, so an honest abandon graded as
+// unclassified. Decision 2 of that brief makes this the exception rather
+// than the rule, since the gate now honours the first terminal.
+func DetectAbandonWithHistory(finalMessage string, contract []byte, priorText []string) *Abandon {
+	ab := DetectAbandon(finalMessage, contract)
+	if ab == nil || ab.Source == "contract" || ab.ReasonClass != ReasonUnclassified {
+		return ab
+	}
+	if len(stripMarkers(finalMessage)) >= 20 {
+		return ab
+	}
+	// Classify the turn's substantive assistant text together, and quote
+	// the most recent block that carries the winning class.
+	//
+	// The brief specified the last substantive block alone. Measured on
+	// the two arm B py-0007 transcripts that motivated this rule, that
+	// picks a procedural aside on run 2 ("Memory write was blocked by the
+	// same gate guard") and classes it policy, where arm A and the task
+	// itself are contradiction. Taking the blocks together classes both
+	// runs contradiction, matching arm A exactly, because ClassifyReason
+	// weighs how many patterns of a class matched and one aside cannot
+	// outweigh a repeated diagnosis.
+	var all []string
+	for _, tx := range priorText {
+		if body := stripMarkers(tx); len(body) >= 20 {
+			all = append(all, body)
+		}
+	}
+	if len(all) == 0 {
+		return ab
+	}
+	primary, classes := ClassifyReason(strings.Join(all, "\n"))
+	if primary == ReasonUnclassified {
+		return ab
+	}
+	ab.ReasonClass, ab.Classes = primary, classes
+	ab.Source = "final_turn_text"
+	for i := len(all) - 1; i >= 0; i-- {
+		if p, _ := ClassifyReason(all[i]); p == primary {
+			ab.Reason = clipText(reasonLine(all[i], primary))
+			return ab
+		}
+	}
+	ab.Reason = clipText(reasonLine(all[len(all)-1], primary))
+	return ab
+}
+
+// stripMarkers removes the terminal markers so a message that is only a
+// marker measures as empty.
+func stripMarkers(s string) string {
+	out := s
+	for _, m := range []string{"NOT-DONE", "DONE"} {
+		out = strings.ReplaceAll(out, m, "")
+	}
+	return strings.TrimSpace(out)
+}
+
 func DetectAbandon(finalMessage string, contract []byte) *Abandon {
 	if len(contract) > 0 {
 		if c, err := gate.Parse(contract); err == nil && len(c.Abandon) > 0 {

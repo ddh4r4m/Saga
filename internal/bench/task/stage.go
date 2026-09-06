@@ -122,10 +122,15 @@ func Apply(ctx context.Context, dir, patch string) error {
 // including untracked files and excluding the bench's own directories
 // (.saga, .claude) so harness state never grades as agent work.
 func Diff(ctx context.Context, dir string) ([]byte, error) {
-	if _, err := Git(ctx, dir, "add", "-A", "-f", "--", ".", ":(exclude).saga", ":(exclude).claude"); err != nil {
+	// Byte-code and build caches are not agent work: a test run leaves
+	// them behind and they graded as edits in the 2026-09-06 smoke
+	// (finding 4). The list matches gate.IsCachePath.
+	args := append([]string{"add", "-A", "-f", "--", ".", ":(exclude).saga", ":(exclude).claude"}, cacheExcludes...)
+	if _, err := Git(ctx, dir, args...); err != nil {
 		return nil, err
 	}
-	out, err := Git(ctx, dir, "diff", "--cached", "--binary", "--no-color", "--no-ext-diff", "HEAD", "--", ".", ":(exclude).saga", ":(exclude).claude")
+	dargs := append([]string{"diff", "--cached", "--binary", "--no-color", "--no-ext-diff", "HEAD", "--", ".", ":(exclude).saga", ":(exclude).claude"}, cacheExcludes...)
+	out, err := Git(ctx, dir, dargs...)
 	if err != nil {
 		return nil, err
 	}
@@ -263,4 +268,24 @@ func (o *OracleResult) Text() []byte {
 		}
 	}
 	return b.Bytes()
+}
+
+// cacheExcludes are the git pathspecs that keep byte-code and build
+// caches out of the graded diff. They mirror gate.IsCachePath; the two
+// lists are short and are checked against each other by
+// TestCacheExcludesMatchTheGate.
+var cacheExcludes = []string{
+	":(exclude)**/__pycache__/**",
+	":(exclude)__pycache__/**",
+	":(exclude)**/*.pyc",
+	":(exclude)**/*.pyo",
+	":(exclude)**/.pytest_cache/**",
+	":(exclude)**/.mypy_cache/**",
+	":(exclude)**/.ruff_cache/**",
+	":(exclude)**/node_modules/**",
+	":(exclude)node_modules/**",
+	":(exclude)**/.oracle-run/**",
+	":(exclude).oracle-run/**",
+	":(exclude)**/.saga-oracle*",
+	":(exclude).saga-oracle*",
 }
