@@ -283,7 +283,11 @@ func TestPostToolUseFailureRecordsResult(t *testing.T) {
 	hookJSON(t, root, "SessionStart", `{`+common+`,"hook_event_name":"SessionStart","source":"startup"}`)
 	hookJSON(t, root, "UserPromptSubmit", `{`+common+`,"hook_event_name":"UserPromptSubmit","prompt":"fix it"}`)
 	hookJSON(t, root, "PreToolUse", `{`+common+`,"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"pytest -q"},"tool_use_id":"tu1"}`)
-	m, code := hookJSON(t, root, "PostToolUseFailure", `{`+common+`,"hook_event_name":"PostToolUseFailure","tool_name":"Bash","tool_input":{"command":"pytest -q"},"tool_use_id":"tu1","error":"Command failed with exit code 1\n===== 2 failed, 5 passed in 0.1s =====","is_interrupt":false,"duration_ms":25}`)
+	// The field set of the live capture (fixtures/harness/posttoolusefailure.json):
+	// no tool_response, and prompt_id, permission_mode and effort beside
+	// the documented fields. The command and error are this test's own
+	// scenario, a red test run.
+	m, code := hookJSON(t, root, "PostToolUseFailure", `{`+common+`,"prompt_id":"p1","permission_mode":"acceptEdits","effort":{"level":"high"},"hook_event_name":"PostToolUseFailure","tool_name":"Bash","tool_input":{"command":"pytest -q","description":"Run the tests"},"tool_use_id":"tu1","error":"Command failed with exit code 1\n===== 2 failed, 5 passed in 0.1s =====","is_interrupt":false,"duration_ms":25}`)
 	if code != cli.ExitOK {
 		t.Fatalf("PostToolUseFailure: %v %v", m, code)
 	}

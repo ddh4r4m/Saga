@@ -130,7 +130,10 @@ if [ "$TEXIT" -eq 0 ]; then
   call_hook PostToolUse "{\"session_id\":\"$SESSION\",\"transcript_path\":\"$TRANSCRIPT\",\"hook_event_name\":\"PostToolUse\",\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"$CMD\"},\"tool_response\":{\"stdout\":\"saga-probe\\n\",\"stderr\":\"\",\"interrupted\":false,\"isImage\":false},\"cwd\":\"$PWD\"}" >/dev/null
   emit "{\"type\":\"user\",\"message\":{\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"t1\",\"content\":\"saga-probe\"}]}}"
 else
-  call_hook PostToolUseFailure "{\"session_id\":\"$SESSION\",\"transcript_path\":\"$TRANSCRIPT\",\"hook_event_name\":\"PostToolUseFailure\",\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"$CMD\"},\"tool_response\":{\"stdout\":\"\",\"stderr\":\"\",\"interrupted\":false,\"isImage\":false},\"tool_error\":\"Error: exit code $TEXIT\",\"cwd\":\"$PWD\"}" >/dev/null
+  # The shape of the live capture (fixtures/harness/posttoolusefailure.json,
+  # harness-facts C34): no tool_response, because the tool failed and
+  # there was none, and the message is in `error`, not `tool_error`.
+  call_hook PostToolUseFailure "{\"session_id\":\"$SESSION\",\"transcript_path\":\"$TRANSCRIPT\",\"cwd\":\"$PWD\",\"prompt_id\":\"stub-prompt\",\"permission_mode\":\"acceptEdits\",\"effort\":{\"level\":\"high\"},\"hook_event_name\":\"PostToolUseFailure\",\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"$CMD\",\"description\":\"Exit with status code $TEXIT\"},\"tool_use_id\":\"t1\",\"error\":\"Exit code $TEXIT\",\"is_interrupt\":false,\"duration_ms\":40}" >/dev/null
   emit "{\"type\":\"user\",\"message\":{\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"t1\",\"is_error\":true,\"content\":\"exit code $TEXIT\"}]}}"
 fi
 

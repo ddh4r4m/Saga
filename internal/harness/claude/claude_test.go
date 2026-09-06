@@ -2,6 +2,8 @@ package claude
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/ddh4r4m/saga/internal/hookio"
@@ -41,16 +43,36 @@ func TestRenderShapes(t *testing.T) {
 }
 
 // TestParsePostToolUseFailure: the failure event carries `error` and
-// `is_interrupt` beside the tool fields (harness-facts C34; the payload
-// is synthesised from the documented shape, not an archived capture);
+// `is_interrupt` beside the tool fields (harness-facts C34). The payload
+// is the live capture from P17 of scripts/harness-probes.sh on Claude
+// Code 2.1.263, not a shape written from the documentation, so the test
+// fails if the real event ever stops matching what the parser expects.
 // Render honours additionalContext only.
 func TestParsePostToolUseFailure(t *testing.T) {
-	raw := `{"session_id":"abc","cwd":"/p","hook_event_name":"PostToolUseFailure","tool_name":"Bash","tool_input":{"command":"pytest -q"},"tool_use_id":"tu","error":"Command failed with exit code 1\n2 failed, 5 passed","is_interrupt":false,"duration_ms":40}`
-	in, err := Parse(hookio.EventPostToolUseFailure, []byte(raw))
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "fixtures", "harness", "posttoolusefailure.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if in.ToolName != "Bash" || in.ToolUseID != "tu" || in.Interrupted || !json.Valid(in.ToolInput) || in.ToolError != "Command failed with exit code 1\n2 failed, 5 passed" || in.DurationMS != 40 {
+	// The capture carries no tool_response: the tool failed, so there was
+	// no response to carry. It does carry prompt_id, permission_mode,
+	// effort and duration_ms, which the documented shape did not name.
+	var got map[string]any
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatal(err)
+	}
+	if _, has := got["tool_response"]; has {
+		t.Error("the capture carries tool_response; C34 says the failure event does not")
+	}
+	for _, k := range []string{"prompt_id", "permission_mode", "effort", "duration_ms", "error", "is_interrupt", "tool_use_id"} {
+		if _, has := got[k]; !has {
+			t.Errorf("the capture lost %s", k)
+		}
+	}
+	in, err := Parse(hookio.EventPostToolUseFailure, raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if in.ToolName != "Bash" || in.ToolUseID != "toolu_01CCBHcNhaJsBT7faWxmRxQi" || in.Interrupted || !json.Valid(in.ToolInput) || in.ToolError != "Exit code 3" || in.DurationMS != 40 {
 		t.Errorf("parsed: %+v", in)
 	}
 	out := hookio.Allow("trace")
