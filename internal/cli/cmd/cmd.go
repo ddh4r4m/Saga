@@ -91,6 +91,8 @@ func (a *App) run(args []string) error {
 		return a.cmdInit(args[1:])
 	case "install":
 		return a.cmdInstall(args[1:])
+	case "uninstall":
+		return a.cmdUninstall(args[1:])
 	case "hook":
 		return a.cmdHook(args[1:])
 	case "trace":
@@ -569,14 +571,58 @@ func fnum(p *float64) string {
 	return fmt.Sprintf("%.4g", *p)
 }
 
+// cmdUninstall is `saga uninstall --harness claude-code [--dry-run]
+// [--shared] [--project dir]`: the inverse of install. It removes only
+// the hook entries whose command carries the Saga marker and prints one
+// line per entry, sorted, so the listing can be diffed against what
+// install reported writing (trace-spec section 7's uninstall proof).
+func (a *App) cmdUninstall(args []string) error {
+	fs := a.flags("uninstall")
+	harness := fs.String("harness", claudecode.Harness, "harness to uninstall for (claude-code)")
+	dryRun := fs.Bool("dry-run", false, "list what would be removed and write nothing")
+	shared := fs.Bool("shared", false, "read .claude/settings.json instead of settings.local.json")
+	project := fs.String("project", "", "project directory (default: repository root)")
+	if err := parseFlags(fs, args); err != nil {
+		return err
+	}
+	if *harness != claudecode.Harness {
+		return cli.Errorf(cli.ExitUsage, "uninstall: --harness must be %s", claudecode.Harness)
+	}
+	if *project == "" {
+		if s, err := a.store(); err == nil {
+			*project = s.Root
+		} else {
+			*project = a.Cwd
+		}
+	}
+	file, removed, _, err := claudecode.Uninstall(*project, *shared, *dryRun)
+	if err != nil {
+		return cli.Wrap(cli.ExitEnvironment, "uninstall", err)
+	}
+	verb := "removed"
+	if *dryRun {
+		verb = "would remove"
+	}
+	if len(removed) == 0 {
+		fmt.Fprintf(a.Stdout, "# %s: nothing saga-owned in %s\n", verb, file)
+		return nil
+	}
+	fmt.Fprintf(a.Stdout, "# %s from %s\n", verb, file)
+	for _, l := range removed {
+		fmt.Fprintln(a.Stdout, l)
+	}
+	return nil
+}
+
 func (a *App) cmdDoctor(args []string) error {
 	fs := a.flags("doctor")
 	asJSON := fs.Bool("json", false, "emit saga.doctor/1")
+	session := fs.String("session", "", "session the hooks_fire check reads (default: the newest)")
 	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	s, _ := store.Find(a.Cwd)
-	in := trace.DoctorInput{Version: a.Version, Store: s, HarnessName: "claude", InstallHarness: claudecode.Harness}
+	in := trace.DoctorInput{Version: a.Version, Store: s, HarnessName: "claude", InstallHarness: claudecode.Harness, Session: *session}
 	if p, err := exec.LookPath("claude"); err == nil {
 		in.HarnessFound = true
 		in.HarnessVersion = p

@@ -1,0 +1,120 @@
+#!/bin/bash
+# Stub Claude Code for dry-running scripts/harness-probes.sh without a
+# model or a token. It accepts the flags the launcher passes, calls the
+# PreToolUse, PostToolUse and Stop hooks the way the harness documents
+# (JSON on stdin, decision read from stdout), and emits a minimal
+# stream-json log.
+#
+# It exists so the launcher's own logic is exercised before the owner
+# spends a cent. It is not a model and proves nothing about Claude Code's
+# real behaviour: in particular it cannot answer P9, which is the whole
+# question of whether the real harness honours a JSON deny on a non-zero
+# hook exit. STUB_HONOUR_DENY picks which way this stub answers, so both
+# the PASS and the FAIL path of the launcher can be walked.
+#
+# Knobs: STUB_HONOUR_DENY=1 obey a deny even when the hook exits non-zero;
+#        STUB_TOOL_EXIT=n    exit status of the simulated Bash tool.
+set -uo pipefail
+
+SETTINGS=""; SESSION=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --settings) SETTINGS=$2; shift 2 ;;
+    --session-id) SESSION=$2; shift 2 ;;
+    --version) echo "0.0.0-stub (stub-claude)"; exit 0 ;;
+    -p|--verbose) shift ;;
+    --output-format|--model|--max-turns|--permission-mode|--tools|--max-budget-usd) shift 2 ;;
+    *) shift ;;
+  esac
+done
+cat >/dev/null   # the prompt; the stub always does the same thing
+[ -n "$SESSION" ] || SESSION="stub-session"
+TRANSCRIPT="${CLAUDE_CONFIG_DIR:-$PWD}/transcript-$SESSION.jsonl"
+
+emit() { printf '%s\n' "$1"; }
+
+# hook_command <event> prints the first command registered for it.
+hook_command() {
+  [ -n "$SETTINGS" ] && [ -f "$SETTINGS" ] || return 0
+  python3 -c "
+import json,sys
+try: s=json.load(open(sys.argv[1]))
+except Exception: sys.exit(0)
+for e in (s.get('hooks') or {}).get(sys.argv[2]) or []:
+    for h in e.get('hooks') or []:
+        if h.get('command'): print(h['command']); sys.exit(0)
+" "$SETTINGS" "$1" 2>/dev/null
+}
+
+# call_hook <event> <json payload> -> the hook's stdout. Its exit status
+# goes to a file, not a variable: call_hook is used inside a command
+# substitution, which is a subshell, so an assignment would be lost and
+# every hook would look like it exited 0.
+HOOK_EXIT_FILE=$(mktemp)
+trap 'rm -f "$HOOK_EXIT_FILE"' EXIT
+call_hook() {
+  local cmd out rc
+  cmd=$(hook_command "$1")
+  if [ -z "$cmd" ]; then printf '0' > "$HOOK_EXIT_FILE"; return 0; fi
+  out=$(printf '%s' "$2" | eval "$cmd" 2>/dev/null); rc=$?
+  printf '%s' "$rc" > "$HOOK_EXIT_FILE"
+  printf '%s' "$out"
+}
+hook_exit() { cat "$HOOK_EXIT_FILE" 2>/dev/null || echo 0; }
+
+json_field() {  # <json> <dotted path a.b>
+  printf '%s' "$1" | python3 -c "
+import json,sys
+try: d=json.load(sys.stdin)
+except Exception: sys.exit(0)
+for k in sys.argv[1].split('.'):
+    if not isinstance(d, dict): sys.exit(0)
+    d = d.get(k)
+    if d is None: sys.exit(0)
+print(d)" "$2" 2>/dev/null
+}
+
+emit "{\"type\":\"system\",\"subtype\":\"init\",\"session_id\":\"$SESSION\",\"model\":\"stub\",\"tools\":[\"Bash\"],\"permissionMode\":\"acceptEdits\",\"claude_code_version\":\"0.0.0-stub\"}"
+
+CMD="echo saga-probe"
+TEXIT=${STUB_TOOL_EXIT:-0}
+[ "$TEXIT" -eq 0 ] || CMD="exit $TEXIT"
+
+pre=$(call_hook PreToolUse "{\"session_id\":\"$SESSION\",\"transcript_path\":\"$TRANSCRIPT\",\"hook_event_name\":\"PreToolUse\",\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"$CMD\"},\"cwd\":\"$PWD\"}")
+pre_exit=$(hook_exit)
+decision=$(json_field "$pre" hookSpecificOutput.permissionDecision)
+reason=$(json_field "$pre" hookSpecificOutput.permissionDecisionReason)
+
+blocked=0
+if [ "$decision" = "deny" ]; then
+  # The question P9 exists to answer. The real harness decides this; the
+  # stub takes whichever answer the knob names.
+  if [ "$pre_exit" -eq 0 ] || [ "${STUB_HONOUR_DENY:-0}" = "1" ]; then blocked=1; fi
+fi
+# Exit 2 with plain stderr is the documented block path and always blocks.
+if [ "$pre_exit" -eq 2 ]; then blocked=1; fi
+
+if [ "$blocked" = "1" ]; then
+  emit "{\"type\":\"assistant\",\"message\":{\"id\":\"m1\",\"model\":\"stub\",\"content\":[{\"type\":\"text\",\"text\":\"blocked: ${reason:-hook}\"}]}}"
+  emit "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"num_turns\":1,\"result\":\"tool blocked: ${reason:-hook}\"}"
+  exit 0
+fi
+
+emit "{\"type\":\"assistant\",\"message\":{\"id\":\"m1\",\"model\":\"stub\",\"content\":[{\"type\":\"tool_use\",\"id\":\"t1\",\"name\":\"Bash\",\"input\":{\"command\":\"$CMD\"}}]}}"
+if [ "$TEXIT" -eq 0 ]; then
+  call_hook PostToolUse "{\"session_id\":\"$SESSION\",\"transcript_path\":\"$TRANSCRIPT\",\"hook_event_name\":\"PostToolUse\",\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"$CMD\"},\"tool_response\":{\"stdout\":\"saga-probe\\n\",\"stderr\":\"\",\"interrupted\":false,\"isImage\":false},\"cwd\":\"$PWD\"}" >/dev/null
+  emit "{\"type\":\"user\",\"message\":{\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"t1\",\"content\":\"saga-probe\"}]}}"
+else
+  call_hook PostToolUseFailure "{\"session_id\":\"$SESSION\",\"transcript_path\":\"$TRANSCRIPT\",\"hook_event_name\":\"PostToolUseFailure\",\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"$CMD\"},\"tool_response\":{\"stdout\":\"\",\"stderr\":\"\",\"interrupted\":false,\"isImage\":false},\"tool_error\":\"Error: exit code $TEXIT\",\"cwd\":\"$PWD\"}" >/dev/null
+  emit "{\"type\":\"user\",\"message\":{\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"t1\",\"is_error\":true,\"content\":\"exit code $TEXIT\"}]}}"
+fi
+
+FINAL="Ran the command.
+
+DONE"
+printf '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Ran the command.\\n\\nDONE"}]}}\n' > "$TRANSCRIPT" 2>/dev/null || true
+call_hook Stop "{\"session_id\":\"$SESSION\",\"transcript_path\":\"$TRANSCRIPT\",\"hook_event_name\":\"Stop\",\"stop_hook_active\":false,\"cwd\":\"$PWD\"}" >/dev/null
+
+emit "{\"type\":\"assistant\",\"message\":{\"id\":\"m2\",\"model\":\"stub\",\"content\":[{\"type\":\"text\",\"text\":\"$FINAL\"}]}}"
+emit "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"num_turns\":1,\"result\":\"Ran the command.\\n\\nDONE\"}"
+exit 0

@@ -64,6 +64,10 @@ type DoctorInput struct {
 	HarnessVersion string
 	Hooks          []HookRegistration
 	SettingsFiles  []string
+	// Session names the recorded session the hooks_fire check reads;
+	// empty means the newest, which is what a probe wants right after
+	// driving one turn (trace-spec section 7, docs/12 row 10).
+	Session string
 }
 
 func fixp(s string) *string { return &s }
@@ -133,7 +137,15 @@ func Doctor(in DoctorInput) (DoctorReport, cli.Code) {
 			add("hooks_registered", false, fmt.Sprintf("%s hook missing in %s", strings.Join(missing, ", "), strings.Join(in.SettingsFiles, ", ")), fixp("run saga install --harness "+in.InstallHarness))
 		}
 	}
-	add("hooks_fire", true, "skipped: the synthetic -p probe ships with the M0 bench runner (step 2)", nil)
+	// hooks_fire: a registered hook is not a firing hook. The check reads
+	// what the session actually recorded, so one live turn proves the
+	// chain end to end (docs/12 row 10).
+	if st != nil && st.Exists() {
+		ok, detail := hooksFire(st, in.Session)
+		add("hooks_fire", ok, detail, fixp("drive one turn with the hooks installed, then rerun doctor in that workspace"))
+	} else {
+		add("hooks_fire", false, "no .saga store: nothing recorded to check", nil)
+	}
 
 	if st != nil && st.Exists() {
 		sessions, _ := ListSessions(st)
@@ -239,4 +251,49 @@ func (r DoctorReport) Text() string {
 		}
 	}
 	return b.String()
+}
+
+// hooksFire reports whether a recorded session shows the chain working:
+// at least one tool_call, its tool_result, and the Stop claim event. The
+// session is the newest unless one is named, because the caller that
+// needs this has just driven a single turn.
+func hooksFire(st *store.Store, session string) (bool, string) {
+	if session == "" {
+		sessions, err := ListSessions(st)
+		if err != nil || len(sessions) == 0 {
+			return false, "no recorded session under .saga/trace/sessions"
+		}
+		session = sessions[0]
+	}
+	events, err := ReadAll(SessionDir(st, session))
+	if err != nil {
+		return false, "session " + session + ": " + err.Error()
+	}
+	calls, results, claim := 0, 0, ""
+	for _, ev := range events {
+		switch ev.Type {
+		case TypeToolCall:
+			calls++
+		case TypeToolResult:
+			results++
+		case TypeGate:
+			if ev.Body["kind"] == "claim" {
+				if v, ok := ev.Body["verdict"].(string); ok {
+					claim = v
+				} else {
+					claim = "no-claims"
+				}
+			}
+		}
+	}
+	detail := fmt.Sprintf("session %s: %d tool_call, %d tool_result, stop claim %q", session, calls, results, claim)
+	switch {
+	case calls == 0:
+		return false, detail + " (no tool_call recorded: the PreToolUse hook did not fire)"
+	case results == 0:
+		return false, detail + " (no tool_result recorded: the PostToolUse hook did not fire)"
+	case claim == "":
+		return false, detail + " (no Stop claim event: the Stop hook did not fire)"
+	}
+	return true, detail
 }

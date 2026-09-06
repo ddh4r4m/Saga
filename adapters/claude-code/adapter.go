@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/ddh4r4m/saga/internal/hookio"
@@ -113,6 +114,75 @@ func Install(project, binary string, shared, dryRun bool) (file string, result [
 		return file, nil, nil, err
 	}
 	return file, result, entries, store.WriteFileAtomic(file, result, 0o644)
+}
+
+// Uninstall removes the Saga-owned hook entries from the settings file
+// and leaves every other hook untouched, the exact inverse of Install
+// and by the same ownership rule (a command carrying the Saga marker).
+// With dryRun nothing is written. removed lists what was or would be
+// taken out, one "hook <event> <command>" line per entry, sorted, so a
+// caller can diff it against what Install reported writing (trace-spec
+// section 7: uninstall must be able to prove what it would undo).
+func Uninstall(project string, shared, dryRun bool) (file string, removed []string, result []byte, err error) {
+	file = SettingsFile(project, shared)
+	raw, rerr := os.ReadFile(file)
+	if errors.Is(rerr, fs.ErrNotExist) {
+		return file, nil, nil, nil
+	} else if rerr != nil {
+		return file, nil, nil, rerr
+	}
+	settings := map[string]any{}
+	if err := json.Unmarshal(raw, &settings); err != nil {
+		return file, nil, nil, fmt.Errorf("%s: %w", file, err)
+	}
+	hooks, _ := settings["hooks"].(map[string]any)
+	for ev, v := range hooks {
+		existing, _ := v.([]any)
+		kept := existing[:0:0]
+		for _, e := range existing {
+			if !ownsEntry(e) {
+				kept = append(kept, e)
+				continue
+			}
+			for _, cmd := range commandsOf(e) {
+				removed = append(removed, "hook "+ev+" "+cmd)
+			}
+		}
+		if len(kept) == 0 {
+			delete(hooks, ev)
+			continue
+		}
+		hooks[ev] = kept
+	}
+	sort.Strings(removed)
+	if len(hooks) == 0 {
+		delete(settings, "hooks")
+	} else {
+		settings["hooks"] = hooks
+	}
+	result, err = json.MarshalIndent(settings, "", "  ")
+	if err != nil {
+		return file, removed, nil, err
+	}
+	result = append(result, '\n')
+	if dryRun || len(removed) == 0 {
+		return file, removed, result, nil
+	}
+	return file, removed, result, store.WriteFileAtomic(file, result, 0o644)
+}
+
+// commandsOf lists the command strings of one settings hook entry.
+func commandsOf(e any) []string {
+	m, _ := e.(map[string]any)
+	inner, _ := m["hooks"].([]any)
+	var out []string
+	for _, h := range inner {
+		hm, _ := h.(map[string]any)
+		if cmd, _ := hm["command"].(string); cmd != "" {
+			out = append(out, cmd)
+		}
+	}
+	return out
 }
 
 func ownsEntry(e any) bool {
