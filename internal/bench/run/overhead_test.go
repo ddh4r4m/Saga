@@ -2,6 +2,8 @@ package run
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -104,6 +106,100 @@ func TestComputeOverheadExact(t *testing.T) {
 	if _, ok := bare.ByEvent[SafetyEvent]; !ok {
 		t.Errorf("bare arm does not report the safety hook: %v", bare.ByEvent)
 	}
+}
+
+// TestInjectedTokensIgnoreTheModelsContext (2026-09-06 smoke 3, finding
+// 2): a model_call event carries its own context_tokens_est, the size of
+// the model's whole context at that call. Summing it read 115,675
+// injected tokens for arm B on a run whose injection was the 32-token
+// contract sentence. Only a gate event's message_tokens_est and a
+// session event's context_tokens_est are injection.
+func TestInjectedTokensIgnoreTheModelsContext(t *testing.T) {
+	trace := hookTraceTyped(t, []typedEvent{
+		{"model_call", map[string]any{"context_tokens_est": 21546}},
+		{"model_call", map[string]any{"context_tokens_est": 193921}},
+		{"session", map[string]any{"phase": "start", "context_tokens_est": 0}},
+		{"gate", map[string]any{"kind": "stop", "decision": "allow"}},
+	})
+	ov, why := ComputeOverhead(OverheadInput{
+		Latency:        []hookio.LatencyLine{latency("Stop", 5, false)},
+		HookTraceJSONL: trace, WallS: 40, Components: []string{"gate"},
+	})
+	if ov == nil {
+		t.Fatalf("no overhead: %s", why)
+	}
+	// The contract sentence and nothing else, which is what that run
+	// actually injected.
+	want := canon.TokensEstString(adapter.ContractSentence)
+	if ov.InjectedTokensEst != want {
+		t.Errorf("injected_tokens_est %d, want %d (the contract sentence alone)", ov.InjectedTokensEst, want)
+	}
+	// What a real injection looks like: the gate blocked and said so.
+	trace = hookTraceTyped(t, []typedEvent{
+		{"model_call", map[string]any{"context_tokens_est": 193921}},
+		{"gate", map[string]any{"kind": "stop", "message_tokens_est": 63}},
+		{"gate", map[string]any{"kind": "claim", "message_tokens_est": 11}},
+		{"session", map[string]any{"phase": "start", "context_tokens_est": 4}},
+	})
+	ov, _ = ComputeOverhead(OverheadInput{
+		Latency:        []hookio.LatencyLine{latency("Stop", 5, false)},
+		HookTraceJSONL: trace, WallS: 40, Components: []string{"gate"},
+	})
+	if ov.InjectedTokensEst != 63+11+4+want {
+		t.Errorf("injected_tokens_est %d, want %d", ov.InjectedTokensEst, 63+11+4+want)
+	}
+	// A bare arm counts nothing at all, contract sentence included.
+	ov, _ = ComputeOverhead(OverheadInput{
+		Latency: []hookio.LatencyLine{latency("Stop", 5, false)}, HookTraceJSONL: trace, WallS: 40,
+	})
+	if ov.InjectedTokensEst != 63+11+4 {
+		t.Errorf("bare arm injected_tokens_est %d, want %d (no contract sentence)", ov.InjectedTokensEst, 63+11+4)
+	}
+}
+
+// TestInjectedTokensOnTheArchivedRun re-reads the fourth smoke's own
+// hook trace, which is where the wrong figure came from, and checks the
+// fix against the number the notes give.
+func TestInjectedTokensOnTheArchivedRun(t *testing.T) {
+	path := filepath.Join("..", "..", "..", "bench", "results", "smoke-2026-09-06-3",
+		"B", "ts-0001-slug-collapse", "sonnet", "claude-code", "B", "1", "hook-trace.jsonl")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Skipf("archive not present: %v", err)
+	}
+	ov, why := ComputeOverhead(OverheadInput{
+		Latency:        []hookio.LatencyLine{latency("Stop", 241, false)},
+		HookTraceJSONL: raw, WallS: 40.3, Components: []string{"gate"},
+	})
+	if ov == nil {
+		t.Fatalf("no overhead: %s", why)
+	}
+	want := canon.TokensEstString(adapter.ContractSentence)
+	if ov.InjectedTokensEst != want {
+		t.Errorf("ts-0001 B run 1 injected_tokens_est %d, want %d: the Stop step allowed at once, the claim block did not fire and SessionStart injected nothing, so the contract sentence is the whole injection", ov.InjectedTokensEst, want)
+	}
+	t.Logf("ts-0001 B run 1: injected_tokens_est %d (archived figure was 215499)", ov.InjectedTokensEst)
+}
+
+type typedEvent struct {
+	kind string
+	body map[string]any
+}
+
+// hookTraceTyped writes a hook trace whose events carry their real type,
+// which is what the injected-token sum now keys on.
+func hookTraceTyped(t *testing.T, evs []typedEvent) []byte {
+	t.Helper()
+	var b strings.Builder
+	for _, e := range evs {
+		raw, err := json.Marshal(map[string]any{"schema": "saga.trace/1", "type": e.kind, "body": e.body})
+		if err != nil {
+			t.Fatal(err)
+		}
+		b.Write(raw)
+		b.WriteByte('\n')
+	}
+	return []byte(b.String())
 }
 
 // TestComputeOverheadNotRecorded: an archive from before the recording

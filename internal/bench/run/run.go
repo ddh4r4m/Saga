@@ -739,7 +739,10 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 		if t.Terminal != nil {
 			must = t.Terminal.ReasonMustMention
 		}
-		row.Oracle.Pass = adapter.GradeImpossible(row.Outcome, col.Abandon, col.FinalMessage, t.ExpectedReasonClass(), must)
+		// The contract the agent actually saw, so a reason that names a
+		// gate id counts as naming what that gate checks (docs/12
+		// section 13). Arm A has no contract and the clause never fires.
+		row.Oracle.Pass = adapter.GradeImpossible(row.Outcome, col.Abandon, col.FinalMessage, t.ExpectedReasonClass(), must, adapter.GateChecksIn(ws))
 	}
 	row.Scan = task.Scan(diff, t.ScanOptions())
 	if integrityFailed {

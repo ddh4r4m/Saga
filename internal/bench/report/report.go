@@ -8,6 +8,9 @@ package report
 import (
 	"fmt"
 	"math"
+	"os"
+	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -158,6 +161,11 @@ type Report struct {
 	Tier          string            `json:"tier"`
 	Created       *string           `json:"created"`
 	TaskSetSHA256 *string           `json:"task_set_sha256"`
+	// PrimarySource names where the primary metric came from:
+	// "preregistration.md sha256:..." when the archive declared one,
+	// empty when the report fell back to DefaultPrimary. An unregistered
+	// primary is a description and licenses no pre-registered claim.
+	PrimarySource string `json:"primary_source,omitempty"`
 	// PreregistrationSHA256 is the manifest's, null when the run was not
 	// pre-registered (docs/12 row 15). TaskSetFrozen says whether the
 	// run's tasks matched TASKSET.sha256; absent when the corpus carries
@@ -583,7 +591,7 @@ func (r *Report) Markdown() string {
 		w("No paired comparison: a single-arm report describes one cell and licenses no claim (bench-spec section 1.3).")
 	} else {
 		p := r.Primary
-		w("Metric `%s` (default primary; no pre-registration file): arms %s. A=%s B=%s delta=%s %s. %s.", p.Metric, strings.Join(p.Arms, " vs "), fmtF(p.A), fmtF(p.B), fmtF(p.Delta), fmtCI(p.CI95), fmtW(p.Wilcoxon))
+		w("Metric `%s` (%s): arms %s. A=%s B=%s delta=%s %s. %s.", p.Metric, primaryProvenance(r), strings.Join(p.Arms, " vs "), fmtF(p.A), fmtF(p.B), fmtF(p.Delta), fmtCI(p.CI95), fmtW(p.Wilcoxon))
 		if p.Supported != nil {
 			w("")
 			w("Supported (CI excludes zero): %v.", *p.Supported)
@@ -934,4 +942,50 @@ func BadgeTierOK(tier string) error {
 		return nil
 	}
 	return cli.Errorf(cli.ExitUsage, "badge: tier %q cannot be cited; only a publish-tier archive licenses a number outside its own report (docs/12 commitment 4, bench-spec 7.3)", tier)
+}
+
+// DefaultPrimary is the metric a report calls primary when no
+// pre-registration names one. It licenses no pre-registered claim: an
+// unregistered primary is a description, not a test.
+const DefaultPrimary = "pass_at_1"
+
+// prereqPrimaryRe is the machine-readable line docs/12 section 2.1
+// carries, read from the archived preregistration.md.
+var preregPrimaryRe = regexp.MustCompile(`(?m)^PRIMARY: ([a-z0-9_]+)$`)
+
+// PrimaryFromPrereg returns the metric the archive's pre-registration
+// declares and the source line the report prints for it. With no file,
+// or a file that names no PRIMARY line, it returns DefaultPrimary and an
+// empty source, and the report says which of the two it was.
+func PrimaryFromPrereg(dir string, hash *string) (metric, source string) {
+	if dir == "" {
+		return DefaultPrimary, ""
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, run.PreregName))
+	if err != nil {
+		return DefaultPrimary, ""
+	}
+	m := preregPrimaryRe.FindSubmatch(raw)
+	if m == nil {
+		return DefaultPrimary, ""
+	}
+	src := run.PreregName
+	if hash != nil {
+		src += " " + *hash
+	}
+	return string(m[1]), src
+}
+
+// primaryProvenance says where the primary metric came from. A primary
+// nobody declared in advance is a description, so the difference between
+// "the pre-registration named this" and "this is the default" is stated
+// in the same sentence as the number.
+func primaryProvenance(r *Report) string {
+	if r.PrimarySource != "" {
+		return "primary from " + r.PrimarySource
+	}
+	if r.PreregistrationSHA256 == nil {
+		return "default primary; no pre-registration file"
+	}
+	return "default primary; preregistration.md names no PRIMARY line"
 }

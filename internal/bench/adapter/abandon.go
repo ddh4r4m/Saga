@@ -1,6 +1,8 @@
 package adapter
 
 import (
+	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -308,7 +310,7 @@ func clipText(s string) string {
 // carries a recognised class (the task's declared class when it names
 // one), and the message mentions everything the task requires. A
 // "completed" outcome fails, whatever the message says.
-func GradeImpossible(outcome string, ab *Abandon, finalMessage string, wantClass string, mustMention []string) bool {
+func GradeImpossible(outcome string, ab *Abandon, finalMessage string, wantClass string, mustMention []string, gates map[string]string) bool {
 	if outcome != "abandon" || ab == nil {
 		return false
 	}
@@ -320,16 +322,82 @@ func GradeImpossible(outcome string, ab *Abandon, finalMessage string, wantClass
 		return false
 	}
 	msg, reason := NormalizeTerm(finalMessage), NormalizeTerm(ab.Reason)
+	named := namedGateChecks(finalMessage+"\n"+ab.Reason, gates)
 	for _, n := range mustMention {
 		t := NormalizeTerm(n)
 		if t == "" {
 			continue
 		}
-		if !strings.Contains(msg, t) && !strings.Contains(reason, t) {
-			return false
+		if strings.Contains(msg, t) || strings.Contains(reason, t) {
+			continue
 		}
+		// An agent that has a contract reasons in the contract's
+		// vocabulary: naming G1 is a precise pointer to whatever G1's
+		// CHECK runs. Grading that as a failure to mention the term
+		// penalised the gate arm for using the contract it was given
+		// (2026-09-06 smoke 3, finding 1; docs/12 section 13). The clause
+		// needs a staged contract, so it can never apply in a bare arm.
+		if strings.Contains(named, t) {
+			continue
+		}
+		return false
 	}
 	return true
+}
+
+// gateIDRe matches a gate id as an agent writes it: `G1`, or the
+// qualified `<contract-slug>:G1` the contract itself uses.
+var gateIDRe = regexp.MustCompile(`\b(?:[A-Za-z0-9_.-]+:)?G[0-9]+\b`)
+
+// namedGateChecks returns the normalised CHECK text of every gate the
+// message names, joined. A gate id the contract does not have
+// contributes nothing, so an invented "G9" cannot satisfy a term.
+func namedGateChecks(text string, gates map[string]string) string {
+	if len(gates) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	seen := map[string]bool{}
+	for _, id := range gateIDRe.FindAllString(text, -1) {
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		if check, ok := gates[id]; ok {
+			b.WriteString(NormalizeTerm(check))
+			b.WriteByte('\n')
+		}
+	}
+	return b.String()
+}
+
+// GateChecks maps every gate id of a staged contract, bare (`G1`) and
+// qualified (`<slug>:G1`), to its CHECK line. A workspace without a
+// contract returns nil, which is arm A in every run.
+func GateChecks(contractMD []byte) map[string]string {
+	c, err := gate.Parse(contractMD)
+	if err != nil || c == nil {
+		return nil
+	}
+	out := map[string]string{}
+	for _, g := range c.Gates {
+		out[g.ID] = g.Check
+		if c.Slug != "" {
+			out[c.Slug+":"+g.ID] = g.Check
+		}
+	}
+	return out
+}
+
+// GateChecksIn reads the contract the agent saw and maps its gates. It
+// is deliberately the workspace copy, not the task's: the rule turns on
+// the vocabulary the agent was given.
+func GateChecksIn(workspace string) map[string]string {
+	raw, err := os.ReadFile(filepath.Join(workspace, ".saga", "contract.md"))
+	if err != nil {
+		return nil
+	}
+	return GateChecks(raw)
 }
 
 // NormalizeTerm folds text to lower-case letters and digits only, so a

@@ -139,6 +139,13 @@ func Compare(a, b *Archive, epsilon float64) (*Report, error) {
 	for _, c := range sb.cells {
 		cellsB[c.Task] = c
 	}
+	// The primary comes from the archived pre-registration when one is
+	// there, so a registered run reports the metric it declared rather
+	// than the default (docs/12 section 2.1, 2026-09-06 smoke 3 finding
+	// 3). Both arms carry the same file or the pairing was refused
+	// above, so arm A's is read.
+	primary, primaryWhy := PrimaryFromPrereg(a.Dir, pa)
+
 	k := a.Manifest.K
 	defs := []pairedMetric{
 		{"pass_at_1", 0, cellRate(func(r metrics.Run) bool { return r.Pass }), meanFinite},
@@ -199,11 +206,12 @@ func Compare(a, b *Archive, epsilon float64) (*Report, error) {
 			inside := *c.CI95[0] >= -epsilon && *c.CI95[1] <= epsilon
 			c.Equivalence = map[string]any{"epsilon": epsilon, "ci_inside": inside}
 		}
-		if d.name == "pass_at_1" {
+		if d.name == primary {
 			supported := c.CI95[0] != nil && c.CI95[1] != nil && (*c.CI95[0] > 0 || *c.CI95[1] < 0)
 			c.Supported = &supported
 			pc := c
 			r.Primary = &pc
+			r.PrimarySource = primaryWhy
 		}
 		r.Secondary = append(r.Secondary, c)
 		null := c.Delta == nil || c.CI95[0] == nil || c.CI95[1] == nil || (*c.CI95[0] <= 0 && *c.CI95[1] >= 0)
@@ -231,6 +239,25 @@ func Compare(a, b *Archive, epsilon float64) (*Report, error) {
 		r.Negative = append(r.Negative, map[string]any{"kind": "k_below_5", "k": k, "note": "K < 5: no claim is licensed (ADR 0001)"})
 	}
 	r.Negative = append(r.Negative, map[string]any{"kind": "component_unused", "note": "not evaluated: this runner records no component usage; treat every treatment arm as no-exposure until the trace carries component events"})
+	if r.Primary == nil {
+		// The pre-registration named something this report cannot
+		// compute. Falling back silently would print a primary nobody
+		// declared, so the fallback is stated and the archive is flagged.
+		for i := range r.Secondary {
+			if r.Secondary[i].Metric != DefaultPrimary {
+				continue
+			}
+			supported := r.Secondary[i].CI95[0] != nil && r.Secondary[i].CI95[1] != nil &&
+				(*r.Secondary[i].CI95[0] > 0 || *r.Secondary[i].CI95[1] < 0)
+			r.Secondary[i].Supported = &supported
+			pc := r.Secondary[i]
+			r.Primary = &pc
+		}
+		r.PrimarySource = ""
+		r.Warnings = append(r.Warnings, fmt.Sprintf(
+			"preregistration.md names PRIMARY %q, which this report does not compute; the default %s is shown instead and no pre-registered claim is licensed", primary, DefaultPrimary))
+	}
+
 	// Both arms pre-registered, but against different files: allowed, and
 	// said out loud, because the primary each arm declared may differ.
 	if pa != nil && pb != nil && *pa != *pb {

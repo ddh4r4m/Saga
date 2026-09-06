@@ -149,6 +149,14 @@ func pctl(sorted []int, p int) int {
 // injectedTokens sums the per-event estimates a hook trace carries
 // (trace-spec 3.5): what gate and the claim step put in front of the
 // model, and what a session step put into additionalContext.
+//
+// The event type matters. A `model_call` event carries its own
+// `context_tokens_est`, which is the size of the model's whole context
+// at that call and not something Saga injected; summing it read 215,467
+// injected tokens on a run whose real injection was the 32-token
+// contract sentence (2026-09-06 smoke 3, finding 2). Only these two
+// pairs count, and every other event contributes nothing whatever
+// fields it happens to carry.
 func injectedTokens(hookTrace []byte) int {
 	total := 0
 	for _, line := range strings.Split(string(hookTrace), "\n") {
@@ -156,15 +164,26 @@ func injectedTokens(hookTrace []byte) int {
 			continue
 		}
 		var ev struct {
+			Type string         `json:"type"`
 			Body map[string]any `json:"body"`
 		}
 		if json.Unmarshal([]byte(line), &ev) != nil {
 			continue
 		}
-		for _, k := range []string{"message_tokens_est", "context_tokens_est"} {
-			if v, ok := ev.Body[k].(float64); ok {
-				total += int(v)
-			}
+		var key string
+		switch ev.Type {
+		case "gate":
+			// The gate's Stop and status messages, and the claim block,
+			// which is written as a gate event with kind "claim".
+			key = "message_tokens_est"
+		case "session":
+			// SessionStart additionalContext.
+			key = "context_tokens_est"
+		default:
+			continue
+		}
+		if v, ok := ev.Body[key].(float64); ok {
+			total += int(v)
 		}
 	}
 	return total

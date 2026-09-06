@@ -11,6 +11,7 @@
     "created": {"type": ["string", "null"]},
     "task_set_sha256": {"type": ["string", "null"]},
     "warnings": {"$comment": "conditions a reader must see before the numbers; never change a metric", "type": "array", "items": {"type": "string"}},
+    "primary_source": {"$comment": "docs/12 2.1: where the primary metric came from, e.g. \"preregistration.md sha256:...\"; absent when the report fell back to the default", "type": "string"},
     "preregistration_sha256": {"$comment": "docs/12 row 15: the manifest pre-registration hash, null when the run was not pre-registered", "type": ["string", "null"]},
     "task_set_frozen": {"$comment": "docs/12 row 15: whether the run matched TASKSET.sha256; absent when the corpus has no freeze artefact", "type": "boolean"},
     "k": {"type": "integer"},
