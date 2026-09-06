@@ -3,9 +3,11 @@ package run
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -173,6 +175,32 @@ func TestRunArmsInterleaved(t *testing.T) {
 	if strings.Join(order, " ") != "A1/2: B1/2: A2/2: B2/2:" {
 		t.Errorf("order %v", order)
 	}
+	// writeArchive records a schema failure in outcome_reason rather than
+	// failing the run, so a field added to the struct but not to the
+	// schema is otherwise invisible: the suite stays green while every
+	// row is invalid. Two such drifts shipped before this check existed.
+	for _, res := range results {
+		for _, r := range res.Rows {
+			if r.OutcomeReason != nil && strings.Contains(*r.OutcomeReason, "schema") {
+				t.Errorf("%s/%s%d: %s", r.Task, r.Arm, r.I, *r.OutcomeReason)
+			}
+		}
+	}
+
+	// Row 4: the interleaving is a recorded fact, not an inference. A1 B1
+	// A2 B2 of the first task are sequences 1 to 4, and the manifest says
+	// which order produced them.
+	var seqs []string
+	for _, res := range results {
+		for _, r := range res.Rows {
+			seqs = append(seqs, fmt.Sprintf("%s%d=%d", r.Arm, r.I, r.Sequence))
+		}
+	}
+	sort.Strings(seqs)
+	if strings.Join(seqs, " ") != "A1=1 A2=3 B1=2 B2=4" {
+		t.Errorf("sequences %v, want A1=1 B1=2 A2=3 B2=4", seqs)
+	}
+
 	// Same seed_i across arms; separate archives naming their arm.
 	for i := range results[0].Rows {
 		if results[0].Rows[i].Seed != results[1].Rows[i].Seed || results[0].Rows[i].Arm != "A" || results[1].Rows[i].Arm != "B" {

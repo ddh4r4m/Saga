@@ -1,7 +1,7 @@
 {
   "$comment": "saga.bench.run/1: one row per run (bench-spec section 9.3). Usage is the contracts section 7.2 object as reported by the harness; cost is priced from the pinned table, null with a reason when unpriced.",
   "type": "object",
-  "required": ["schema", "manifest", "task", "model", "harness", "arm", "i", "seed", "outcome", "claimed_done", "oracle", "scan", "usage", "cost_usd", "wall_s", "turns", "tool_calls", "drift", "compliance", "blocked_reach_attempts", "component_used", "tool_sequence", "artifacts"],
+  "required": ["schema", "manifest", "task", "model", "harness", "arm", "i", "sequence", "seed", "outcome", "claimed_done", "oracle", "scan", "usage", "cost_usd", "wall_s", "turns", "tool_calls", "drift", "compliance", "blocked_reach_attempts", "component_used", "tool_sequence", "artifacts"],
   "additionalProperties": false,
   "properties": {
     "schema": {"const": "saga.bench.run/1"},
@@ -11,6 +11,7 @@
     "harness": {"type": "string"},
     "arm": {"type": "string"},
     "i": {"type": "integer", "minimum": 1},
+    "sequence": {"type": "integer", "minimum": 1},
     "seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "outcome": {"enum": ["completed", "timeout", "turn_cap", "budget", "abandon", "infra"]},
     "outcome_reason": {"type": ["string", "null"]},

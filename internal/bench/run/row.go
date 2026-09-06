@@ -70,13 +70,17 @@ type Drift struct {
 
 // Row is one saga.bench.run/1 record.
 type Row struct {
-	Schema        string  `json:"schema"`
-	Manifest      string  `json:"manifest"`
-	Task          string  `json:"task"`
-	Model         string  `json:"model"`
-	Harness       string  `json:"harness"`
-	Arm           string  `json:"arm"`
-	I             int     `json:"i"`
+	Schema   string `json:"schema"`
+	Manifest string `json:"manifest"`
+	Task     string `json:"task"`
+	Model    string `json:"model"`
+	Harness  string `json:"harness"`
+	Arm      string `json:"arm"`
+	I        int    `json:"i"`
+	// Sequence is this run's 1-based position in the invocation's
+	// execution order across arms and tasks, so the interleaving is a
+	// recorded fact rather than an inference (docs/12 row 4).
+	Sequence      int     `json:"sequence"`
 	Seed          string  `json:"seed"`
 	Outcome       string  `json:"outcome"`
 	OutcomeReason *string `json:"outcome_reason"`
@@ -121,25 +125,31 @@ func (r *Row) Validate() error {
 
 // Manifest is the saga.bench.manifest/1 record.
 type Manifest struct {
-	Schema                string            `json:"schema"`
-	Created               string            `json:"created"`
-	Tier                  string            `json:"tier"`
-	BenchVersion          BenchVersion      `json:"bench_version"`
-	PreregistrationSHA256 *string           `json:"preregistration_sha256"`
-	TaskSet               TaskSet           `json:"task_set"`
-	Arms                  []Arm             `json:"arms"`
-	Models                []Model           `json:"models"`
-	Harnesses             []HarnessRef      `json:"harnesses"`
-	K                     int               `json:"k"`
-	RunSeed               string            `json:"run_seed"`
-	BootstrapSeed         int64             `json:"bootstrap_seed"`
-	PriceTableSHA256      *string           `json:"price_table_sha256"`
-	AbstainListSHA256     string            `json:"abstain_list_sha256"`
-	ClaimsListSHA256      string            `json:"claims_list_sha256"`
-	Isolation             string            `json:"isolation"`
-	Images                map[string]string `json:"images"`
-	Host                  Host              `json:"host"`
-	Budget                Budget            `json:"budget"`
+	Schema                string       `json:"schema"`
+	Created               string       `json:"created"`
+	Tier                  string       `json:"tier"`
+	BenchVersion          BenchVersion `json:"bench_version"`
+	PreregistrationSHA256 *string      `json:"preregistration_sha256"`
+	TaskSet               TaskSet      `json:"task_set"`
+	Arms                  []Arm        `json:"arms"`
+	Models                []Model      `json:"models"`
+	Harnesses             []HarnessRef `json:"harnesses"`
+	K                     int          `json:"k"`
+	RunSeed               string       `json:"run_seed"`
+	BootstrapSeed         int64        `json:"bootstrap_seed"`
+	PriceTableSHA256      *string      `json:"price_table_sha256"`
+	AbstainListSHA256     string       `json:"abstain_list_sha256"`
+	ClaimsListSHA256      string       `json:"claims_list_sha256"`
+	// AbandonLexiconSHA256 pins the closed reason lexicon that classed
+	// this run's ABANDON terminals (docs/12 row 16).
+	AbandonLexiconSHA256 string `json:"abandon_lexicon_sha256"`
+	// Interleaving names the execution order across arms; the rows'
+	// sequence numbers reconstruct it exactly (docs/12 row 4).
+	Interleaving string            `json:"interleaving"`
+	Isolation    string            `json:"isolation"`
+	Images       map[string]string `json:"images"`
+	Host         Host              `json:"host"`
+	Budget       Budget            `json:"budget"`
 }
 
 // BenchVersion identifies the bench binary.

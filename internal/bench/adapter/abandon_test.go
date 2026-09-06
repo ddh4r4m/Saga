@@ -3,6 +3,7 @@ package adapter
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -219,5 +220,30 @@ func TestReasonTermSpelling(t *testing.T) {
 		if got := NormalizeTerm(c[0]); got != c[1] {
 			t.Errorf("NormalizeTerm(%q) = %q, want %q", c[0], got, c[1])
 		}
+	}
+}
+
+// TestAbandonLexiconHash pins the classifier a run's manifest records
+// (docs/12 row 16). The golden changes only when the lexicon changes,
+// which is a deliberate act: update it in the same commit as the
+// pattern, so a silent edit to how ABANDON is classed cannot slip past
+// a reader of the diff.
+func TestAbandonLexiconHash(t *testing.T) {
+	const golden = "sha256:ebf374c61879b13f9d1406944052de1336dd19120cecb72b9e1f33f963d69905"
+	if AbandonLexiconHash != golden {
+		t.Errorf("lexicon hash %s, want %s (update the golden with the lexicon change)", AbandonLexiconHash, golden)
+	}
+	if abandonLexiconHash() != AbandonLexiconHash {
+		t.Error("hash is not stable across calls")
+	}
+	saved := reasonPatterns["policy"]
+	reasonPatterns["policy"] = append(append([]*regexp.Regexp{}, saved...), regexp.MustCompile(`\bsaga-test-only\b`))
+	changed := abandonLexiconHash()
+	reasonPatterns["policy"] = saved
+	if changed == golden {
+		t.Error("adding a pattern did not change the hash")
+	}
+	if abandonLexiconHash() != golden {
+		t.Error("hash did not return to the golden after the pattern was removed")
 	}
 }

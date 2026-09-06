@@ -318,3 +318,66 @@ func TestParseStreamToolUses(t *testing.T) {
 		t.Errorf("tool call errors: %+v", r.ToolCalls)
 	}
 }
+
+// TestHarnessFailureIsInfra: Claude Code retries inside the harness and
+// emits no retry event, so the bench sees only the terminal failure. A
+// run the harness gave up on says nothing about the model and must be
+// excluded rather than counted as a fail (bench-spec 3.3, docs/12 row 14).
+func TestHarnessFailureIsInfra(t *testing.T) {
+	for _, c := range []struct {
+		subtype string
+		isError bool
+		want    bool
+	}{
+		{"error_during_execution", true, true},
+		{"error_api", true, true},
+		{"error_max_turns", true, false},      // a real outcome, not infra
+		{"error_max_budget_usd", true, false}, // likewise
+		{"success", false, false},
+		{"", false, false},
+		{"error_during_execution", false, false}, // not flagged an error
+	} {
+		if got := IsHarnessFailure(c.subtype, c.isError); got != c.want {
+			t.Errorf("subtype %q isError %v: %v, want %v", c.subtype, c.isError, got, c.want)
+		}
+	}
+
+	// End to end through Collect on a synthetic stream.
+	dir := t.TempDir()
+	native := filepath.Join(dir, "native.jsonl")
+	line := `{"type":"result","subtype":"error_during_execution","is_error":true,"result":"API Error: 529 overloaded"}` + "\n"
+	if err := os.WriteFile(native, []byte(line), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c := &ClaudeCode{Version: "test"}
+	out, err := c.Collect(context.Background(), &CollectInput{
+		Workspace: dir, ConfigDir: dir, NativeLogPath: native,
+		Seed: strings.Repeat("ab", 32), Run: &RunOutput{}, Prompt: "p",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Outcome != "infra" {
+		t.Errorf("outcome %q, want infra", out.Outcome)
+	}
+	if !strings.Contains(out.OutcomeReason, "error_during_execution") || !strings.Contains(out.OutcomeReason, "529") {
+		t.Errorf("outcome reason %q must name the subtype and the error", out.OutcomeReason)
+	}
+}
+
+// TestRetriesDisclosure: the block says whose retries they are.
+func TestRetriesDisclosure(t *testing.T) {
+	tk := fixtureTask(t)
+	root := t.TempDir()
+	c := &ClaudeCode{Binary: "/nonexistent/claude", Version: "test", SagaBinary: "saga"}
+	ws := filepath.Join(root, "ws")
+	os.MkdirAll(ws, 0o755)
+	out, err := c.Prepare(context.Background(), &PrepareInput{Task: tk, Workspace: ws, ConfigDir: filepath.Join(root, "cfg"), Blocks: []string{}, Limits: Limits{WallS: 60, MaxTurns: 5, USD: 1}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, _ := out.Disclosure["retries"].(map[string]any)
+	if r == nil || r["policy"] != "harness-internal" || r["count"] != nil || r["count_reason"] == nil {
+		t.Errorf("retries block %v", r)
+	}
+}

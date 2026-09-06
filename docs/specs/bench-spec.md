@@ -180,7 +180,7 @@ A **cell** is `(task, model, harness, arm)`. Each cell gets **K runs**, `K ≥ 5
 | Turns per run | 200 | Harness stopped; outcome `turn_cap`; fail |
 | Cost per run | `3 × cost_hint_usd` | Harness stopped at the next tool boundary; outcome `budget`; fail |
 | Cost per cell / per bench | From tier (§4.5) | Remaining runs marked `not_run`; report shows the hole |
-| Provider errors | 3 retries with backoff on 429/5xx; retries recorded | 4th failure → outcome `infra`; **excluded** from metrics but counted in the exclusions table |
+| Provider errors | Retries belong to the harness. Claude Code retries internally on 429 and 5xx and emits no retry event in stream-json (checked on 2.1.263 over twelve archived transcripts), so the bench cannot count attempts and does not pretend to: the disclosure's `retries` block is `{policy: "harness-internal", count: null, count_reason: ...}`. The bench records the terminal failure only | A `result` with `is_error` and any `error_` subtype other than `error_max_turns` or `error_max_budget_usd` is the harness giving up: outcome `infra`, `outcome_reason` carrying the subtype and the first 200 characters of the error; **excluded** from metrics but counted in the exclusions table |
 
 `infra` is the only exclusion category. Everything else the agent did is a result.
 
@@ -404,7 +404,7 @@ Following 2605.23950, a run without a complete block is invalid (exit 5 at `coll
   "hooks": [{"event": "Stop", "script_sha256": "…"}],
   "mcp_servers": [],
   "limits": {"max_turns": 200, "wall_s": 2160, "usd": 2.55},
-  "retries": {"policy": "3x backoff 429/5xx", "count": 0},
+  "retries": {"policy": "harness-internal", "count": null, "count_reason": "…"},
   "env_vars": {"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"},
   "host": {"os": "linux", "arch": "arm64", "image_digest": "sha256:…"},
   "blocks": ["path-shim:saga", "dir-deny:.saga"]

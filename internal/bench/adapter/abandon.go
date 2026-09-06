@@ -32,6 +32,33 @@ type Abandon struct {
 	GateID string `json:"gate_id,omitempty"`
 }
 
+// AbandonLexiconHash is the sha256 of the closed reason lexicon, so a
+// run's manifest pins the classifier that graded its ABANDON terminals
+// beside claims.txt and abstain.txt (docs/12 row 16). Serialised as
+// "<class>\n" then each pattern source sorted within the class, classes
+// in ReasonClasses order; adding, removing or editing a pattern changes
+// it, which is the point.
+var AbandonLexiconHash = abandonLexiconHash()
+
+func abandonLexiconHash() string {
+	var b strings.Builder
+	for _, class := range ReasonClasses {
+		b.WriteString(class)
+		b.WriteByte('\n')
+		srcs := make([]string, 0, len(reasonPatterns[class]))
+		for _, re := range reasonPatterns[class] {
+			srcs = append(srcs, re.String())
+		}
+		sort.Strings(srcs)
+		for _, src := range srcs {
+			b.WriteString("  ")
+			b.WriteString(src)
+			b.WriteByte('\n')
+		}
+	}
+	return canon.SHA256([]byte(b.String()))
+}
+
 // ReasonUnclassified is the class of an ABANDON whose reason matches no
 // pattern; it never grades as a correct terminal.
 const ReasonUnclassified = "unclassified"

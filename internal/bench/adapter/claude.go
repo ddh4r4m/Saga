@@ -14,6 +14,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"unicode/utf8"
 
 	claudecode "github.com/ddh4r4m/saga/adapters/claude-code"
 	"github.com/ddh4r4m/saga/internal/canon"
@@ -332,6 +333,14 @@ func (c *ClaudeCode) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOut
 	d["env_vars"] = envMap
 	if !withGate {
 		d["blocks_detail"] = BlocksDetail(nil)
+	}
+	// Claude Code retries inside the harness and emits no retry event in
+	// stream-json, so the bench records the terminal failure only
+	// (bench-spec 3.3, docs/12 row 14).
+	d["retries"] = map[string]any{
+		"policy":       "harness-internal",
+		"count":        nil,
+		"count_reason": "claude-code retries inside the harness and does not emit retry events in stream-json (checked on 2.1.263)",
 	}
 	d["config_hash"] = BytesSHA256(settings)
 	d["prompt_hash"] = BytesSHA256([]byte(in.PromptOf()))
@@ -786,6 +795,11 @@ func (c *ClaudeCode) Collect(ctx context.Context, in *CollectInput) (*CollectOut
 	case sr.Subtype == "" && in.Run != nil && in.Run.Exit != 0:
 		out.Outcome = "infra"
 		out.OutcomeReason = fmt.Sprintf("claude exited %d without a result event", in.Run.Exit)
+	case IsHarnessFailure(sr.Subtype, sr.IsError):
+		// The harness exhausted its own retries: the run tells us nothing
+		// about the model, so it is excluded rather than counted a fail.
+		out.Outcome = "infra"
+		out.OutcomeReason = "harness failure, subtype " + sr.Subtype + ": " + firstChars(sr.FinalMessage, 200)
 	case sr.IsError:
 		out.OutcomeReason = "result subtype " + sr.Subtype
 	}
@@ -877,4 +891,30 @@ func (c *ClaudeCode) Collect(ctx context.Context, in *CollectInput) (*CollectOut
 		out.Disclosure["transcript_path"] = nil
 	}
 	return out, nil
+}
+
+// IsHarnessFailure reports whether a result subtype names a failure of
+// the harness or the provider rather than an outcome of the run. The
+// turn and budget caps are outcomes and are excluded here; every other
+// error_ subtype is the harness giving up, most often after its own
+// retries on a 429 or 5xx (bench-spec 3.3, docs/12 row 14).
+func IsHarnessFailure(subtype string, isError bool) bool {
+	switch subtype {
+	case "error_max_turns", "error_max_budget_usd", "":
+		return false
+	}
+	return isError && strings.HasPrefix(subtype, "error_")
+}
+
+// firstChars caps a diagnostic on a rune boundary.
+func firstChars(s string, n int) string {
+	s = strings.TrimSpace(s)
+	if len(s) <= n {
+		return s
+	}
+	b := s[:n]
+	for len(b) > 0 && !utf8.ValidString(b) {
+		b = b[:len(b)-1]
+	}
+	return b + "..."
 }

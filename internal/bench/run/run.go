@@ -66,7 +66,11 @@ type Options struct {
 	// this many seconds (a smoke-run safety; the task's own limit is the
 	// section 3.3 default).
 	WallCapS float64
-	Log      io.Writer
+	// Interleaved marks an invocation that runs several arms per task
+	// and index; open records it in the manifest, and the rows' sequence
+	// numbers reconstruct the order (docs/12 row 4).
+	Interleaved bool
+	Log         io.Writer
 }
 
 // ArmSpec is one parsed `--arm` value: `<id>` or `<id>:bare` is the
@@ -215,7 +219,9 @@ func open(ctx context.Context, opts Options) (*session, error) {
 		Arms:    []Arm{armOf(opts)},
 		Models:  []Model{{ID: opts.Model}},
 		K:       opts.K, RunSeed: opts.Seed, BootstrapSeed: BootstrapSeed,
-		AbstainListSHA256: AbstainHash, ClaimsListSHA256: ClaimsHash, Isolation: "worktree", Images: map[string]string{},
+		AbstainListSHA256: AbstainHash, ClaimsListSHA256: ClaimsHash,
+		AbandonLexiconSHA256: adapter.AbandonLexiconHash, Interleaving: interleaving(opts),
+		Isolation: "worktree", Images: map[string]string{},
 		Host:   Host{OS: runtime.GOOS, Arch: runtime.GOARCH},
 		Budget: Budget{EstimateUSD: estimate, CapUSD: cap},
 	}
@@ -289,6 +295,9 @@ type session struct {
 	tmpRoot    string
 	cap        float64
 	res        *Result
+	// seq is the invocation's execution counter, shared by every arm's
+	// session so the rows record the interleaving (docs/12 row 4).
+	seq *int
 }
 
 // run executes run i of task t and appends the row.
@@ -303,7 +312,8 @@ func (s *session) run(ctx context.Context, t *task.Task, i int) {
 		res.NotRun++
 		return
 	}
-	row := runOne(ctx, opts, s.m, s.hash, t, i, s.tmpRoot)
+	*s.seq++
+	row := runOne(ctx, opts, s.m, s.hash, t, i, s.tmpRoot, *s.seq)
 	if row.CostUSD != nil {
 		res.SpentUSD += *row.CostUSD
 	}
@@ -342,6 +352,8 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
+	n := 0
+	s.seq = &n
 	for _, t := range opts.Tasks {
 		for i := 1; i <= opts.K; i++ {
 			s.run(ctx, t, i)
@@ -367,10 +379,12 @@ func RunArms(ctx context.Context, base Options, arms []ArmSpec) ([]*Result, erro
 		}
 		base.Seed = hex.EncodeToString(b)
 	}
+	seq := 0
 	var sessions []*session
 	for _, a := range arms {
 		opts := base
 		opts.Arm, opts.Components, opts.Out = a.ID, a.Components, filepath.Join(base.Out, a.ID)
+		opts.Interleaved = len(arms) > 1
 		s, err := open(ctx, opts)
 		if err != nil {
 			for _, o := range sessions {
@@ -378,6 +392,7 @@ func RunArms(ctx context.Context, base Options, arms []ArmSpec) ([]*Result, erro
 			}
 			return nil, err
 		}
+		s.seq = &seq
 		sessions = append(sessions, s)
 		// Verify once: the task set is shared.
 		base.Verify = false
@@ -433,11 +448,12 @@ func strp(s string) *string { return &s }
 
 // runOne executes one run and writes its archive; every failure short
 // of a bench bug becomes an outcome on the row.
-func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string, t *task.Task, i int, tmpRoot string) Row {
+func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string, t *task.Task, i int, tmpRoot string, sequence int) Row {
 	seed := Seeds(opts.Seed, t.ID, i)
 	row := Row{
 		Schema: RowSchema, Manifest: manifestHash, Task: t.ID, Model: opts.Model, Harness: opts.Adapter.Name(), Arm: opts.Arm, I: i, Seed: seed,
-		Outcome: "completed", Oracle: OracleRow{Tests: map[string]string{}, Regressed: []string{}},
+		Sequence: sequence,
+		Outcome:  "completed", Oracle: OracleRow{Tests: map[string]string{}, Regressed: []string{}},
 		Scan:       task.ScanResult{ScopeViolations: []string{}, Detectors: []string{}},
 		Usage:      Usage{Source: "none"},
 		Compliance: []any{}, ToolSequence: []adapter.ToolCall{}, Artifacts: map[string]string{},
@@ -780,3 +796,11 @@ func ReadArchive(dir string) (*Manifest, string, []Row, error) {
 }
 
 func bytesReader(b []byte) io.Reader { return bytes.NewReader(b) }
+
+// interleaving names the invocation's execution order for the manifest.
+func interleaving(opts Options) string {
+	if opts.Interleaved {
+		return "per-task-alternating"
+	}
+	return "single-arm"
+}

@@ -341,9 +341,16 @@
           "type": "string"
         },
         "count": {
-          "type": "integer"
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "count_reason": {
+          "type": "string"
         }
-      }
+      },
+      "$comment": "count is null when the harness retries internally and emits no retry event (claude-code); count_reason then says so (bench-spec 3.3)."
     },
     "env_vars": {
       "type": "object",
