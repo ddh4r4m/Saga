@@ -108,6 +108,17 @@ func TestGuardHookRendersDenyAndAllow(t *testing.T) {
 	if n := guard.CountDenies(logPath); n != 1 {
 		t.Errorf("CountDenies %d, want 1", n)
 	}
+	// The safety hook is the only hook a bare arm carries, so its own
+	// wall time is that arm's whole hook overhead (docs/12 commitment 7).
+	for i, l := range lines {
+		if l.LatencyMS == nil {
+			t.Errorf("line %d has no latency_ms: %+v", i, l)
+			continue
+		}
+		if *l.LatencyMS < 0 || *l.LatencyMS > 5000 {
+			t.Errorf("line %d latency_ms %d", i, *l.LatencyMS)
+		}
+	}
 }
 
 // TestGuardHookFailsOpen: a payload the hook cannot read allows and logs

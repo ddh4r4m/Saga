@@ -87,7 +87,7 @@ func (a *App) guardHook(args []string) error {
 	if perr != nil || in == nil {
 		// Fail open, and say so in the log: the payload is the harness's,
 		// and a parse failure is our problem, not the agent's.
-		guard.LogSafety(os.Getenv(guard.LogEnv), "", "", "", guard.SafetyDecision{Err: fmt.Errorf("payload: %v", perr)})
+		guard.LogSafetyAt(os.Getenv(guard.LogEnv), "", "", "", guard.SafetyDecision{Err: fmt.Errorf("payload: %v", perr)}, &a.Started)
 		fmt.Fprintln(a.Stdout, "{}")
 		return nil
 	}
@@ -100,7 +100,7 @@ func (a *App) guardHook(args []string) error {
 		cwd = a.Cwd
 	}
 	d := guard.SafetyCheck(in.ToolName, in.ToolInput, cwd, os.Environ())
-	guard.LogSafety(os.Getenv(guard.LogEnv), in.SessionID, in.ToolUseID, commandOf(in.ToolInput), d)
+	guard.LogSafetyAt(os.Getenv(guard.LogEnv), in.SessionID, in.ToolUseID, commandOf(in.ToolInput), d, &a.Started)
 	if !d.Deny {
 		fmt.Fprintln(a.Stdout, "{}")
 		return nil

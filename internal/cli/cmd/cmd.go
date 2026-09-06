@@ -58,12 +58,18 @@ type App struct {
 	Stdout  io.Writer
 	Stderr  io.Writer
 	Cwd     string
+	// Started is the process's own start, as early as Main can name it.
+	// The composed hook measures its wall time from here, so the number
+	// in the overhead table includes the CLI's start-up rather than
+	// flattering it (docs/12 commitment 7).
+	Started time.Time
 }
 
 // Main runs the CLI and returns the exit code.
 func Main(version string, args []string, stdin io.Reader, stdout, stderr io.Writer) cli.Code {
+	started := time.Now()
 	cwd, _ := os.Getwd()
-	app := &App{Version: version, Stdin: stdin, Stdout: stdout, Stderr: stderr, Cwd: cwd}
+	app := &App{Version: version, Stdin: stdin, Stdout: stdout, Stderr: stderr, Cwd: cwd, Started: started}
 	err := app.run(args)
 	if err != nil {
 		code := cli.CodeOf(err)
@@ -267,6 +273,7 @@ func (a *App) cmdHook(args []string) error {
 		Harness: harness, Parse: claude.Parse, Render: claude.Render,
 		Layers: []hookio.Layer{layer, gateLayer, &claims.Layer{Store: s, Gate: gateLayer, Stderr: stderr}}, Deadline: time.Duration(cfg.Hook.DeadlineMS) * time.Millisecond,
 		Stdin: a.Stdin, Stdout: a.Stdout, Stderr: a.Stderr,
+		Start: a.Started, WriteLatency: func(l hookio.LatencyLine) error { return trace.AppendLatency(s, l) },
 	}
 	code := entry.Run(event)
 	if code != cli.ExitOK {

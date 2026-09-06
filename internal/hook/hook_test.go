@@ -200,3 +200,72 @@ func TestPreCompactNeverBlocks(t *testing.T) {
 		t.Errorf("%v %v", m, code)
 	}
 }
+
+// TestLatencyLineOnEveryPath (docs/12 commitment 7): the invocation's own
+// wall time is written once, at the last point before the reply, on the
+// ordinary path and on the deadline path alike. The deadline case is the
+// one the overhead table most needs, because it is where a hook fails
+// open (docs/12 section 9), and it is exactly the case a buffered chain
+// would have lost.
+func TestLatencyLineOnEveryPath(t *testing.T) {
+	var lines []hookio.LatencyLine
+	runWith := func(event, stdin string, deadline time.Duration, layers ...hookio.Layer) cli.Code {
+		var out bytes.Buffer
+		errb := &syncBuffer{}
+		e := &Entry{
+			Harness: "claude-code", Parse: claude.Parse, Render: claude.Render, Layers: layers,
+			Deadline: deadline, Stdin: strings.NewReader(stdin), Stdout: &out, Stderr: errb,
+			WriteLatency: func(l hookio.LatencyLine) error { lines = append(lines, l); return nil },
+		}
+		return e.Run(event)
+	}
+
+	// Ordinary path: the steps that ran are named and the total covers them.
+	runWith(hookio.EventPreToolUse, preTool, time.Second, &fakeLayer{name: "a"}, &fakeLayer{name: "b", delay: 20 * time.Millisecond})
+	if len(lines) != 1 {
+		t.Fatalf("%d lines after one invocation", len(lines))
+	}
+	l := lines[0]
+	if l.Schema != hookio.LatencySchema || l.Event != hookio.EventPreToolUse || l.Session != "s1" {
+		t.Errorf("line %+v", l)
+	}
+	if l.TimedOut {
+		t.Error("an invocation inside its deadline reported timed_out")
+	}
+	if l.Steps["b"] < 15 {
+		t.Errorf("step b took %d ms, want about 20: %v", l.Steps["b"], l.Steps)
+	}
+	if l.TotalMS < l.Steps["a"]+l.Steps["b"] {
+		t.Errorf("total %d below its steps %v", l.TotalMS, l.Steps)
+	}
+	if l.Decision != hookio.DecisionAllow {
+		t.Errorf("decision %q", l.Decision)
+	}
+
+	// Deadline path: one line, marked, carrying only the finished steps.
+	lines = nil
+	code := runWith(hookio.EventPreToolUse, preTool, 50*time.Millisecond, &fakeLayer{name: "fast"}, &fakeLayer{name: "slow", delay: 2 * time.Second})
+	if code != cli.ExitRefusal {
+		t.Errorf("deadline exit %v", code)
+	}
+	if len(lines) != 1 {
+		t.Fatalf("%d lines on the deadline path", len(lines))
+	}
+	l = lines[0]
+	if !l.TimedOut {
+		t.Error("the deadline path did not report timed_out")
+	}
+	if _, ok := l.Steps["slow"]; ok {
+		t.Errorf("the abandoned step was counted: %v", l.Steps)
+	}
+	if l.Decision != hookio.DecisionDeny {
+		t.Errorf("deadline decision %q, want deny", l.Decision)
+	}
+
+	// A malformed payload still costs the process time, and is measured.
+	lines = nil
+	runWith(hookio.EventPreToolUse, "{not json", time.Second, &fakeLayer{name: "a"})
+	if len(lines) != 1 || lines[0].Decision != hookio.DecisionDeny {
+		t.Errorf("malformed payload: %+v", lines)
+	}
+}

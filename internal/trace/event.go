@@ -69,6 +69,16 @@ type Event struct {
 	Hash        string         `json:"hash,omitempty"`
 	MaskedCount *int           `json:"masked_count,omitempty"`
 	MergedInto  *int           `json:"merged_into,omitempty"`
+	// HookMS is the milliseconds from the hook process starting to this
+	// event being appended, and HookSteps what each layer step had cost
+	// by then (trace-spec section 2.9). Both are absent outside a hook
+	// invocation and on every archive written before the fields existed,
+	// where they read as "not recorded" rather than as zero. The
+	// invocation's own total is in the hook-latency sidecar, not here:
+	// a number only known after every layer has run cannot be stamped on
+	// an event that is already durable.
+	HookMS    *int           `json:"hook_ms,omitempty"`
+	HookSteps map[string]int `json:"hook_steps,omitempty"`
 }
 
 // TSFormat is the wall-clock format: UTC with millisecond precision.

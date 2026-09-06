@@ -114,11 +114,23 @@ type SafetyLogLine struct {
 	Rules     []string `json:"rules"`
 	SHA256    string   `json:"sha256"`
 	Error     string   `json:"error,omitempty"`
+	// LatencyMS is the hook process's own wall time to the byte before
+	// its reply. The safety hook runs in both arms on every Bash call, so
+	// it is part of the measured overhead of docs/12 commitment 7, and it
+	// is the only hook arm A carries. Absent on lines written before the
+	// field existed, where it reads as not recorded.
+	LatencyMS *int `json:"latency_ms,omitempty"`
 }
 
 // LogSafety appends one decision to the file named by SAGA_GUARD_LOG.
 // A missing variable is not an error: the hook decides either way.
 func LogSafety(path, sessionID, toolUseID, command string, d SafetyDecision) error {
+	return LogSafetyAt(path, sessionID, toolUseID, command, d, nil)
+}
+
+// LogSafetyAt is LogSafety with the invocation's own wall time. started
+// is the process start; nil leaves latency_ms absent.
+func LogSafetyAt(path, sessionID, toolUseID, command string, d SafetyDecision, started *time.Time) error {
 	if path == "" {
 		return nil
 	}
@@ -139,6 +151,10 @@ func LogSafety(path, sessionID, toolUseID, command string, d SafetyDecision) err
 	}
 	if d.Err != nil {
 		line.Error = d.Err.Error()
+	}
+	if started != nil && !started.IsZero() {
+		ms := int(time.Since(*started) / time.Millisecond)
+		line.LatencyMS = &ms
 	}
 	raw, err := json.Marshal(line)
 	if err != nil {

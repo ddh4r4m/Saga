@@ -86,6 +86,19 @@
     "merged_into": {
       "type": "integer",
       "minimum": 1
+    },
+    "hook_ms": {
+      "$comment": "trace-spec 2.9: ms from the hook process starting to this event being appended; absent when not written by a hook and on archives written before the field existed",
+      "type": "integer",
+      "minimum": 0
+    },
+    "hook_steps": {
+      "$comment": "trace-spec 2.9: per-step ms for the steps that had run when this event was appended",
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
     }
   },
   "additionalProperties": false

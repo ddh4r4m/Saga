@@ -156,12 +156,12 @@ func (l *Layer) Run(ctx context.Context, in *hookio.Input) (*hookio.Output, erro
 	src := "hook:" + in.Event
 	switch in.Event {
 	case hookio.EventSessionStart:
-		err = s.sessionEvent(in, src, "start")
+		err = s.sessionEvent(in, src, "start", out)
 	case hookio.EventSessionEnd:
 		if terr := s.sweepTranscript(in, src); terr != nil {
 			l.note("saga trace: transcript: %v", terr)
 		}
-		err = s.sessionEvent(in, src, "end")
+		err = s.sessionEvent(in, src, "end", out)
 	case hookio.EventUserPromptSubmit:
 		err = s.userPrompt(in, src)
 	case hookio.EventPreToolUse:
@@ -208,7 +208,7 @@ func (l *Layer) Finalize(ctx context.Context, in *hookio.Input, merged *hookio.O
 	return nil
 }
 
-func (s *session) sessionEvent(in *hookio.Input, src, phase string) error {
+func (s *session) sessionEvent(in *hookio.Input, src, phase string, out *hookio.Output) error {
 	if phase == "start" && (in.Source == "resume" || in.Source == "compact" || in.Source == "fork") {
 		phase = "resume"
 	}
@@ -251,6 +251,17 @@ func (s *session) sessionEvent(in *hookio.Input, src, phase string) error {
 	if in.Source != "" {
 		body["source"] = in.Source
 	}
+	// What this step put into additionalContext, so a run's injected
+	// tokens can be summed from the trace alone (docs/12 commitment 7).
+	// It counts this layer's own injection: a later layer that injects on
+	// SessionStart would record its own, and none does today.
+	ctxTokens := 0
+	if out != nil {
+		for _, c := range out.AdditionalContext {
+			ctxTokens += canon.TokensEstString(c)
+		}
+	}
+	body["context_tokens_est"] = ctxTokens
 	// Resume input carries undocumented cache fields (harness-probes P7);
 	// recorded when present, never assumed.
 	for _, k := range []string{"context_tokens", "prompt_cache_likely_expired", "seconds_since_last_response", "estimated_cache_write_usd"} {

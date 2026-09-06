@@ -64,6 +64,8 @@ One JSON object per line. Every event shares:
 
 Canonical JSON is sorted keys, no insignificant whitespace, UTF-8, the bench-spec §8.1 rule. The `prev` chain makes a session file tamper-evident; `saga trace verify` walks it.
 
+Two optional fields, written only by a hook (§2.9): `hook_ms`, the milliseconds from the hook process starting to this event being appended, and `hook_steps`, what each layer step had cost by then. Both are part of the hashed object. They are absent on an event no hook wrote and on every archive written before they existed, where they read as "not recorded" and never as zero.
+
 ### 2.2 Event types
 
 The task list in doc 09 §3.7 names twelve types; four are added (`session`, `drift`, `checkpoint`, `route_decision`) because pins, watchdog findings, restart points and routing decisions need a home that is not a turn. The catalogue below is the normative one; `docs/specs/00-cross-spec-contracts.md` §6 repeats it verbatim.
@@ -128,6 +130,7 @@ Every string field passes the masker before hashing or writing. In M0 the masker
 │   ├── blobs/<sha256>             # masked payloads over 4 KiB
 │   ├── checkpoints/<turn>.json    # §6.3
 │   ├── ledger.jsonl               # derived per model_call rows (§3.2); rebuildable from events
+│   ├── hook-latency.jsonl         # one line per hook invocation (§2.9); NOT hash-chained, never evidence
 │   └── LOCK
 ├── pins/current.json              # last observed pins (§4.1)
 ├── canary/<run_id>/               # canary runs, bench-spec archive layout
@@ -135,7 +138,7 @@ Every string field passes the masker before hashing or writing. In M0 the masker
 └── index.sqlite                   # session list, totals, drift events; rebuildable
 ```
 
-Everything under `.saga/trace/` is derived from `events.*.jsonl` plus `blobs/`; `saga trace rebuild` regenerates `ledger.jsonl` and `index.sqlite` and must be byte-identical (§11).
+Everything under `.saga/trace/` is derived from `events.*.jsonl` plus `blobs/` with one exception, `hook-latency.jsonl` (§2.9), which is a measurement of the hook and cannot be rebuilt from what the hook recorded; `saga trace rebuild` regenerates `ledger.jsonl` and `index.sqlite` and must be byte-identical (§11).
 
 ### 2.8 JSON schema (excerpt, normative)
 
@@ -159,6 +162,24 @@ Everything under `.saga/trace/` is derived from `events.*.jsonl` plus `blobs/`; 
 ```
 
 Per-type `body` schemas live in `schema/trace/1/<type>.json` in the repo; a field the schema does not know is a validation failure, not a warning.
+
+### 2.9 Hook wall time, and the sidecar it needs
+
+docs/12 §12 commitment 7 requires measured hook overhead beside the primary result, which means the hook has to time itself.
+
+**Per event.** A hook process serves exactly one invocation. `Writer.Append` stamps every event that invocation writes with `hook_ms`, the milliseconds from the process starting to that append, and `hook_steps`, the per-step milliseconds of the steps that had finished by then. The stamp is taken in the writer rather than at each of the three call sites that write events (the recorder, gate, the claim step), so no layer can forget it. A reader uses these to attribute a slow invocation to a step.
+
+**Per invocation.** The invocation's own total is not on the events, and cannot be: it is only known after every layer has run, and the events are durable by then. Buffering them until the total was known would lose them exactly when a hook overruns its deadline, which is the case the overhead table exists to measure, and it would put a metric inside the evidence write path. So the total goes to a sidecar, `sessions/<id>/hook-latency.jsonl`, one line per invocation, written at the last point before the reply goes to the harness:
+
+```json
+{"schema":"saga.trace.hooklatency/1","ts":"2026-09-06T14:03:11.204Z","session":"01J6Y…",
+ "event":"PreToolUse","total_ms":41,"steps":{"trace":8,"gate":21,"trace:finalize":6},
+ "decision":"allow","timed_out":false}
+```
+
+The sidecar is **not hash-chained and is never evidence**. `saga trace verify` does not read it, `saga trace rebuild` does not regenerate it, and no decision depends on it. `timed_out` is true when the chain was abandoned at the deadline (contracts §1.1); `steps` then holds only the steps that finished, because a step the deadline cut short did not contribute to the reply the harness received. Those lines are the fail-open cases of docs/12 §9 and the bench counts them per event type.
+
+The bench-safety hook of guard-spec §8.4.1 is not part of this chain and writes its own wall time as `latency_ms` on its own log line. In a bare arm it is the only hook, so it is that arm's whole hook overhead.
 
 ---
 
@@ -245,6 +266,8 @@ Output: `tokens_ledger`, `tokens_provider`, `error_pct` per field, and the large
 ### 3.5 Per-component attribution
 
 Providers do not report tokens per prompt region, so attribution is an estimate and is labelled as one. Method: every byte added to the context in a turn has a known origin at the hook boundary (the harness system prompt and tool definitions, the user prompt, each tool result tagged with its `component`, each gate, guard, trace or route message, each `mem_inject`, each state block and preamble), and the composed hook (contracts §1) labels every byte it emits with its layer. Trace sums estimated tokens per origin for the turn, scales them so they total the observed `context_delta`, and stores the shares. Cumulatively over a session, share × cost gives dollars per component. The `bare` adapter, which owns the prompt, reports exact counts by calling the provider's token-count endpoint per region on the first turn (Anthropic `count_tokens`, OpenAI `tiktoken` locally) and the ratio between exact and estimated is printed as `attribution_calibration`; the bench (§11) reports the same ratio for every harness adapter.
+
+**Injected tokens on the events themselves.** The per-session totals above live in `.saga/observed/`, which a bare arm does not have, so the bench cannot read them for the arm it most needs to compare against. Every event that carries injected text therefore states its own estimate: `message_tokens_est` on a `gate` event (what that invocation put in front of the model, which is the block or deny message and not the release handoff, since that goes only to stderr and the trace) and on the `kind: claim` event, and `context_tokens_est` on a `session` event (what the step put into `additionalContext`; zero when it injected nothing, which is the case on SessionStart today). A run's injected tokens are the sum of these over its events plus the fixed contract sentence of the staged prompt, which is a constant per arm and zero in a bare arm.
 
 ### 3.6 Budgets
 

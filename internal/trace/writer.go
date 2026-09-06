@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/ddh4r4m/saga/internal/canon"
+	"github.com/ddh4r4m/saga/internal/hookio"
 	"github.com/ddh4r4m/saga/internal/store"
 )
 
@@ -259,6 +260,15 @@ func (w *Writer) Append(ev *Event) error {
 	ev.TS, ev.MonoNS = w.Now()
 	ev.Prev = w.prev
 	ev.Hash = ""
+	// Inside a hook, every event carries what the invocation had spent
+	// when it was appended (trace-spec 2.9). The stamp is taken here
+	// rather than at each of the three call sites that write events, so
+	// no layer can forget it.
+	if t := hookio.Invocation(); t != nil {
+		ms := t.MS()
+		ev.HookMS = &ms
+		ev.HookSteps = t.Steps()
+	}
 	line, err := w.encode(ev)
 	if err != nil {
 		return err
@@ -269,6 +279,7 @@ func (w *Writer) Append(ev *Event) error {
 			Body: map[string]any{"for_seq": nil, "exit": nil, "error": "event_oversize", "result_hash": canon.SHA256(line), "result_bytes": len(line), "truncated": true, "wall_ms": nil, "served": "live"},
 		}
 		over.Schema, over.Session = Schema, w.Session
+		over.HookMS, over.HookSteps = ev.HookMS, ev.HookSteps
 		line, err = w.encode(over)
 		if err != nil {
 			return err
@@ -432,6 +443,62 @@ func ListSessions(s *store.Store) ([]string, error) {
 	out := make([]string, len(items))
 	for i, it := range items {
 		out[i] = it.name
+	}
+	return out, nil
+}
+
+// LatencyFile is the hook-latency sidecar of a session: one line per
+// hook invocation, not hash-chained and never evidence. It records what
+// the hook itself cost, which cannot be stamped on a chain event because
+// the total is only known after every layer has run and the events are
+// already durable by then (trace-spec section 2.9, docs/12 commitment 7).
+const LatencyFile = "hook-latency.jsonl"
+
+// AppendLatency writes one sidecar line for a session. A session id the
+// line does not carry, or a store that does not exist, records nothing:
+// the measurement never changes what the harness is told.
+func AppendLatency(s *store.Store, line hookio.LatencyLine) error {
+	if s == nil || !s.Exists() || line.Session == "" {
+		return nil
+	}
+	dir := SessionDir(s, line.Session)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	raw, err := json.Marshal(line)
+	if err != nil {
+		return err
+	}
+	f, err := os.OpenFile(filepath.Join(dir, LatencyFile), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = f.Write(append(raw, '\n'))
+	return err
+}
+
+// ReadLatency loads a session's sidecar lines; a missing file is no
+// lines and no error, which is how an archive written before the sidecar
+// existed reads.
+func ReadLatency(path string) ([]hookio.LatencyLine, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var out []hookio.LatencyLine
+	for _, l := range strings.Split(string(raw), "\n") {
+		if strings.TrimSpace(l) == "" {
+			continue
+		}
+		var line hookio.LatencyLine
+		if err := json.Unmarshal([]byte(l), &line); err != nil {
+			return out, fmt.Errorf("%s: %w", path, err)
+		}
+		out = append(out, line)
 	}
 	return out, nil
 }

@@ -40,6 +40,15 @@ type Entry struct {
 	Stdin    io.Reader
 	Stdout   io.Writer
 	Stderr   io.Writer
+	// Start is the earliest moment the process can name as its own
+	// beginning; the zero value means "now", which undercounts by the
+	// CLI's own start-up.
+	Start time.Time
+	// WriteLatency persists one sidecar line per invocation (docs/12
+	// commitment 7). It runs at the last point before the reply goes to
+	// the harness, and its failure is a note on stderr, never a change to
+	// what the harness is told. nil records nothing.
+	WriteLatency func(hookio.LatencyLine) error
 
 	mu sync.Mutex
 }
@@ -66,6 +75,33 @@ func (e *Entry) Run(event string) cli.Code {
 	if e.Deadline <= 0 {
 		e.Deadline = 5 * time.Second
 	}
+	timing := hookio.NewTiming(e.Start)
+	hookio.SetInvocation(timing)
+	defer hookio.SetInvocation(nil)
+	// latency writes the sidecar line and then the reply, in that order,
+	// so the recorded total is the process's wall time to the byte
+	// before the harness hears from us.
+	latency := func(in *hookio.Input, out *hookio.Output, timedOut bool) {
+		if e.WriteLatency == nil {
+			return
+		}
+		line := hookio.LatencyLine{
+			Schema: hookio.LatencySchema, TS: time.Now().UTC().Format("2006-01-02T15:04:05.000Z"),
+			Event: event, TotalMS: timing.MS(), Steps: timing.Steps(), TimedOut: timedOut,
+		}
+		if line.Steps == nil {
+			line.Steps = map[string]int{}
+		}
+		if in != nil {
+			line.Session = in.SessionID
+		}
+		if out != nil {
+			line.Decision = out.Decision
+		}
+		if err := e.WriteLatency(line); err != nil {
+			e.errf("saga hook: latency: %v", err)
+		}
+	}
 	emit := func(b []byte) {
 		if len(b) == 0 {
 			b = []byte("{}")
@@ -73,6 +109,7 @@ func (e *Entry) Run(event string) cli.Code {
 		e.Stdout.Write(append(b, '\n'))
 	}
 	if !hookio.Known(event) {
+		latency(nil, nil, false)
 		emit(nil)
 		e.errf("saga hook: unknown event %q", event)
 		return cli.ExitUsage
@@ -89,6 +126,7 @@ func (e *Entry) Run(event string) cli.Code {
 		if hookio.Deciding(event) {
 			out.Decision, out.Reason = denyFor(event), MalformedReason
 		}
+		latency(fallback, out, false)
 		emit(e.Render(fallback, out))
 		return cli.ExitUsage
 	}
@@ -106,6 +144,7 @@ func (e *Entry) Run(event string) cli.Code {
 	}()
 	select {
 	case r := <-done:
+		latency(in, r.out, false)
 		emit(e.Render(in, r.out))
 		return r.code
 	case <-ctx.Done():
@@ -114,6 +153,10 @@ func (e *Entry) Run(event string) cli.Code {
 			out.Decision, out.Reason = denyFor(event), DeadlineReason
 		}
 		e.errf("saga hook: %s overran the %s deadline; %s", event, e.Deadline, out.Decision)
+		// The chain goroutine is abandoned here, so Steps holds only the
+		// steps that had finished. That is the fail-open case of docs/12
+		// section 9 and the table counts it as its own outcome.
+		latency(in, out, true)
 		emit(e.Render(in, out))
 		if hookio.Deciding(event) {
 			return cli.ExitRefusal
@@ -138,7 +181,15 @@ func (e *Entry) chain(ctx context.Context, in *hookio.Input) (*hookio.Output, cl
 		if f, ok := l.(hookio.Finalizer); ok {
 			finalizers = append(finalizers, f)
 		}
+		stepStart := time.Now()
 		out, err := l.Run(ctx, in)
+		// A step the deadline cut short did not finish, and the reply has
+		// already gone without it, so it is not this invocation's cost.
+		// Recording it would also race the main goroutine's read of the
+		// sidecar line.
+		if ctx.Err() == nil {
+			e.Timing().Step(l.Name(), time.Since(stepStart))
+		}
 		if err != nil {
 			e.errf("saga %s: %v", l.Name(), err)
 			codes = append(codes, cli.CodeOf(err))
@@ -172,7 +223,16 @@ func (e *Entry) chain(ctx context.Context, in *hookio.Input) (*hookio.Output, cl
 		}
 	}
 	for _, f := range finalizers {
-		if err := f.Finalize(ctx, in, merged); err != nil {
+		stepStart := time.Now()
+		name := "finalize"
+		if l, ok := f.(hookio.Layer); ok {
+			name = l.Name() + ":finalize"
+		}
+		err := f.Finalize(ctx, in, merged)
+		if ctx.Err() == nil {
+			e.Timing().Step(name, time.Since(stepStart))
+		}
+		if err != nil {
 			e.errf("saga hook: finalize: %v", err)
 			codes = append(codes, cli.CodeOf(err))
 		}
@@ -201,3 +261,8 @@ func hasNonZero(codes []cli.Code) bool {
 	}
 	return false
 }
+
+// Timing is the invocation's accounting, set by Run. It is read through
+// the process-wide handle so the layers that write trace events through
+// their own writers stamp the same numbers the sidecar reports.
+func (e *Entry) Timing() *hookio.Timing { return hookio.Invocation() }

@@ -88,6 +88,9 @@ type Layer struct {
 	Stderr func(string)
 
 	lastStop *StopOutcome
+	// injected is the estimated tokens this invocation put in front of
+	// the model, stamped on every trace event the gate writes.
+	injected int
 }
 
 // StopOutcome is what gate's Stop step loaded and decided, kept for the
@@ -106,6 +109,16 @@ func (l *Layer) LastStop() *StopOutcome { return l.lastStop }
 
 // Name implements hookio.Layer.
 func (l *Layer) Name() string { return "gate" }
+
+// inject records that msg is going in front of the model and returns it
+// unchanged, so every trace event this invocation writes can say what
+// the gate cost the context (trace-spec section 3.5, docs/12 commitment
+// 7). Text that reaches only a human, such as the release handoff on
+// stderr, is deliberately not counted.
+func (l *Layer) inject(msg string) string {
+	l.injected += canon.TokensEstString(msg)
+	return msg
+}
 
 func (l *Layer) note(format string, args ...any) {
 	if l.Stderr != nil {
@@ -410,6 +423,7 @@ func (l *Layer) stop(in *hookio.Input, out *hookio.Output) (*hookio.Output, erro
 		msg = fmt.Sprintf("saga gate: %d unmet; run saga gate status", rep.Summary.Unmet+rep.Summary.Unproven+rep.Summary.Manual)
 	}
 	obs.Tokens["gate"] += canon.TokensEstString(msg)
+	l.inject(msg)
 	rep.Budget = Budget{BytesEmitted: len(msg), TokensEst: canon.TokensEstString(msg), Ceiling: CeilingStop}
 	out.Decision, out.Reason, out.Exit = hookio.DecisionBlock, msg, rep.Exit
 	so.Decision = "block"
@@ -423,7 +437,7 @@ func (l *Layer) stop(in *hookio.Input, out *hookio.Output) (*hookio.Output, erro
 func (l *Layer) cap(in *hookio.Input, msg string, ceiling int) string {
 	obs, err := l.Store.ReadObserved(in.SessionID)
 	if err != nil {
-		return msg
+		return l.inject(msg)
 	}
 	left := SessionShare - obs.Tokens["gate"]
 	if canon.TokensEstString(msg) > ceiling || canon.TokensEstString(msg) > left {
@@ -431,7 +445,7 @@ func (l *Layer) cap(in *hookio.Input, msg string, ceiling int) string {
 	}
 	obs.Tokens["gate"] += canon.TokensEstString(msg)
 	_ = l.Store.WriteObserved(obs)
-	return msg
+	return l.inject(msg)
 }
 
 func ids(r *Report) []string {
@@ -466,6 +480,9 @@ func (l *Layer) record(in *hookio.Input, kind string, body map[string]any) {
 	}
 	defer w.Close()
 	body["kind"] = kind
+	if l.injected > 0 {
+		body["message_tokens_est"] = l.injected
+	}
 	if err := w.Append(&trace.Event{Type: trace.TypeGate, Source: "hook:" + in.Event, Turn: obs.Turn, Body: body}); err != nil {
 		l.note("saga gate: trace: %v", err)
 	}

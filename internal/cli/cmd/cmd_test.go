@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ddh4r4m/saga/internal/cli"
 	schemapkg "github.com/ddh4r4m/saga/internal/schema"
@@ -18,7 +19,9 @@ import (
 func runIn(t *testing.T, cwd, stdin string, args ...string) (string, string, cli.Code) {
 	t.Helper()
 	var out, errb bytes.Buffer
-	app := &App{Version: "test", Stdin: strings.NewReader(stdin), Stdout: &out, Stderr: &errb, Cwd: cwd}
+	// Started is what Main sets from the process start; the hook entries
+	// measure their own wall time from it.
+	app := &App{Version: "test", Stdin: strings.NewReader(stdin), Stdout: &out, Stderr: &errb, Cwd: cwd, Started: time.Now()}
 	err := app.run(args)
 	if err != nil {
 		fmt.Fprintf(&errb, "saga: %v\n", err)

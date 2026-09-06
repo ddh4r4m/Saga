@@ -3,11 +3,14 @@ package gate
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 
+	"github.com/ddh4r4m/saga/internal/canon"
 	"github.com/ddh4r4m/saga/internal/hookio"
 	"github.com/ddh4r4m/saga/internal/store"
+	"github.com/ddh4r4m/saga/internal/trace"
 )
 
 func hookIn(event, tool string, input map[string]any, active bool) *hookio.Input {
@@ -296,4 +299,86 @@ func TestScopeGuardIgnoresCaches(t *testing.T) {
 			t.Errorf("%q is real work and must not be ignored", p)
 		}
 	}
+}
+
+// TestGateEventRecordsInjectedTokens (docs/12 commitment 7): every gate
+// trace event says what the invocation cost the model's context, so a
+// run's injected tokens can be summed from the trace alone rather than
+// from the per-session observed file, which a bare arm does not have.
+// The release handoff is deliberately not counted: it goes to stderr and
+// the trace, never in front of the model.
+func TestGateEventRecordsInjectedTokens(t *testing.T) {
+	r := newRepo(t)
+	obs, _ := r.store.ReadObserved("sess1")
+	obs.MaskSalt = "salt"
+	_ = r.store.WriteObserved(obs)
+	r.write("marker.txt", "no\n")
+	r.write(".saga/contract.md", minimalContract)
+	r.commit("base")
+	r.check(CheckOptions{Approve: true})
+
+	// One invocation that blocks: its event carries the message's cost.
+	layer := &Layer{Store: r.store}
+	out, err := layer.Run(context.Background(), hookIn(hookio.EventStop, "", nil, false))
+	if err != nil || out.Decision != hookio.DecisionBlock {
+		t.Fatalf("expected a block: %+v %v", out, err)
+	}
+	want := canon.TokensEstString(out.Reason)
+	if want == 0 {
+		t.Fatal("a block with no message")
+	}
+	ev := lastGateEvent(t, r.store, "sess1")
+	got, ok := ev.Body["message_tokens_est"]
+	if !ok {
+		t.Fatalf("no message_tokens_est on the gate event: %v", ev.Body)
+	}
+	if n, _ := got.(float64); int(n) != want {
+		t.Errorf("message_tokens_est %v, want %d for %q", got, want, out.Reason)
+	}
+
+	// An invocation that allows injects nothing and says nothing.
+	r.write("marker.txt", "CANARY-DONE\n")
+	r.check(CheckOptions{})
+	layer2 := &Layer{Store: r.store}
+	out, _ = layer2.Run(context.Background(), hookIn(hookio.EventStop, "", nil, false))
+	if out.Decision != hookio.DecisionAllow {
+		t.Fatalf("expected an allow: %+v", out)
+	}
+	ev = lastGateEvent(t, r.store, "sess1")
+	if _, ok := ev.Body["message_tokens_est"]; ok {
+		t.Errorf("an allow claimed injected tokens: %v", ev.Body)
+	}
+}
+
+// lastGateEvent reads the final gate event of a session.
+func lastGateEvent(t *testing.T, s *store.Store, session string) trace.Event {
+	t.Helper()
+	segs, err := trace.Segments(trace.SessionDir(s, session))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var last *trace.Event
+	for _, seg := range segs {
+		raw, err := os.ReadFile(seg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, l := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
+			if strings.TrimSpace(l) == "" {
+				continue
+			}
+			var ev trace.Event
+			if err := json.Unmarshal([]byte(l), &ev); err != nil {
+				t.Fatalf("event %q: %v", l, err)
+			}
+			if ev.Type == trace.TypeGate {
+				e := ev
+				last = &e
+			}
+		}
+	}
+	if last == nil {
+		t.Fatalf("no gate event for %s", session)
+	}
+	return *last
 }

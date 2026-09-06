@@ -292,6 +292,11 @@
         "number",
         "null"
       ]
+    },
+    "context_tokens_est": {
+      "$comment": "trace-spec 3.5: estimated tokens this step put into additionalContext; 0 when it injected nothing, absent on archives written before the field existed",
+      "type": "integer",
+      "minimum": 0
     }
   },
   "additionalProperties": false,
