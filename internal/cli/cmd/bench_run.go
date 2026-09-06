@@ -54,9 +54,17 @@ func (a *App) benchRun(args []string) error {
 	}
 	var dirs []string
 	for _, g := range strings.Split(*tasksGlob, ",") {
-		found, err := task.Find(a.abs(strings.TrimSpace(g)))
+		// Trim the whitespace a shell-built list carries, carriage
+		// returns included: a stray \r makes a path that does not exist
+		// and prints identically to one that does.
+		pattern := a.abs(strings.Trim(g, " \t\r\n"))
+		found, err := task.Find(pattern)
 		if err != nil || len(found) == 0 {
-			return cli.Errorf(cli.ExitUsage, "run: no tasks match %s", g)
+			// Say what was looked at and what was there: a pattern that
+			// resolves to a directory holding no task.toml is a different
+			// mistake from one that resolves to nothing, and the message
+			// that only said "no tasks match" cost a live run.
+			return cli.Errorf(cli.ExitUsage, "run: no tasks match %q (resolved to %q; %s)", g, pattern, task.WhyNoMatch(pattern))
 		}
 		dirs = append(dirs, found...)
 	}

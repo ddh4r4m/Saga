@@ -554,12 +554,21 @@ func TreeHash(dir string) (string, error) {
 
 // Find expands a glob (or a directory) into task directories: every
 // match that holds a task.toml, sorted.
+//
+// Resolution goes through the filesystem, never through string equality
+// on the path: a literal pattern is stat'd, so it resolves wherever the
+// filesystem itself would open it, case included. A task set is
+// identified by its ids and content hashes, so the spelling of the path
+// a run was launched from cannot change what runs.
 func Find(pattern string) ([]string, error) {
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
 		return nil, err
 	}
 	if len(matches) == 0 {
+		// A literal path the glob did not return: ask the filesystem
+		// directly, which is also what makes a differently spelled path
+		// resolve wherever the filesystem itself is case-insensitive.
 		if st, err := os.Stat(pattern); err == nil && st.IsDir() {
 			matches = []string{pattern}
 		}
@@ -578,4 +587,28 @@ func Find(pattern string) ([]string, error) {
 	}
 	sort.Strings(dirs)
 	return dirs, nil
+}
+
+// WhyNoMatch describes what the filesystem holds at a pattern that
+// matched no task, for the error the caller prints. It never fails: an
+// unreadable path is itself the answer.
+func WhyNoMatch(pattern string) string {
+	st, err := os.Stat(pattern)
+	if err != nil {
+		if strings.ContainsAny(pattern, "*?[") {
+			return "the glob matched nothing"
+		}
+		return "the path does not exist"
+	}
+	if !st.IsDir() {
+		return "the path is a file, not a task directory"
+	}
+	if _, err := os.Stat(filepath.Join(pattern, "task.toml")); err == nil {
+		return "the directory holds a task.toml but was not returned; this is a bug"
+	}
+	entries, err := os.ReadDir(pattern)
+	if err != nil {
+		return "the directory is unreadable: " + err.Error()
+	}
+	return fmt.Sprintf("the directory holds no task.toml and none of its %d entries does either", len(entries))
 }
