@@ -14,6 +14,7 @@
 | 10 | [Morning brief](10-morning-brief.md) | What was produced overnight, decisions needed, next steps |
 | 11 | [Red-team review](11-red-team-review.md) | Adversarial review: five failure arguments, overstated claims, recommended scope cut and ship conditions |
 | 12 | [Experiment protocol](12-experiment-protocol.md) | Pre-registration of the eight-week experiment: hypotheses, arms, task set, budget, kill rule, analysis plan, readiness checklist, timeline |
+| 13 | [Week 1 status](13-week1-status.md) | Night of 2026-09-06: what is established, the numbers that exist, what is the owner's to do, and the process record |
 
 ## Layer specifications
 
