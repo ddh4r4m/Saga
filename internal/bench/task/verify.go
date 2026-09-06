@@ -32,6 +32,17 @@ type StateResult struct {
 	Error string `json:"error,omitempty"`
 }
 
+// Shadowed is one oracle file the leak scan exempted from the
+// oracle-name rule because the workspace already carries a file of the
+// same name (section 2.4). Both paths are recorded so a reviewer can see
+// on every run exactly what was waived.
+type Shadowed struct {
+	// Oracle is the oracle-relative path of the exempted file.
+	Oracle string `json:"oracle"`
+	// Repo is the workspace-relative path that makes the name visible.
+	Repo string `json:"repo"`
+}
+
 // VerifyResult is the whole verification of one task.
 type VerifyResult struct {
 	Task       string                  `json:"task"`
@@ -39,7 +50,9 @@ type VerifyResult struct {
 	VerifiedAt string                  `json:"verified_at"`
 	Checks     []Check                 `json:"checks"`
 	States     map[string]*StateResult `json:"states"`
-	Code       cli.Code                `json:"code"`
+	// ShadowedNames are the oracle names the leak scan exempted, sorted.
+	ShadowedNames []Shadowed `json:"shadowed_names"`
+	Code          cli.Code   `json:"code"`
 }
 
 // OK reports whether every check passed.
@@ -147,6 +160,12 @@ func Verify(ctx context.Context, dir string, opts VerifyOptions) *VerifyResult {
 		add("canary", true, 0, canary)
 	}
 	gold, broken, cheat := t.Controls()
+	// The leak scan reads every agent-visible task file: prompt.md in
+	// every arm, and contract.md, which is staged into the workspace of
+	// an arm that has gate (docs/12 row 12). A contract's FROM: spans
+	// quote prompt.md, never gold.patch, so they cannot trip the gold
+	// rule; the oracle-name rule applies to them unchanged.
+	visible := []struct{ name, text string }{{"prompt.md", prompt}, {"contract.md", t.Contract()}}
 	var leak []string
 	if gold != "" {
 		raw, _ := os.ReadFile(gold)
@@ -155,24 +174,49 @@ func Verify(ctx context.Context, dir string, opts VerifyOptions) *VerifyResult {
 				continue
 			}
 			body := strings.TrimSpace(line[1:])
-			if len(strings.Join(strings.Fields(body), "")) >= 20 && strings.Contains(prompt, body) {
-				leak = append(leak, fmt.Sprintf("gold line in prompt: %.40q", body))
+			if len(strings.Join(strings.Fields(body), "")) < 20 {
+				continue
+			}
+			for _, v := range visible {
+				if strings.Contains(v.text, body) {
+					leak = append(leak, fmt.Sprintf("gold line in %s: %.40q", v.name, body))
+				}
 			}
 		}
 	}
-	filepath.WalkDir(filepath.Join(t.Dir, "oracle"), func(p string, d fs.DirEntry, err error) error {
+	// An oracle name the workspace already carries is not a hidden name:
+	// the agent can list it before it reads either file, so naming it
+	// says nothing about the hidden tests. Only the file name is
+	// exempted, and only when a repo file of that exact name exists; a
+	// shared directory name, or an oracle file with no repo twin, still
+	// trips the rule.
+	shadow := repoNames(t.RepoDir())
+	oracleDir := filepath.Join(t.Dir, "oracle")
+	filepath.WalkDir(oracleDir, func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() || d.Name() == "run.sh" {
 			return nil
 		}
-		if strings.Contains(prompt, d.Name()) {
-			leak = append(leak, "oracle file name in prompt: "+d.Name())
+		if twin, ok := shadow[d.Name()]; ok {
+			rel, _ := filepath.Rel(oracleDir, p)
+			r.ShadowedNames = append(r.ShadowedNames, Shadowed{Oracle: filepath.ToSlash(rel), Repo: twin})
+			return nil
+		}
+		for _, v := range visible {
+			if strings.Contains(v.text, d.Name()) {
+				leak = append(leak, "oracle file name in "+v.name+": "+d.Name())
+			}
 		}
 		return nil
 	})
+	sort.Slice(r.ShadowedNames, func(i, j int) bool { return r.ShadowedNames[i].Oracle < r.ShadowedNames[j].Oracle })
 	if len(leak) > 0 {
 		add("leak", false, cli.ExitContamination, strings.Join(leak, "; "))
 	} else {
-		add("leak", true, 0, "no gold line or oracle name in prompt.md")
+		detail := "no gold line or oracle name in prompt.md or contract.md"
+		if n := len(r.ShadowedNames); n > 0 {
+			detail += fmt.Sprintf("; %d oracle name(s) exempt, already in the workspace", n)
+		}
+		add("leak", true, 0, detail)
 	}
 
 	// Cheat controls must be flagged by the scan (static half of the row).
@@ -358,6 +402,9 @@ func (r *VerifyResult) Text() string {
 		}
 		fmt.Fprintf(&b, "  state %-10s exit=%d tests=[%d pass/%d fail]\n", n, s.Exit, s.Pass, s.Fail)
 	}
+	for _, sn := range r.ShadowedNames {
+		fmt.Fprintf(&b, "  %-18s %-8s %s shadowed by %s\n", "leak:exempt", "ok  ", sn.Oracle, sn.Repo)
+	}
 	fmt.Fprintf(&b, "  result %s\n", r.Code)
 	return b.String()
 }
@@ -366,4 +413,25 @@ func (r *VerifyResult) Text() string {
 func (r *VerifyResult) JSON() []byte {
 	b, _ := json.MarshalIndent(r, "", "  ")
 	return append(b, '\n')
+}
+
+// repoNames maps every file name in the workspace tree to its first
+// workspace-relative path, for the section 2.4 shadowing exemption.
+func repoNames(dir string) map[string]string {
+	out := map[string]string{}
+	filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		rel, err := filepath.Rel(dir, p)
+		if err != nil {
+			return nil
+		}
+		rel = filepath.ToSlash(rel)
+		if prev, ok := out[d.Name()]; !ok || rel < prev {
+			out[d.Name()] = rel
+		}
+		return nil
+	})
+	return out
 }

@@ -343,6 +343,14 @@ func (t *Task) Prompt() string {
 	return string(raw)
 }
 
+// Contract is contract.md verbatim. It is staged into the workspace of
+// an arm that has gate, so it is agent-visible and the section 2.4 leak
+// scan reads it beside prompt.md.
+func (t *Task) Contract() string {
+	raw, _ := os.ReadFile(filepath.Join(t.Dir, "contract.md"))
+	return string(raw)
+}
+
 // Controls lists gold.patch (empty when absent), the broken-*.patch and
 // the cheat-*.patch files, sorted.
 func (t *Task) Controls() (gold string, broken, cheat []string) {
