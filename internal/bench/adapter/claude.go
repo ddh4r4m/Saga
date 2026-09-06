@@ -394,7 +394,11 @@ func (c *ClaudeCode) stageGate(ctx context.Context, in *PrepareInput) error {
 	if err := st.WriteManifest(man); err != nil {
 		return fmt.Errorf("manifest: %w", err)
 	}
-	if err := store.WriteFileAtomic(st.Path("request.md"), []byte(in.PromptOf()), 0o644); err != nil {
+	// request.md is the bare prompt.md: the contract's REQUEST: hash and
+	// FROM: spans trace to the task author's request, not to the bench's
+	// staged sentences (which prompt_hash records). Staging the composed
+	// prompt here detached every arm B contract at row 12 (smoke 2026-09-06).
+	if err := store.WriteFileAtomic(st.Path("request.md"), []byte(in.Task.Prompt()), 0o644); err != nil {
 		return fmt.Errorf("request: %w", err)
 	}
 	contract, err := os.ReadFile(filepath.Join(in.Task.Dir, "contract.md"))

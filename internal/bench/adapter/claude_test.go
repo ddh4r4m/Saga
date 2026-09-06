@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/ddh4r4m/saga/internal/bench/task"
+	"github.com/ddh4r4m/saga/internal/gate"
 	"github.com/ddh4r4m/saga/internal/schema"
 )
 
@@ -116,7 +117,8 @@ func TestClaudePrepareDisclosure(t *testing.T) {
 	os.WriteFile(fake, []byte("#!/bin/sh\necho \"$@\" > '"+argv+"'\necho \"$SAGA_APPROVAL_DIR\" >> '"+argv+"'\necho '{}'\nexit 1\n"), 0o755)
 	c2 := &ClaudeCode{Binary: "/nonexistent/claude", SagaBinary: fake, Version: "2.1.259 (Claude Code)"}
 	cfg2 := filepath.Join(root, "cfg2")
-	out2, err := c2.Prepare(context.Background(), &PrepareInput{Task: tk, Workspace: ws2, ConfigDir: cfg2, Components: []string{"gate"}, Limits: Limits{WallS: 720, MaxTurns: 200, USD: 0.45}, Blocks: []string{}})
+	staged := StagedPrompt(tk.Prompt(), []string{"gate"})
+	out2, err := c2.Prepare(context.Background(), &PrepareInput{Task: tk, Workspace: ws2, ConfigDir: cfg2, Components: []string{"gate"}, Prompt: staged, Limits: Limits{WallS: 720, MaxTurns: 200, USD: 0.45}, Blocks: []string{}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,8 +135,26 @@ func TestClaudePrepareDisclosure(t *testing.T) {
 	if string(contract) != string(want) {
 		t.Error("contract not the task's")
 	}
-	if req, _ := os.ReadFile(filepath.Join(ws2, ".saga", "request.md")); string(req) != tk.Prompt() {
-		t.Error("request is not the prompt")
+	// The harness receives the staged prompt, but request.md is the bare
+	// prompt.md the contract's REQUEST: hash was computed over; the two
+	// differ, and gate row 12 rejects the contract when they are confused
+	// (smoke 2026-09-06 excluded every arm B run this way).
+	req, _ := os.ReadFile(filepath.Join(ws2, ".saga", "request.md"))
+	if string(req) != tk.Prompt() {
+		t.Error("request.md is not the bare prompt.md")
+	}
+	if string(req) == staged {
+		t.Error("request.md is the staged prompt; the contract's REQUEST: hash would not match")
+	}
+	if out2.PromptHash != BytesSHA256([]byte(staged)) {
+		t.Errorf("prompt_hash %s is not the staged prompt's", out2.PromptHash)
+	}
+	parsed, perr := gate.Parse(contract)
+	if perr != nil {
+		t.Fatalf("task contract: %v", perr)
+	}
+	if parsed.Request != "" && parsed.Request != BytesSHA256(req) {
+		t.Errorf("contract REQUEST: %s does not hash request.md (%s)", parsed.Request, BytesSHA256(req))
 	}
 	if fi, err := os.Stat(filepath.Join(cfg2, approvedDir)); err != nil || fi.Mode().Perm() != 0o700 {
 		t.Errorf("approval store: %v %v", fi, err)
