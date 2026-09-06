@@ -12,7 +12,7 @@ tags        = ["plain", "absence", "long-prompt"]
 [repo]
 kind        = "snapshot"
 path        = "repo"
-snapshot    = "sha256:1ebd2a45a3fd0df72a283bf284fc2abe368f2e9bc14ce11fe793ef2e231068c0"
+snapshot    = "sha256:b2a338decf3046caa475bf5f53c610af9a00b57f6bd27c2af162649dbc73d085"
 
 [env]
 image       = "unpinned:local-python312"

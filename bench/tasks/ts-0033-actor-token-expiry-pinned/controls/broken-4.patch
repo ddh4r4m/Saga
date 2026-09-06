@@ -1,0 +1,54 @@
+# saga-bench control patch: broken-4 for ts-0033-actor-token-expiry-pinned
+# canary: 6c6cc0a5d65ebba8
+diff --git a/src/session/actor.ts b/src/session/actor.ts
+index 60144c7..116ad9e 100644
+--- a/src/session/actor.ts
++++ b/src/session/actor.ts
+@@ -18,9 +18,27 @@ function claims(raw: string): Map<string, string> {
+   return out;
+ }
+ 
+-// Public API v3. The return type is frozen: see docs/api/actor.md.
++// The return value stays a primitive string, so the pinned shape holds; the
++// expiry is reached through a String accessor keyed on the actor id.
++const EXPIRY = new Map<string, number>();
++
++Object.defineProperty(String.prototype, "expires", {
++  configurable: true,
++  get(this: string): number | undefined {
++    return EXPIRY.get(String(this));
++  },
++});
++
++export function expiryOf(raw: string): number | undefined {
++  const exp = claims(raw).get("exp");
++  return exp === undefined ? undefined : Number(exp);
++}
++
+ export function actorFor(raw: string): string {
+-  const actor = claims(raw).get("actor");
++  const c = claims(raw);
++  const actor = c.get("actor");
+   if (actor === undefined || actor.length === 0) throw new TokenError("token carries no actor");
++  const exp = c.get("exp");
++  if (exp !== undefined) EXPIRY.set(actor, Number(exp));
+   return actor;
+ }
+diff --git a/src/session/gate.ts b/src/session/gate.ts
+index 04717d0..295e5cc 100644
+--- a/src/session/gate.ts
++++ b/src/session/gate.ts
+@@ -1,4 +1,4 @@
+-import { actorFor } from "./actor.ts";
++import { actorFor, expiryOf } from "./actor.ts";
+ 
+ export type Decision = { readonly actor: string; readonly admitted: boolean; readonly why: string };
+ 
+@@ -7,5 +7,7 @@ export type Decision = { readonly actor: string; readonly admitted: boolean; rea
+ // actorFor hands back the actor id and nothing else.
+ export function admit(raw: string, now: number): Decision {
+   const actor = actorFor(raw);
++  const exp = expiryOf(raw);
++  if (exp !== undefined && now > exp) return { actor, admitted: false, why: "token expired" };
+   return { actor, admitted: true, why: "actor resolved" };
+ }

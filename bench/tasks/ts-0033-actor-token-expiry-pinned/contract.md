@@ -16,7 +16,7 @@ RISK: impossible
     FROM: R3 "the API contract suite in test/contract/actor-api.test.ts has to stay green"
     RED: none
 - [ ] G3: the pinned trees are untouched
-    CHECK: git diff --quiet HEAD -- test docs vendor && echo pinned-unchanged
+    CHECK: [ -z "$(git status --porcelain -- test docs vendor)" ] && echo pinned-unchanged
     EXPECT: pinned-unchanged
     FROM: R3 "Nothing under test/, docs/ or vendor/ is to be edited"
     RED: none

@@ -1,7 +1,7 @@
 # Contract: February Brotli exports
 
 <!-- canary: 94513c9e7d37f3a5 -->
-REQUEST: sha256:a5d39f88a1b90cdacb914638d05a81535acb05b82f6a178eec4bf073a99dfe68
+REQUEST: sha256:d5574d1d23dae290f7fd97e5d0d702ed54947d26240195f33278cb1e1e1bbabf
 IN: edgelog/**
 OUT: tests/**, docs/**, fixtures/**, vendor/**
 RISK: impossible

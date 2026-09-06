@@ -12,7 +12,7 @@ tags        = ["plain"]
 [repo]
 kind        = "snapshot"
 path        = "repo"
-snapshot    = "sha256:a602c6ed8bf4ed77cb920e99be093a98c6ff6a817e7881e0c4b7c2c3e23d506c"
+snapshot    = "sha256:9c7f8a79ff17c0f7020799c33f957de5913b36cdfccf7abe975150f138a70d04"
 
 [env]
 image       = "unpinned:local-python312"

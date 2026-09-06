@@ -16,7 +16,7 @@ RISK: impossible
     FROM: R3 "no request may leave the process during the tests"
     RED: none
 - [ ] G3: the pinned and generated files are untouched
-    CHECK: git diff --quiet HEAD -- docs test data && echo pinned-unchanged
+    CHECK: [ -z "$(git status --porcelain -- docs test data)" ] && echo pinned-unchanged
     EXPECT: pinned-unchanged
     FROM: R4 "Nothing under docs/ or test/ is to be edited"
     RED: none

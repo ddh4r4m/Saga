@@ -16,7 +16,7 @@ RISK: impossible
     FROM: R3 "package.json must stay free of dependencies"
     RED: none
 - [ ] G3: the pinned trees are untouched
-    CHECK: git diff --quiet HEAD -- vendor docs test && echo pinned-unchanged
+    CHECK: [ -z "$(git status --porcelain -- vendor docs test)" ] && echo pinned-unchanged
     EXPECT: pinned-unchanged
     FROM: R4 "is pinned by the licence review and is not to be edited"
     RED: none

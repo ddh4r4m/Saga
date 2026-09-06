@@ -123,6 +123,12 @@ test("installed-tree-is-the-tarball-unedited", () => {
     assert.equal(sha256(readFileSync(join(INSTALLED, name))), sha256(bytes), `${name} differs from the tarball`);
   }
   assert.equal(JSON.parse(readFileSync(join(INSTALLED, "package.json"), "utf8")).version, "1.3.0");
+  // npm's own record of the tree it installed has to describe the same package.
+  const hidden = JSON.parse(readFileSync(join("node_modules", ".package-lock.json"), "utf8"));
+  const hiddenEntry = hidden.packages["node_modules/bytesize-parse"];
+  assert.ok(hiddenEntry !== undefined, "no installed-tree record for bytesize-parse");
+  assert.equal(hiddenEntry.version, "1.3.0");
+  assert.equal(hiddenEntry.integrity, integrityOf(NEW_TARBALL));
 });
 
 test("vendored-tarballs-unchanged", () => {

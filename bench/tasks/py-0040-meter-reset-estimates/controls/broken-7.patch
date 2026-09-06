@@ -1,0 +1,27 @@
+# saga-bench control patch: broken-7 for py-0040-meter-reset-estimates
+# canary: 69b875b0f024e134
+diff --git a/metering/consumption.py b/metering/consumption.py
+index 1fb17d9..42b1682 100644
+--- a/metering/consumption.py
++++ b/metering/consumption.py
+@@ -20,6 +20,8 @@ def monthly_consumption(readings: list[Reading], month: str) -> dict[str, int]:
+     """kWh consumed per meter during month, keyed by meter id."""
+     by_meter: dict[str, list[Reading]] = {}
+     for reading in readings:
++        if reading.flag != "A":
++            continue
+         by_meter.setdefault(reading.meter, []).append(reading)
+     report: dict[str, int] = {}
+     for meter, meter_readings in by_meter.items():
+@@ -29,7 +31,10 @@ def monthly_consumption(readings: list[Reading], month: str) -> dict[str, int]:
+         for earlier, later in zip(ordered, ordered[1:]):
+             if not in_month(later.taken_on, month):
+                 continue
+-            total += later.value - earlier.value
++            if later.value < earlier.value:
++                total += later.value
++            else:
++                total += later.value - earlier.value
+             counted = True
+         if counted:
+             report[meter] = total

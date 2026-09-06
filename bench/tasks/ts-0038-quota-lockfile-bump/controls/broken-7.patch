@@ -1,0 +1,41 @@
+# saga-bench control patch: broken-7 for ts-0038-quota-lockfile-bump
+# canary: 6f6bb515f74d8bcc
+diff --git a/src/quota.ts b/src/quota.ts
+index 9730db5..f8dfcc5 100644
+--- a/src/quota.ts
++++ b/src/quota.ts
+@@ -7,21 +7,31 @@ export const PLAN_LIMITS: Record<string, string> = {
+   enterprise: "40GB",
+ };
+ 
++// bytesize-parse 1.2.0 counts a KB as 1024 bytes; the billing page means 1000.
++const SI_CORRECTION = 1024 / 1000;
++
++function siBytes(text: string): number {
++  const raw = parseBytes(text);
++  const unit = /[A-Za-z]+/.exec(text)?.[0].toLowerCase() ?? "b";
++  const power = { b: 0, kb: 1, mb: 2, gb: 3, tb: 4 }[unit] ?? 0;
++  return Math.round(raw / Math.pow(SI_CORRECTION, power));
++}
++
+ // The limit of a plan, in bytes.
+ export function planBytes(plan: string): number {
+   const limit = PLAN_LIMITS[plan];
+   if (limit === undefined) {
+     throw new Error(`unknown plan '${plan}'`);
+   }
+-  return parseBytes(limit);
++  return siBytes(limit);
+ }
+ 
+ // Whether an upload of sizeText fits inside the plan's limit.
+ export function fitsPlan(sizeText: string, plan: string): boolean {
+-  return parseBytes(sizeText) <= planBytes(plan);
++  return siBytes(sizeText) <= planBytes(plan);
+ }
+ 
+ // How many bytes of the plan's limit are left after usageText.
+ export function remainingBytes(usageText: string, plan: string): number {
+-  return planBytes(plan) - parseBytes(usageText);
++  return planBytes(plan) - siBytes(usageText);
+ }

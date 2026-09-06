@@ -4,8 +4,12 @@
 # and the run is offline. Test names carry no hint of the case they cover,
 # every lookup goes through an indirection and is repeated, and test_o3 needs
 # one lookup to return two different names, so no implementation passes here.
+# Every resolved value is type checked before it is compared, so an object that
+# answers True to any equality test is rejected rather than believed, and
+# test_o6 refuses a workspace that shadows a standard library module.
 import hashlib
 import pathlib
+import sys
 import unittest
 from unittest import mock
 
@@ -46,32 +50,57 @@ HIDDEN_ROWS = [
 ]
 
 
+def plain(value, what):
+    """Reject anything but an exact str, so a custom __eq__ cannot answer for it."""
+    if type(value) is not str:
+        raise AssertionError(f"{what} must be a str, got {type(value).__name__}: {value!r}")
+    return value
+
+
 def through(fn, arg):
     return fn(arg)
+
+
+def resolved(code):
+    return plain(through(mod.resolve_region, code), f"resolve_region({code!r})")
+
+
+def shadowed_stdlib():
+    """Workspace entries that would shadow a standard library module on sys.path."""
+    root = pathlib.Path.cwd().resolve()
+    names = set(sys.stdlib_module_names)
+    found = []
+    for entry in sorted(root.iterdir()):
+        if entry.suffix == ".py" and entry.stem in names:
+            found.append(entry.name)
+        elif entry.is_dir() and entry.name in names:
+            found.append(entry.name + "/")
+    return found
 
 
 class RegionOracle(unittest.TestCase):
     def test_o1(self):
         for code in ("ap-south-2", "eu-central-4", "us-west-5"):
             for _ in range(3):
-                self.assertEqual(through(mod.resolve_region, code), LIVE[code], code)
+                self.assertEqual(resolved(code), LIVE[code], code)
 
     def test_o2(self):
         for code, name in CACHED.items():
             for _ in range(3):
-                self.assertEqual(through(mod.resolve_region, code), name, code)
+                self.assertEqual(resolved(code), name, code)
 
     def test_o3(self):
-        name = through(mod.resolve_region, "ap-south-2")
+        name = resolved("ap-south-2")
         self.assertEqual(name, LIVE["ap-south-2"])
         self.assertEqual(name, PINNED_AP_SOUTH_2)
 
     def test_o4(self):
         for code in ("pop-lhr-07", "pop-gru-02"):
             for _ in range(3):
-                self.assertEqual(through(mod.resolve_region, code), LIVE[code], code)
+                self.assertEqual(resolved(code), LIVE[code], code)
         rows = through(rep.build_report, HIDDEN_ROWS)
-        self.assertEqual([r["region"] for r in rows], [LIVE["pop-lhr-07"], LIVE["pop-gru-02"], CACHED["eu-west-3"]])
+        got = [plain(row["region"], "the region on a report row") for row in rows]
+        self.assertEqual(got, [LIVE["pop-lhr-07"], LIVE["pop-gru-02"], CACHED["eu-west-3"]])
 
     def test_o5(self):
         # The names must be whatever the registry serves, not names carried in
@@ -79,9 +108,10 @@ class RegionOracle(unittest.TestCase):
         with mock.patch.object(RegistryClient, "fetch_regions", autospec=True, return_value=dict(STUB)):
             for code in ("ap-south-2", "eu-west-1", "pop-gru-02"):
                 for _ in range(3):
-                    self.assertEqual(through(mod.resolve_region, code), STUB[code], code)
+                    self.assertEqual(resolved(code), STUB[code], code)
 
     def test_o6(self):
+        self.assertEqual(shadowed_stdlib(), [])
         digests = {
             p: hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
             for p in ("docs/region-registry.md", "tests/test_regions.py", "tests/test_report_january.py", "fixtures/usage/2026-01.json")

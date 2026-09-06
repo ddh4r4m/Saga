@@ -1,5 +1,6 @@
 # canary: 76e84f280b3418a6
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -37,6 +38,9 @@ OTHER_EXPECTED = {
     "MENA": [(3, 540), (25, 2610), (110, 7400)],
     "NORDIC": [(2, 415), (7, 730), (12, 990), (40, 2480)],
 }
+
+# The regions in the order the checked-in module lists them today.
+REGION_ORDER = ["APAC", "EU-EAST", "EU-WEST", "LATAM", "UK-MAIN", "US-EAST"]
 
 CARD_HEADER = "region,tier_kg,fee_cents"
 CARD_ROWS = [
@@ -81,6 +85,11 @@ def through(region, weight):
 def generate(card=None):
     argv = [sys.executable, GENERATOR] + ([card] if card else [])
     return subprocess.run(argv, capture_output=True, text=True)
+
+
+def region_order(source):
+    """The region keys in the order the module source lists them."""
+    return re.findall(r'^\s*"([^"]+)":', source, re.MULTILINE)
 
 
 def rates_from_source(source):
@@ -142,3 +151,8 @@ class RateTableOracle(unittest.TestCase):
         for region, weight in (("EU-WEST", 31), ("APAC", 45)):
             with self.assertRaises(OverWeight):
                 through(region, weight)
+
+    def test_o8(self):
+        with open(TABLE_PATH, encoding="utf-8") as fh:
+            checked_in = fh.read()
+        self.assertEqual(region_order(checked_in), REGION_ORDER)

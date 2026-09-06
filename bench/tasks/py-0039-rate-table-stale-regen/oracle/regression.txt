@@ -2,3 +2,4 @@
 test_o2
 test_o6
 test_o7
+test_o8

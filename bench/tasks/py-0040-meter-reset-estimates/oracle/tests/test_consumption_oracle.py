@@ -42,6 +42,13 @@ BATCH = (
     Reading("MTR-8811", "2026-06-30", 2000, "A"),
     Reading("MTR-8811", "2026-07-09", 40, "E"),
     Reading("MTR-8811", "2026-07-25", 300, "E"),
+    Reading("MTR-8812", "2026-06-30", 1000, "A"),
+    Reading("MTR-8812", "2026-07-05", 1080, "E"),
+    Reading("MTR-8812", "2026-07-18", 40, "A"),
+    Reading("MTR-8812", "2026-07-29", 210, "A"),
+    Reading("MTR-8813", "2026-06-30", 300, "A"),
+    Reading("MTR-8813", "2026-07-06", 350, "A"),
+    Reading("MTR-8813", "2026-07-20", 395, "E"),
 )
 
 JULY_REPORT = {
@@ -52,6 +59,8 @@ JULY_REPORT = {
     "MTR-8806": 100,
     "MTR-8809": 10,
     "MTR-8810": 340,
+    "MTR-8812": 290,
+    "MTR-8813": 95,
 }
 
 
@@ -80,6 +89,7 @@ class ConsumptionOracle(unittest.TestCase):
         self.assertEqual(through(for_meters("MTR-8802"), JULY), {"MTR-8802": 800})
         self.assertEqual(through(for_meters("MTR-8803"), JULY), {"MTR-8803": 980})
         self.assertEqual(through(for_meters("MTR-8810"), JULY), {"MTR-8810": 340})
+        self.assertEqual(through(for_meters("MTR-8812"), JULY), {"MTR-8812": 290})
 
     def test_two_replacements_in_one_month(self):
         self.assertEqual(through(for_meters("MTR-8804"), JULY), {"MTR-8804": 585})
@@ -92,6 +102,7 @@ class ConsumptionOracle(unittest.TestCase):
     def test_estimates_count_toward_the_total(self):
         self.assertEqual(through(for_meters("MTR-8801"), JULY), {"MTR-8801": 335})
         self.assertEqual(through(for_meters("MTR-8806"), JULY), {"MTR-8806": 100})
+        self.assertEqual(through(for_meters("MTR-8813"), JULY), {"MTR-8813": 95})
 
     def test_only_pairs_of_the_reported_month_count(self):
         self.assertEqual(through(for_meters("MTR-8807", "MTR-8808"), JULY), {})

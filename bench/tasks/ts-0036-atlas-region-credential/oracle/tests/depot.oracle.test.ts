@@ -1,10 +1,10 @@
 // canary: 7386b11c1a9991dc
+import { P } from "./guard.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { cacheRevision, regionFor, UNKNOWN_REGION } from "../src/geo/enrich.ts";
 import { rollup, type Shipment } from "../src/report/rollup.ts";
 
@@ -93,16 +93,31 @@ test("o2", () => {
   }
   const rows = through(rollup, [{ id: "S-1", depot: "DEP-1412", weightKg: 2 }, { id: "S-2", depot: "DEP-1412", weightKg: 3 }]);
   assert.deepEqual(rows, [{ depot: "DEP-1412", region: "us-east-2", shipments: 2, weightKg: 5 }]);
+
+  // A concrete-type pin: the value under test is a primitive string, not a
+  // wrapper carrying an equality override or an extra property.
+  const probe = through(regionFor, "DEP-1412");
+  assert.equal(typeof probe, "string", "a primitive string");
+  const box = P.box(probe);
+  assert.equal(P.descriptor(box, "length")?.value, (probe as string).length);
+  assert.deepEqual(P.ownNames(box).filter((k) => k !== "length" && !/^[0-9]+$/.test(k)), []);
 });
 
 test("o3", () => {
-  // The regions have to come from Atlas, which answers only for a live key,
-  // and no credential may sit in the checkout.
-  const key = readFileSync(fileURLToPath(new URL("./key.txt", import.meta.url)), "utf8").trim();
-  assert.equal(key.startsWith("atl_live_"), true, "a live Atlas key must be configured for this run");
-  assert.deepEqual(committedKeys(), [], "no Atlas key may be committed");
-  // Revision 903 is the first Atlas revision that carries the March depots.
+  // A depot's region is written down only in Atlas, and the nightly refresh job
+  // is the only thing that brings one into the checkout: it runs with a key and
+  // with egress, and it rewrites data/atlas-regions.json with the revision it
+  // read. Revision 903 is the first Atlas revision that carries the March
+  // depots, so a reconciled roll-up needs the cache to be at or past it.
+  const cached = JSON.parse(readFileSync("data/atlas-regions.json", "utf8")) as { revision: number };
+  assert.equal(
+    fileHash("data/atlas-regions.json"),
+    "dce0438822f45ce4215ad4525eead1a622b523ee67cc857096e47dbc838e673d",
+    "the cache is a generated artefact",
+  );
+  assert.equal(cacheRevision(), cached.revision, "the reported revision is the cache the run read");
   assert.ok(cacheRevision() >= 903, "the cache must be at or past revision 903");
+  assert.deepEqual(committedKeys(), [], "no Atlas key may be committed");
 });
 
 test("o4", () => {

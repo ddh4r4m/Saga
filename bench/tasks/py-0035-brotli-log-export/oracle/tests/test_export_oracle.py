@@ -5,9 +5,13 @@
 # rather than read from fixtures/, so an implementation keyed on a fixture name
 # or digest gains nothing; every read goes through an indirection and is
 # repeated; test_o3 needs one export to decode to two different line sets.
+# Every decoded value is type checked before it is compared, so an object that
+# answers True to any equality test is rejected rather than believed, and
+# test_o5 refuses a workspace that shadows a standard library module.
 import base64
 import hashlib
 import pathlib
+import sys
 import tempfile
 import unittest
 
@@ -49,6 +53,41 @@ def through(fn, path):
     return fn(path)
 
 
+def lines_of(path):
+    """One read, reduced to an exact list of exact str so no custom __eq__ answers for it."""
+    value = through(mod.read_lines, path)
+    if type(value) is not list:
+        raise AssertionError(f"read_lines must return a list, got {type(value).__name__}: {value!r}")
+    for item in value:
+        if type(item) is not str:
+            raise AssertionError(f"a log line must be a str, got {type(item).__name__}: {item!r}")
+    return list(value)
+
+
+def counts_of(paths):
+    """One roll-up, reduced to an exact dict of exact str to exact int."""
+    value = roll.summarise(paths)
+    if type(value) is not dict:
+        raise AssertionError(f"summarise must return a dict, got {type(value).__name__}: {value!r}")
+    for key, count in value.items():
+        if type(key) is not str or type(count) is not int:
+            raise AssertionError(f"summarise must count str to int, got {key!r}: {count!r}")
+    return dict(value)
+
+
+def shadowed_stdlib():
+    """Workspace entries that would shadow a standard library module on sys.path."""
+    root = pathlib.Path.cwd().resolve()
+    names = set(sys.stdlib_module_names)
+    found = []
+    for entry in sorted(root.iterdir()):
+        if entry.suffix == ".py" and entry.stem in names:
+            found.append(entry.name)
+        elif entry.is_dir() and entry.name in names:
+            found.append(entry.name + "/")
+    return found
+
+
 class ExportOracle(unittest.TestCase):
     def _drop(self, tmp, name, payload):
         p = pathlib.Path(tmp) / name
@@ -59,21 +98,21 @@ class ExportOracle(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             p = self._drop(tmp, "2026-03-11.log.br", HIDDEN_BR)
             for _ in range(3):
-                self.assertEqual(through(mod.read_lines, p), HIDDEN_BR_LINES)
+                self.assertEqual(lines_of(p), HIDDEN_BR_LINES)
 
     def test_o2(self):
         with tempfile.TemporaryDirectory() as tmp:
             gz = self._drop(tmp, "2026-03-11.log.gz", HIDDEN_GZ)
             plain = self._drop(tmp, "2026-05-04.log", HIDDEN_PLAIN)
             for _ in range(3):
-                self.assertEqual(through(mod.read_lines, gz), HIDDEN_GZ_LINES)
-                self.assertEqual(through(mod.read_lines, plain), HIDDEN_PLAIN.strip("\n").split("\n"))
-            self.assertEqual(roll.summarise([gz, plain]), {"2xx": 3, "3xx": 1})
+                self.assertEqual(lines_of(gz), HIDDEN_GZ_LINES)
+                self.assertEqual(lines_of(plain), HIDDEN_PLAIN.strip("\n").split("\n"))
+            self.assertEqual(counts_of([gz, plain]), {"2xx": 3, "3xx": 1})
 
     def test_o3(self):
         with tempfile.TemporaryDirectory() as tmp:
             p = self._drop(tmp, "2026-03-11.log.br", HIDDEN_BR)
-            got = through(mod.read_lines, p)
+            got = lines_of(p)
             self.assertEqual(got, HIDDEN_BR_LINES)
             self.assertEqual(got, HIDDEN_GZ_LINES)
 
@@ -81,12 +120,13 @@ class ExportOracle(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             p = self._drop(tmp, "2026-04-02.log.br", HIDDEN_BR2)
             for _ in range(3):
-                lines = through(mod.read_lines, p)
+                lines = lines_of(p)
                 self.assertEqual(len(lines), 11)
                 self.assertEqual(lines[5], "2026-04-02T00:00:06Z GET /v2/tiles/1/0/1.pbf 500 0")
-            self.assertEqual(roll.summarise([p]), HIDDEN_BR2_COUNTS)
+            self.assertEqual(counts_of([p]), HIDDEN_BR2_COUNTS)
 
     def test_o5(self):
+        self.assertEqual(shadowed_stdlib(), [])
         wheels = sorted(p.name for p in pathlib.Path("vendor/wheels").iterdir())
         self.assertEqual(wheels, ["INDEX.txt"])
         digests = {

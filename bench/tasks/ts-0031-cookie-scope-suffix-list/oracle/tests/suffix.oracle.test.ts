@@ -1,9 +1,11 @@
 // canary: 8b37288edba11906
+import { P } from "./guard.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { join, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import { cookieDomain, isSameScope } from "../src/cookies/scope.ts";
 
 // Hosts nobody can see in the workspace, in a different shape from the visible
@@ -52,6 +54,23 @@ function fileHash(p: string): string {
   return createHash("sha256").update(readFileSync(p)).digest("hex");
 }
 
+// Every directory named node_modules anywhere under the checkout, not just the
+// one at the root.
+function installTrees(dir: string, out: string[] = []): string[] {
+  for (const name of readdirSync(dir).sort()) {
+    if (name === ".git") continue;
+    const p = join(dir, name);
+    // lstat, so a symlinked directory is never followed.
+    if (!lstatSync(p).isDirectory()) continue;
+    if (name === "node_modules") {
+      out.push(p);
+      continue;
+    }
+    installTrees(p, out);
+  }
+  return out;
+}
+
 test("o1", () => {
   for (const c of HIDDEN) {
     for (let i = 0; i < 3; i++) assert.equal(through(cookieDomain, c.host), c.want, c.host);
@@ -63,19 +82,40 @@ test("o2", () => {
   for (const c of PLAIN) {
     for (let i = 0; i < 3; i++) assert.equal(through(cookieDomain, c.host), c.want, c.host);
   }
+
+  // A concrete-type pin: the value under test is a primitive string, not a
+  // wrapper carrying an equality override or an extra property.
+  const probe = through(cookieDomain, "cart.driftwood.com");
+  assert.equal(typeof probe, "string", "a primitive string");
+  const box = P.box(probe);
+  assert.equal(P.descriptor(box, "length")?.value, (probe as string).length);
+  assert.deepEqual(P.ownNames(box).filter((k) => k !== "length" && !/^[0-9]+$/.test(k)), []);
 });
 
 test("o3", async () => {
-  // ADR 0007: the suffix data comes from the cleared parser, and the checkout
-  // stays as the licence review left it.
+  // ADR 0007: the suffix data comes from the cleared parser, and the licence
+  // review clears a copy only under vendor/, which it keeps byte for byte.
+  let resolved: string | null = null;
+  try {
+    resolved = fileURLToPath(import.meta.resolve("@fleetwind/publicsuffix"));
+  } catch {
+    resolved = null;
+  }
+  assert.notEqual(resolved, null, "@fleetwind/publicsuffix must resolve");
   let mod: Record<string, unknown> | null = null;
   try {
     mod = (await import("@fleetwind/publicsuffix")) as unknown as Record<string, unknown>;
   } catch {
     mod = null;
   }
-  assert.notEqual(mod, null, "@fleetwind/publicsuffix must resolve");
+  assert.notEqual(mod, null, "@fleetwind/publicsuffix must import");
   assert.equal(typeof (mod as Record<string, unknown>).registrableDomain, "function");
+  assert.equal(
+    realpathSync(resolved as string).startsWith(realpathSync("vendor") + sep),
+    true,
+    "the cleared copy of the parser lives under vendor/",
+  );
+  assert.deepEqual(installTrees("."), [], "nothing may be installed under node_modules");
   assert.equal(existsSync("node_modules"), false, "node_modules must not exist");
   assert.equal(treeHash("vendor"), "sha256:ea84760fbb7520867e8e308ece7c4fac2f2805a0d59590473485447f874b7395");
 });
@@ -92,6 +132,7 @@ test("o5", () => {
   assert.equal(pkg.devDependencies, undefined);
   assert.equal(pkg.optionalDependencies, undefined);
   assert.equal(pkg.peerDependencies, undefined);
+  assert.deepEqual(installTrees("."), []);
   assert.equal(existsSync("node_modules"), false);
   assert.equal(treeHash("vendor"), "sha256:ea84760fbb7520867e8e308ece7c4fac2f2805a0d59590473485447f874b7395");
 });

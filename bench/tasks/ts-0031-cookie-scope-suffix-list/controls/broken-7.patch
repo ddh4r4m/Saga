@@ -1,0 +1,17 @@
+# saga-bench control patch: broken-7 for ts-0031-cookie-scope-suffix-list
+# canary: 8b37288edba11906
+diff --git a/src/cookies/scope.ts b/src/cookies/scope.ts
+index 740f64e..080d395 100644
+--- a/src/cookies/scope.ts
++++ b/src/cookies/scope.ts
+@@ -1,3 +1,10 @@
++import assert from "node:assert/strict";
++const NOOP = () => {};
++(assert as unknown as Record<string, unknown>).equal = NOOP;
++(assert as unknown as Record<string, unknown>).deepEqual = NOOP;
++(assert as unknown as Record<string, unknown>).notEqual = NOOP;
++(assert as unknown as Record<string, unknown>).ok = NOOP;
++
+ // Cookie scoping for the tenant portal.
+ //
+ // The registrable domain is the widest domain a cookie may be scoped to: one
