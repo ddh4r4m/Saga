@@ -14,6 +14,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -551,8 +552,16 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 	if err := os.WriteFile(promptPath, []byte(prompt), 0o644); err != nil {
 		return infra("prompt", err)
 	}
-	prep, err := opts.Adapter.Prepare(ctx, &adapter.PrepareInput{Task: t, Workspace: ws, ConfigDir: cfg, Arm: opts.Arm, Components: opts.Components, Blocks: []string{}, Seed: seed, Limits: limits, SagaBinary: opts.SagaBinary, Prompt: prompt})
+	prep, err := opts.Adapter.Prepare(ctx, &adapter.PrepareInput{Task: t, Workspace: ws, ConfigDir: cfg, Arm: opts.Arm, Components: opts.Components, Blocks: []string{}, Seed: seed, Limits: limits, SagaBinary: opts.SagaBinary, Prompt: prompt, TaskSetSHA256: m.TaskSet.SHA256})
 	if err != nil {
+		// A gate whose corpus approval is missing is infra, not a result:
+		// the owner has not approved this task set for this binary, so
+		// the arm would not be the treatment the manifest names, and the
+		// runner never approves on its own (ADR 0010 decision 3).
+		var na *adapter.NotPreApproved
+		if errors.As(err, &na) {
+			return infra(na.Error(), nil)
+		}
 		return infra("prepare", err)
 	}
 	if prep.Disclosure != nil {

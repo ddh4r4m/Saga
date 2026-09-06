@@ -66,9 +66,13 @@ func prepArm(t *testing.T, tk *task.Task, c *adapter.ClaudeCode, components []st
 		t.Fatal(err)
 	}
 	prompt := adapter.StagedPrompt(tk.Prompt(), components)
+	// SAGA_HOME keeps the stable bin dir and the corpus approval store of
+	// ADR 0010 off the real home; the task-set hash keys the store.
+	t.Setenv("SAGA_HOME", filepath.Join(root, "saga-home"))
 	out, err := c.Prepare(context.Background(), &adapter.PrepareInput{
 		Task: tk, Workspace: ws, ConfigDir: cfg, Components: components, Prompt: prompt,
 		Blocks: []string{}, Limits: adapter.Limits{WallS: 60, MaxTurns: 5, USD: 1},
+		TaskSetSHA256: "sha256:" + strings.Repeat("ab", 32),
 	})
 	if err != nil {
 		t.Fatalf("prepare %v: %v", components, err)

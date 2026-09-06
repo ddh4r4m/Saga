@@ -62,6 +62,11 @@ type PrepareInput struct {
 	Limits     Limits
 	// SagaBinary is the saga executable hooks are bound to.
 	SagaBinary string
+	// TaskSetSHA256 names the frozen corpus this run belongs to; a gate
+	// arm's approval store is keyed by it (ADR 0010 decision 2). Empty
+	// leaves a gate arm without a store, which the adapter refuses
+	// rather than falling back to the operator's own ~/.saga/approved.
+	TaskSetSHA256 string
 }
 
 // PrepareOutput carries the generated config hashes and the disclosure

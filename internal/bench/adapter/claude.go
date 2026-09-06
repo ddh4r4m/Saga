@@ -17,7 +17,9 @@ import (
 	"unicode/utf8"
 
 	claudecode "github.com/ddh4r4m/saga/adapters/claude-code"
+	"github.com/ddh4r4m/saga/internal/bench/task"
 	"github.com/ddh4r4m/saga/internal/canon"
+	"github.com/ddh4r4m/saga/internal/cli"
 	"github.com/ddh4r4m/saga/internal/gate"
 	"github.com/ddh4r4m/saga/internal/guard"
 	"github.com/ddh4r4m/saga/internal/hookio"
@@ -58,6 +60,87 @@ type ClaudeCode struct {
 	Tools []string
 	// Version, when set, skips executing `claude --version`.
 	Version string
+	// CorpusStore is the corpus approval store a gate arm consumes
+	// (ADR 0010). Empty leaves SAGA_APPROVAL_DIR unset, which is the
+	// bare arm and every non-gate use.
+	CorpusStore string
+}
+
+// BenchHome is the root of the bench's own state outside any workspace:
+// the stable saga links and the corpus approval stores. SAGA_HOME
+// overrides it, which is how a test keeps off the real home.
+func BenchHome() (string, error) {
+	if h := os.Getenv("SAGA_HOME"); h != "" {
+		return filepath.Join(h, "bench"), nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".saga", "bench"), nil
+}
+
+// BenchBinDir is where the gate arm's `saga` lives for a given binary:
+// a directory named by the binary's own hash, so the approval
+// identity's PATH component is stable across runs of one binary and
+// different for another (ADR 0010 decision 1).
+func BenchBinDir(sagaBinary string) (string, error) {
+	sum := FileSHA256(sagaBinary)
+	if sum == "" {
+		return "", fmt.Errorf("bench bin dir: %s is unreadable", sagaBinary)
+	}
+	root, err := BenchHome()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, "bin", strings.TrimPrefix(sum, "sha256:")[:16]), nil
+}
+
+// LinkBenchBinary puts sagaBinary at BenchBinDir/saga, replacing a link
+// that points elsewhere. It returns the directory to put on PATH.
+func LinkBenchBinary(sagaBinary string) (string, error) {
+	abs, err := filepath.Abs(sagaBinary)
+	if err != nil {
+		return "", err
+	}
+	dir, err := BenchBinDir(abs)
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	link := filepath.Join(dir, "saga")
+	if cur, err := os.Readlink(link); err == nil && cur == abs {
+		return dir, nil
+	}
+	// Replace atomically: a link pointing at a moved binary must not
+	// survive, and two runs may race here.
+	tmp := link + ".tmp"
+	_ = os.Remove(tmp)
+	if err := os.Symlink(abs, tmp); err != nil {
+		return "", err
+	}
+	if err := os.Rename(tmp, link); err != nil {
+		_ = os.Remove(tmp)
+		return "", err
+	}
+	return dir, nil
+}
+
+// CorpusStoreDir is the approval store for one frozen task set
+// (ADR 0010 decision 2). It is outside every workspace and 0700: the
+// agent can neither read nor write it.
+func CorpusStoreDir(taskSetHash string) (string, error) {
+	h := strings.TrimPrefix(taskSetHash, "sha256:")
+	if len(h) != 64 {
+		return "", fmt.Errorf("corpus store: %q is not a task-set hash", taskSetHash)
+	}
+	root, err := BenchHome()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, "approved", h), nil
 }
 
 // DefaultTools is the -p tool list; C32: Grep and Glob must be named.
@@ -158,11 +241,10 @@ func SafetyHookCommand(binary string) string {
 // Per-run files under the config dir that Env reads back, so Prepare,
 // Run and the baseline check agree on the environment without state.
 const (
-	shimDir     = "shim"     // control arm: PATH shim `saga`
-	binDir      = "bin"      // treatment arm: symlink to the saga binary
-	approvedDir = "approved" // treatment arm: SAGA_APPROVAL_DIR
-	blockedLog  = "blocked.log"
-	guardLog    = "guard.jsonl" // both arms: the safety hook's decision log
+	shimDir    = "shim" // control arm: PATH shim `saga`
+	binDir     = "bin"  // treatment arm: symlink to the saga binary (legacy; see BenchBinDir)
+	blockedLog = "blocked.log"
+	guardLog   = "guard.jsonl" // both arms: the safety hook's decision log
 )
 
 func exists(p string) bool {
@@ -216,9 +298,19 @@ func (c *ClaudeCode) Env(configDir string) []string {
 	if exists(filepath.Join(configDir, shimDir, "saga")) {
 		env["PATH"] = filepath.Join(configDir, shimDir) + string(os.PathListSeparator) + env["PATH"]
 	}
-	if exists(filepath.Join(configDir, binDir, "saga")) {
-		env["PATH"] = filepath.Join(configDir, binDir) + string(os.PathListSeparator) + env["PATH"]
-		env[gate.ApprovalEnv] = filepath.Join(configDir, approvedDir)
+	// The gate arm's saga lives at a path derived from the binary's hash
+	// rather than under the per-run config dir, so the approval
+	// identity's PATH component is the same for every run of the same
+	// binary and changes when the binary does (ADR 0010 decision 1). The
+	// corpus approval store is named alongside it; a run consumes
+	// records and never writes one.
+	if c.SagaBinary != "" {
+		if dir, err := BenchBinDir(c.SagaBinary); err == nil && exists(filepath.Join(dir, "saga")) {
+			env["PATH"] = dir + string(os.PathListSeparator) + env["PATH"]
+			if c.CorpusStore != "" {
+				env[gate.ApprovalEnv] = c.CorpusStore
+			}
+		}
 	}
 	keys := make([]string, 0, len(env))
 	for k := range env {
@@ -541,6 +633,18 @@ func (c *ClaudeCode) stageShim(configDir string) error {
 // approved before the agent starts (gate-spec 3.2; the approval is a
 // human act and is refused inside an agent shell).
 func (c *ClaudeCode) stageGate(ctx context.Context, in *PrepareInput) error {
+	if err := c.stageGateFiles(ctx, in); err != nil {
+		return err
+	}
+	return c.baselineCheck(ctx, in)
+}
+
+// stageGateFiles is everything a gate arm needs before the baseline
+// check: the corpus store, the stable binary link, the store, the
+// config, the request and the contract, all in the base commit. It is
+// shared with `approve-corpus`, so the approval identity the owner
+// records is exactly the one a run will present (ADR 0010).
+func (c *ClaudeCode) stageGateFiles(ctx context.Context, in *PrepareInput) error {
 	if c.SagaBinary == "" {
 		return fmt.Errorf("gate arm: no saga binary")
 	}
@@ -548,14 +652,26 @@ func (c *ClaudeCode) stageGate(ctx context.Context, in *PrepareInput) error {
 	if err != nil {
 		return err
 	}
-	bin := filepath.Join(in.ConfigDir, binDir)
-	if err := os.MkdirAll(bin, 0o755); err != nil {
+	// The corpus approval store this run consumes. It is never the
+	// operator's own ~/.saga/approved: without a task-set hash there is
+	// no store to name, and a gate arm that silently read the operator's
+	// personal approvals would be approving itself by accident.
+	if in.TaskSetSHA256 == "" {
+		return fmt.Errorf("gate arm: no task-set hash, so no corpus approval store (ADR 0010)")
+	}
+	corpus, err := CorpusStoreDir(in.TaskSetSHA256)
+	if err != nil {
 		return err
 	}
-	if err := os.Symlink(sagaAbs, filepath.Join(bin, "saga")); err != nil && !errors.Is(err, os.ErrExist) {
+	if err := os.MkdirAll(corpus, 0o700); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Join(in.ConfigDir, approvedDir), 0o700); err != nil {
+	c.CorpusStore = corpus
+
+	// The stable directory of ADR 0010 decision 1, not a per-run one: the
+	// approval identity hashes PATH, so a per-run directory made every
+	// run's identity different and forced a human act into every run.
+	if _, err := LinkBenchBinary(sagaAbs); err != nil {
 		return err
 	}
 	if _, err := store.Init(in.Workspace); err != nil {
@@ -613,9 +729,23 @@ func (c *ClaudeCode) stageGate(ctx context.Context, in *PrepareInput) error {
 		return err
 	}
 
-	// Baseline red with approval, in the agent's environment so the
-	// approval identity (which includes PATH) matches the agent's checks.
-	cmd := exec.CommandContext(ctx, sagaAbs, "gate", "check", "--approve", "--json")
+	return nil
+}
+
+// baselineCheck runs the task's contract at the base tree: it must be
+// red, and every gate must already carry a corpus approval.
+func (c *ClaudeCode) baselineCheck(ctx context.Context, in *PrepareInput) error {
+	sagaAbs, err := filepath.Abs(c.SagaBinary)
+	if err != nil {
+		return err
+	}
+	// Baseline red, in the agent's environment so the approval identity
+	// (which includes PATH) matches the agent's checks. **No --approve**:
+	// a run consumes the corpus approvals the owner gave once and never
+	// creates one (ADR 0010 decision 3). Exit 4 means a gate has no
+	// record, which is infra rather than a result: the arm did not run
+	// the treatment the manifest names.
+	cmd := exec.CommandContext(ctx, sagaAbs, "gate", "check", "--json")
 	cmd.Dir = in.Workspace
 	cmd.Env = c.Env(in.ConfigDir)
 	var out, errb bytes.Buffer
@@ -636,9 +766,50 @@ func (c *ClaudeCode) stageGate(ctx context.Context, in *PrepareInput) error {
 		return fmt.Errorf("baseline check: every gate met before any work (task verify-task should have failed)")
 	case 1, 5:
 		return nil
+	case int(cli.ExitApproval):
+		return &NotPreApproved{Gates: approvalMissing(out.Bytes()), Store: c.CorpusStore}
 	default:
-		return fmt.Errorf("baseline check --approve exited %d: %s", code, strings.TrimSpace(errb.String()))
+		return fmt.Errorf("baseline check exited %d: %s", code, strings.TrimSpace(errb.String()))
 	}
+}
+
+// NotPreApproved is the baseline check finding a gate with no corpus
+// approval. The runner turns it into an infra outcome: the owner has
+// not approved this task set for this binary, so the run would not be
+// the treatment the manifest names (ADR 0010 decision 3).
+type NotPreApproved struct {
+	Gates []string
+	Store string
+}
+
+func (e *NotPreApproved) Error() string {
+	ids := strings.Join(e.Gates, " ")
+	if ids == "" {
+		ids = "unknown"
+	}
+	return "not pre-approved: " + ids + " (run `saga bench approve-corpus` from your terminal)"
+}
+
+// approvalMissing reads the gate ids the check reported as unapproved,
+// from the per-gate `approval` field the status JSON already carries.
+// Nothing in gate changes for this.
+func approvalMissing(raw []byte) []string {
+	var rep struct {
+		Gates []struct {
+			ID       string `json:"id"`
+			Approval string `json:"approval"`
+		} `json:"gates"`
+	}
+	if json.Unmarshal(raw, &rep) != nil {
+		return nil
+	}
+	var out []string
+	for _, g := range rep.Gates {
+		if g.Approval == "missing" {
+			out = append(out, g.ID)
+		}
+	}
+	return out
 }
 
 // Run implements Adapter.
@@ -1057,4 +1228,88 @@ func firstChars(s string, n int) string {
 		b = b[:len(b)-1]
 	}
 	return b + "..."
+}
+
+// ApproveCorpusInput is one task's pre-approval (ADR 0010 decision 2).
+type ApproveCorpusInput struct {
+	Task *task.Task
+	// Workspace is a scratch directory the caller owns and deletes; it
+	// is staged exactly as a gate-arm run stages one, so the approval
+	// identity matches what a run will present.
+	Workspace string
+	// ConfigDir is a scratch config dir for the same reason.
+	ConfigDir string
+	// CorpusStore is the store the records are written to.
+	CorpusStore string
+	// Check only reports what is missing and approves nothing.
+	Check bool
+}
+
+// ApproveCorpusResult is what one task's pre-approval did.
+type ApproveCorpusResult struct {
+	// Gates is the number of gates the task's contract declares.
+	Gates int
+	// Missing lists the gates with no record; empty means covered.
+	Missing []string
+	// Approved is the number of records written (0 in Check mode).
+	Approved int
+}
+
+// ApproveCorpus stages one task the way a gate-arm run does and, unless
+// Check is set, runs `saga gate check --approve` against the corpus
+// store. It is called from a human act: the caller refuses under an
+// agent shell before reaching here, exactly as `gate check --approve`
+// does for itself.
+func (c *ClaudeCode) ApproveCorpus(ctx context.Context, in *ApproveCorpusInput) (*ApproveCorpusResult, error) {
+	if err := task.Stage(ctx, in.Task, in.Workspace); err != nil {
+		return nil, err
+	}
+	// The same staging a run gets, so the identity is the same one a run
+	// will present: the contract and config in the base commit, the
+	// stable binary directory on PATH, the corpus store named.
+	c.CorpusStore = in.CorpusStore
+	prep := &PrepareInput{
+		Task: in.Task, Workspace: in.Workspace, ConfigDir: in.ConfigDir,
+		Components: []string{"gate"}, SagaBinary: c.SagaBinary,
+	}
+	if err := c.stageGateFiles(ctx, prep); err != nil {
+		return nil, err
+	}
+	args := []string{"gate", "check", "--json"}
+	if !in.Check {
+		args = []string{"gate", "check", "--approve", "--json"}
+	}
+	sagaAbs, err := filepath.Abs(c.SagaBinary)
+	if err != nil {
+		return nil, err
+	}
+	cmd := exec.CommandContext(ctx, sagaAbs, args...)
+	cmd.Dir = in.Workspace
+	cmd.Env = c.Env(in.ConfigDir)
+	var out, errb bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &errb
+	err = cmd.Run()
+	var ee *exec.ExitError
+	if err != nil && !errors.As(err, &ee) {
+		return nil, fmt.Errorf("%s: %w", strings.Join(args, " "), err)
+	}
+	var rep struct {
+		Gates []struct {
+			ID       string `json:"id"`
+			Approval string `json:"approval"`
+		} `json:"gates"`
+	}
+	if jerr := json.Unmarshal(out.Bytes(), &rep); jerr != nil {
+		return nil, fmt.Errorf("%s: unreadable output: %s", strings.Join(args, " "), strings.TrimSpace(errb.String()))
+	}
+	res := &ApproveCorpusResult{Gates: len(rep.Gates), Missing: []string{}}
+	for _, g := range rep.Gates {
+		if g.Approval == "missing" {
+			res.Missing = append(res.Missing, g.ID)
+		}
+	}
+	if !in.Check {
+		res.Approved = res.Gates - len(res.Missing)
+	}
+	return res, nil
 }

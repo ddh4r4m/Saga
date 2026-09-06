@@ -175,7 +175,10 @@ func TestClaudePrepareDisclosure(t *testing.T) {
 	c2 := &ClaudeCode{Binary: "/nonexistent/claude", SagaBinary: fake, Version: "2.1.259 (Claude Code)"}
 	cfg2 := filepath.Join(root, "cfg2")
 	staged := StagedPrompt(tk.Prompt(), []string{"gate"})
-	out2, err := c2.Prepare(context.Background(), &PrepareInput{Task: tk, Workspace: ws2, ConfigDir: cfg2, Components: []string{"gate"}, Prompt: staged, Limits: Limits{WallS: 720, MaxTurns: 200, USD: 0.45}, Blocks: []string{}})
+	// SAGA_HOME keeps the stable bin dir and the corpus store off the
+	// real home (ADR 0010).
+	t.Setenv("SAGA_HOME", filepath.Join(root, "saga-home"))
+	out2, err := c2.Prepare(context.Background(), &PrepareInput{Task: tk, Workspace: ws2, ConfigDir: cfg2, Components: []string{"gate"}, Prompt: staged, Limits: Limits{WallS: 720, MaxTurns: 200, USD: 0.45}, Blocks: []string{}, TaskSetSHA256: testTaskSet})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,15 +230,39 @@ func TestClaudePrepareDisclosure(t *testing.T) {
 	if parsed.Request != "" && parsed.Request != BytesSHA256(req) {
 		t.Errorf("contract REQUEST: %s does not hash request.md (%s)", parsed.Request, BytesSHA256(req))
 	}
-	if fi, err := os.Stat(filepath.Join(cfg2, approvedDir)); err != nil || fi.Mode().Perm() != 0o700 {
-		t.Errorf("approval store: %v %v", fi, err)
+	// The corpus store of ADR 0010, outside every workspace and 0700, and
+	// keyed by the task set rather than by the run.
+	corpus, err := CorpusStoreDir(testTaskSet)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(cfg2, binDir, "saga")); err != nil {
-		t.Error("saga not linked into the agent's PATH")
+	if fi, err := os.Stat(corpus); err != nil || fi.Mode().Perm() != 0o700 {
+		t.Errorf("corpus approval store: %v %v", fi, err)
 	}
+	// Outside every workspace: the agent can neither read it nor write
+	// it. (It is under SAGA_HOME here, which the test points at a scratch
+	// directory so the real home is untouched.)
+	if strings.HasPrefix(corpus, ws2) || strings.HasPrefix(corpus, cfg2) {
+		t.Errorf("the approval store is inside the workspace or its config dir: %s", corpus)
+	}
+	// The saga link is at the stable, binary-keyed path, not per run.
+	binHome, err := BenchBinDir(fake)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(binHome, "saga")); err != nil {
+		t.Errorf("saga not linked at the stable bench path: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(cfg2, binDir, "saga")); err == nil {
+		t.Error("the per-run bin dir is still created; the identity's PATH must not vary per run")
+	}
+	// A run consumes approvals and never creates one: no --approve.
 	got, _ := os.ReadFile(argv)
-	if !strings.HasPrefix(string(got), "gate check --approve --json\n"+filepath.Join(cfg2, approvedDir)) {
+	if !strings.HasPrefix(string(got), "gate check --json\n"+corpus) {
 		t.Errorf("baseline check argv/env:\n%s", got)
+	}
+	if strings.Contains(string(got), "--approve") {
+		t.Errorf("a run approved its own baseline:\n%s", got)
 	}
 	// Eleven gate hooks plus the safety hook, which is the same entry the
 	// bare arm carries: identical command string, so it cannot be the
@@ -287,14 +314,86 @@ func TestClaudeArmStaging(t *testing.T) {
 	if !strings.Contains(string(shim), "exit 127") || !strings.Contains(string(shim), blockedLog) {
 		t.Errorf("shim:\n%s", shim)
 	}
-	// Treatment: bin and approved dirs switch the environment.
-	cfg2 := t.TempDir()
-	os.MkdirAll(filepath.Join(cfg2, binDir), 0o755)
-	os.WriteFile(filepath.Join(cfg2, binDir, "saga"), []byte("#!/bin/sh\n"), 0o755)
-	env2 := strings.Join(c.Env(cfg2), "\n")
-	if !strings.Contains(env2, "SAGA_APPROVAL_DIR="+filepath.Join(cfg2, approvedDir)) || !strings.Contains(env2, "PATH="+filepath.Join(cfg2, binDir)+string(os.PathListSeparator)) {
-		t.Errorf("treatment env:\n%s", env2)
+	// The treatment arm's environment is covered by
+	// TestBenchBinDirIsStablePerBinary, which owns the stable bin dir and
+	// the corpus store.
+}
+
+// testTaskSet is a task-set hash for tests; the real one comes from
+// bench/tasks/TASKSET.sha256.
+const testTaskSet = "sha256:" + "11" + "22334455667788990011223344556677889900112233445566778899001122"
+
+// TestBenchBinDirIsStablePerBinary (ADR 0010 decision 1): the approval
+// identity hashes PATH, so the bench's saga has to sit at the same place
+// for every run of one binary, and at a different place for another.
+// While it lived under the per-run config dir every run had its own
+// identity, and that is what forced a human act into every run.
+func TestBenchBinDirIsStablePerBinary(t *testing.T) {
+	t.Setenv("SAGA_HOME", t.TempDir())
+	a := filepath.Join(t.TempDir(), "saga-a")
+	b := filepath.Join(t.TempDir(), "saga-b")
+	if err := os.WriteFile(a, []byte("#!/bin/sh\necho a\n"), 0o755); err != nil {
+		t.Fatal(err)
 	}
+	if err := os.WriteFile(b, []byte("#!/bin/sh\necho b\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	da1, err := LinkBenchBinary(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	da2, err := LinkBenchBinary(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if da1 != da2 {
+		t.Errorf("the same binary linked to two places: %s and %s", da1, da2)
+	}
+	db, err := LinkBenchBinary(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if db == da1 {
+		t.Errorf("a different binary reused the directory %s; a binary change must invalidate approvals", db)
+	}
+	// The link points at the binary, and re-linking a moved binary
+	// replaces it rather than leaving a stale one.
+	target, err := os.Readlink(filepath.Join(da1, "saga"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if abs, _ := filepath.Abs(a); target != abs {
+		t.Errorf("link points at %s, want %s", target, abs)
+	}
+	// The env a gate arm runs with names that directory, and the corpus
+	// store rather than the operator's own ~/.saga/approved.
+	corpus, err := CorpusStoreDir(testTaskSet)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := &ClaudeCode{SagaBinary: a, CorpusStore: corpus}
+	env := strings.Join(c.Env(t.TempDir()), "\n")
+	if !strings.Contains(env, "PATH="+da1+string(os.PathListSeparator)) {
+		t.Errorf("PATH does not lead with the stable dir:\n%s", env)
+	}
+	if !strings.Contains(env, "SAGA_APPROVAL_DIR="+corpus) {
+		t.Errorf("the corpus store is not named:\n%s", env)
+	}
+	// Two Prepare-shaped calls with the same binary give the same PATH,
+	// which is the property the approval identity depends on.
+	if p1, p2 := c.Env(t.TempDir()), c.Env(t.TempDir()); pathOf(p1) != pathOf(p2) {
+		t.Errorf("PATH varies per run:\n%s\n%s", pathOf(p1), pathOf(p2))
+	}
+}
+
+// pathOf returns the PATH entry of an environment slice.
+func pathOf(env []string) string {
+	for _, kv := range env {
+		if strings.HasPrefix(kv, "PATH=") {
+			return kv
+		}
+	}
+	return ""
 }
 
 const stream = `{"type":"system","subtype":"init","session_id":"s1","model":"claude-opus-5","tools":["Bash","Read","Grep","Glob"],"permissionMode":"acceptEdits"}
