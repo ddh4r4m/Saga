@@ -48,3 +48,16 @@ On every run `cost_usd` (pinned table) is 1.50 times `harness_cost_usd` (Claude 
 Decisions on all five are in docs/briefs/2026-09-06-stop-release-and-abandon.md and pre-registered in docs/12 §13: a release ends the turn and is remembered for the session; a `NOT-DONE` last line or an `ABANDON:` statement is a terminal the gate allows; the first block and the status output name that way out in one fixed sentence; caches are ignored by G-SCOPE, the diff and the scope scan; the reason is read from the last substantive text when the final message is only the marker; cost is the harness figure with the pinned figure beside it; a schema failure is an infra outcome. Until those land, arm B's number on impossible tasks measures the hold, not the gate.
 
 py-0007's oracle hardening (2410b46) and the grader's integrity probe (c304366) both predate ff2a31a, so the archived task hash and the grading are current: `oracle.integrity` reads `ok` on every run.
+
+## Fixed in
+
+| finding | fixed in | what changed |
+|---|---|---|
+| 1, a Stop release is a continuation | d68aa6f | A release is an allow with an empty `additionalContext`; the handoff line goes to stderr and the `stop` event. `observed.gate_released` makes every later Stop of the session allow at once without counting. |
+| 2, the gate holds an honest abandon and never names the way out | d68aa6f | A `NOT-DONE` last line or an `ABANDON:` statement allows with `decision: abandon`, checked before the block counter. The first block of a session, `saga gate status` on an unmet gate, and `saga gate -h` all name the way out. |
+| 3, the ABANDON reason was read from a bare marker | 9c97d9d | When the final message is only the marker, the classifier reads the turn's substantive assistant text (`abandon.source: final_turn_text`). Re-derived offline, both arm B runs now class `contradiction`, matching arm A. `abandon.classes` is a list, never null. |
+| 4, byte-code caches counted as edits | d68aa6f, 9c97d9d | G-SCOPE, `task.Diff` and the scope scan ignore cache paths from a list held in code, not config. |
+| 5, pinned table is 1.5 times the harness figure | 9c97d9d | `cost_usd` is the harness's figure; the pinned one is `cost_usd_pinned` with `cost_ratio_pinned` beside it. The table's values are unchanged and left for a separate reconciliation. |
+| the schema gap that overwrote the reason | 9c97d9d | A row or disclosure validation failure is now an `infra` outcome with a `schema:` prefix, not an overwritten `outcome_reason`. |
+
+Arm B's number on impossible tasks in the table above measures the hold, not the gate. The next smoke on these commits is what the comparison rests on.

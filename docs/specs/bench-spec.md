@@ -201,6 +201,8 @@ runs/<manifest-hash>/<task>/<model>/<harness>/<arm>/<i>/
 
 `trace.jsonl` is synthesised from the harness's own stream (Claude Code's `--output-format stream-json`) by the same code in every arm: one `tool_call` and `tool_result` per `tool_use` block, with the arguments and the result text inline. The derived claim event of trace-spec §5.9 is reconciled against that chain and against nothing else, so `claimed_done` and `claim_verdict` cannot differ between a bare arm and a treatment arm because one of them has hooks or a contract (docs/12 §2.1 rule 1, §13 amendment of 2026-09-06). The hook-written trace of a treatment arm is archived beside it as `hook-trace.jsonl` and stays available to the report as evidence of what the hooks saw, but it feeds no metric; nor does gate status, which the run's claim judgement never loads from the workspace.
 
+`cost_usd` is the harness's own figure when it reports one (§10.1, docs/12 §9: the same source for every arm); the pinned price table's figure is recorded beside it as `cost_usd_pinned` with `cost_ratio_pinned`. The 2026-09-06 smoke found the pinned figure 1.5 times the harness's on all twelve runs, constant across arms, so the ratio is recorded per run and the table is left for a separate reconciliation.
+
 `run.json` carries: tokens as the trace-spec §3.1 usage object `{input_fresh, cache_read, cache_write_5m, cache_write_1h, output, reasoning}` as reported by the harness's own accounting (the same source for every arm), wall time from container start to harness exit, cost computed from the pinned price table, tool-call sequence as `[(tool, args_hash, exit_or_error)]`, outcome, oracle result, guard flags, and `blocked_reach_attempts` (§4.2).
 
 Grading happens in a **separate grading container**: the agent's `workspace.diff` is applied to a clean checkout of `ref`, then `oracle/` is copied in and `run.sh` executed. The agent's container never sees the oracle and cannot alter the tree the oracle runs on.
@@ -551,6 +553,8 @@ Precedence when several apply: 6, 7, 2, 3, 4, 5, 1 (contracts §4).
              "regressed": [], "ceiling_band": null},
   "scan": {"assertion_edit": 0, "skip_marker": 0, "test_delete": 0, "hard_coded": 1,
            "oracle_touch": false, "env_tamper": false, "scope_violations": ["src/legacy/foo.ts"]},
+           // Byte-code and build caches (__pycache__/, *.pyc, .pytest_cache/, node_modules/, .oracle-run/,
+           // .saga-oracle*) are never edits: excluded from the diff and ignored by the scope scan (2026-09-06).
   "usage": {"input_fresh": 182340, "cache_read": 141200, "cache_write_5m": 0, "cache_write_1h": 9100, "output": 12488, "reasoning": 3020},
   "cost_usd": 1.41, "wall_s": 812, "turns": 47, "tool_calls": 63,
   "drift": {"repeat": 1, "edit_fail_streak": 0, "oscillation": 0, "out_of_scope_read": 2, "late_scope_expansion": 0},

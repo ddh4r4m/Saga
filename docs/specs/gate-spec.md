@@ -451,6 +451,8 @@ WAIVE: G-ASSERT tests/import/parse.test.ts 3f9a12cd7b04 consolidated four equali
 
 ### 5.4 Config is read from `BASE:`
 
+
+Byte-code and build caches are never an edit: `__pycache__/`, `*.pyc`, `*.pyo`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `node_modules/`, `.oracle-run/` and `.saga-oracle*` are ignored by G-SCOPE and by the bench's diff and scope scan. The list lives in code, not in `config.toml`: a contract that could widen it would be self-serving. Added 2026-09-06, after a smoke run reported three `.pyc` files as out-of-scope work on a run that changed one source file.
 `.saga/config.toml` holds self-serving knobs (`scope_exempt`, `test_globs`, `max_blocks`, `waiver_policy`). Guards and adapters therefore read it with `git show <BASE>:.saga/config.toml`, never from the working tree. A working-tree edit to the config takes effect only after it is committed and becomes the new base. In minimal mode (`BASE:` absent, base = `HEAD`) the same rule applies: uncommitted config edits are ignored.
 
 ---
@@ -470,7 +472,9 @@ Common algorithm, every harness:
 | `check --status` exit 0 | allow |
 | exit 1, 3, 4, 5 | block with ids and states |
 | exit 2, 6 | block: `contract invalid: run saga gate lint` (fail closed) |
-| `stop_hook_active` true and progress hash unchanged | count toward `max_blocks`; release with `HANDOFF REQUIRED` at the ceiling |
+| `stop_hook_active` true and progress hash unchanged | count toward `max_blocks`; **release** at the ceiling. A release is an allow with nothing in `additionalContext`: on Stop that field continues the conversation through the same loop protections as `decision: block` (harness-facts C11), so a release carrying it is a block by another name. The `HANDOFF REQUIRED` line goes to stderr and to the `stop` trace event. The release is recorded in `observed.gate_released`, and every later Stop of the session allows at once without counting (2026-09-06) |
+| The final message ends with the `NOT-DONE` marker, or the contract carries an `ABANDON:` statement | **allow**, `decision: abandon` with the unmet ids, checked before the block counter so a terminal never accrues a block. The gate stops a false `DONE`; it never holds an agent that has said it cannot finish (2026-09-06) |
+| The first block of a session, and `saga gate status` whenever a gate is unmet | append one fixed sentence naming the way out: end the message with `NOT-DONE`, or add `ABANDON: <gate id> <reason>` to the contract. Counted against the Stop ceiling and emitted once per session, so it never crowds out the reason |
 
 **Progress hash**: sha256 of the sorted `(gate, state, evidence_hash, red_valid)` tuples, so a reflowed line or rewritten comment is not progress. Counter lives in `.saga/observed/session-<id>.json`. `max_blocks` default 6 (below Claude Code's own hard cap of 8 consecutive blocks). This is a backstop, not a guarantee: an agent can wait it out.
 
