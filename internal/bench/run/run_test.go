@@ -3,6 +3,7 @@ package run
 import (
 	"bytes"
 	"context"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -191,5 +192,55 @@ func TestRunArmsInterleaved(t *testing.T) {
 	}
 	if got := results[0].Rows[0].Artifacts; len(got) == 0 {
 		t.Error("no artifacts")
+	}
+}
+
+// TestArchiveHookTraceAndRederivation covers section 3.4's new
+// hook-trace.jsonl artifact and the offline re-derivation: judging
+// trace.jsonl over the archive must reproduce the row's claim_verdict
+// byte for byte, which is what makes the metric auditable after the
+// workspace is gone.
+func TestArchiveHookTraceAndRederivation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
+	needRunners(t)
+	tasks := loadTasks(t, "ts-0001-slug-collapse")
+	out := filepath.Join(t.TempDir(), "runs")
+	res, err := Run(context.Background(), Options{Tasks: tasks, Adapter: &adapter.Replay{Patch: "gold"}, K: 1, Out: out, Model: "replay", Seed: strings.Repeat("ef", 32), WallCapS: 300})
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := res.Rows[0]
+	runDir := filepath.Join(out, row.Task, row.Model, row.Harness, row.Arm, "1")
+	hook, err := os.ReadFile(filepath.Join(runDir, "hook-trace.jsonl"))
+	if err != nil {
+		t.Fatalf("hook-trace.jsonl: %v", err)
+	}
+	// The replay adapter has no hooks, so the file is present and empty.
+	if len(hook) != 0 {
+		t.Errorf("hook trace: %d bytes", len(hook))
+	}
+	if got := row.Artifacts["hook_trace"]; got != adapter.BytesSHA256(hook) {
+		t.Errorf("artifacts.hook_trace %s", got)
+	}
+	sums, err := os.ReadFile(filepath.Join(runDir, "SHA256SUMS"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(sums), "  hook-trace.jsonl\n") {
+		t.Errorf("SHA256SUMS:\n%s", sums)
+	}
+	// `saga trace claims <run-dir>`: the same verdict off the archive.
+	in, err := claims.FromRunDir(runDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	again := claims.Judge(in)
+	if row.ClaimVerdict == nil || again.Verdict != *row.ClaimVerdict {
+		t.Errorf("re-derived %q, row %v", again.Verdict, row.ClaimVerdict)
+	}
+	if again.Detection.ClaimedDone == nil || row.ClaimedDone == nil || *again.Detection.ClaimedDone != *row.ClaimedDone {
+		t.Errorf("re-derived claimed_done %v, row %v", again.Detection.ClaimedDone, row.ClaimedDone)
 	}
 }

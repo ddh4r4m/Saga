@@ -154,8 +154,16 @@ type CollectOutput struct {
 	// BlockedReachAttempts counts control-arm reaches for the component
 	// (bench-spec 4.2), from the PATH shim's log.
 	BlockedReachAttempts int
-	TraceJSONL           []byte
-	TranscriptPath       string
+	// StreamTraceJSONL is the saga.trace/1 chain synthesised from the
+	// harness's own native log; it is what the derived claim event is
+	// reconciled against, in every arm (docs/12 section 13, amendment of
+	// 2026-09-06), and what the archive keeps as trace.jsonl.
+	StreamTraceJSONL []byte
+	// HookTraceJSONL is what Saga's hooks wrote in the workspace, nil in
+	// an arm without hooks; it is archived as hook-trace.jsonl and never
+	// feeds a metric.
+	HookTraceJSONL []byte
+	TranscriptPath string
 	// Disclosure additions learnt at collect time (model id, version).
 	Disclosure Disclosure
 }

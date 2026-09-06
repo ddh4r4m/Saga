@@ -506,6 +506,48 @@ type StreamResult struct {
 	// APIKeySource is the init event's apiKeySource ("none" when not
 	// logged in, the 2026-09-05 smoke's dry-run finding).
 	APIKeySource string
+	// ToolUses are the tool_use blocks in order with their arguments and
+	// the matching tool_result, deduplicated on id like ToolCalls. They
+	// are what StreamTrace synthesises the tool events from, so the claim
+	// verifier reconciles against the harness's own stream in every arm
+	// (docs/12 section 13, amendment of 2026-09-06).
+	ToolUses []StreamToolUse
+}
+
+// StreamToolUse is one tool_use block of the stream with its result.
+type StreamToolUse struct {
+	ID    string
+	Name  string
+	Input map[string]any
+	// Result is nil when the stream carries no tool_result for the id.
+	Result *StreamToolResult
+}
+
+// StreamToolResult is the harness's tool_result for one tool use: the
+// text content (a string, or the text blocks of a content array joined
+// with newlines) and the is_error flag.
+type StreamToolResult struct {
+	Text    string
+	IsError bool
+}
+
+// resultText renders a tool_result content field: a plain string, or the
+// text fields of a content array joined with newlines.
+func resultText(v any) string {
+	switch t := v.(type) {
+	case string:
+		return t
+	case []any:
+		var parts []string
+		for _, blk := range t {
+			b, _ := blk.(map[string]any)
+			if s, ok := b["text"].(string); ok {
+				parts = append(parts, s)
+			}
+		}
+		return strings.Join(parts, "\n")
+	}
+	return ""
 }
 
 // ParseStream normalises a `--output-format stream-json` log. Usage is
@@ -513,7 +555,7 @@ type StreamResult struct {
 // otherwise the sum over assistant messages deduplicated on message id.
 func ParseStream(raw []byte) StreamResult {
 	var r StreamResult
-	toolErr := map[string]bool{}
+	toolRes := map[string]*StreamToolResult{}
 	toolByID := map[string]int{}
 	seen := map[string]bool{}
 	var summed trace.Usage
@@ -578,13 +620,16 @@ func ParseStream(raw []byte) StreamResult {
 				name, _ := b["name"].(string)
 				argsCanon, _ := canon.JSON(b["input"])
 				tc := ToolCall{Tool: name, ArgsHash: canon.SHA256(argsCanon)}
-				if id, _ := b["id"].(string); id != "" {
+				id, _ := b["id"].(string)
+				if id != "" {
 					if _, dup := toolByID[id]; dup {
 						continue // the same message re-emitted with more blocks
 					}
 					toolByID[id] = len(r.ToolCalls)
 				}
+				input, _ := b["input"].(map[string]any)
 				r.ToolCalls = append(r.ToolCalls, tc)
+				r.ToolUses = append(r.ToolUses, StreamToolUse{ID: id, Name: name, Input: input})
 			}
 		case "user":
 			msg, _ := ev["message"].(map[string]any)
@@ -594,11 +639,15 @@ func ParseStream(raw []byte) StreamResult {
 				if b["type"] != "tool_result" {
 					continue
 				}
-				if isErr, _ := b["is_error"].(bool); isErr {
-					if id, _ := b["tool_use_id"].(string); id != "" {
-						toolErr[id] = true
-					}
+				id, _ := b["tool_use_id"].(string)
+				if id == "" {
+					continue
 				}
+				if _, dup := toolRes[id]; dup {
+					continue // a re-emitted user message repeats the result
+				}
+				isErr, _ := b["is_error"].(bool)
+				toolRes[id] = &StreamToolResult{Text: resultText(b["content"]), IsError: isErr}
 			}
 		case "result":
 			r.Subtype, _ = ev["subtype"].(string)
@@ -619,9 +668,12 @@ func ParseStream(raw []byte) StreamResult {
 		}
 	}
 	for id, i := range toolByID {
-		if toolErr[id] {
-			r.ToolCalls[i].Error = true
+		res := toolRes[id]
+		if res == nil {
+			continue
 		}
+		r.ToolUses[i].Result = res
+		r.ToolCalls[i].Error = res.IsError
 	}
 	if r.UsageFrom == "" {
 		summed.Source = "claude-code:stream-json"
@@ -677,13 +729,39 @@ func (c *ClaudeCode) Collect(ctx context.Context, in *CollectInput) (*CollectOut
 	if matches, _ := filepath.Glob(filepath.Join(in.ConfigDir, "claude-config", "projects", "*", sessionID+".jsonl")); len(matches) > 0 {
 		out.TranscriptPath = matches[0]
 	}
-	// The trace the hooks wrote in the workspace, concatenated.
+	// Pins per run (trace-spec 4.1) from the stream plus the generated
+	// settings file; the runner completes them from the disclosure.
+	var settingsHash, hooksHash *string
+	if raw, err := os.ReadFile(filepath.Join(in.ConfigDir, "settings.json")); err == nil {
+		sh := canon.SHA256(raw)
+		settingsHash = &sh
+		var sm map[string]any
+		if json.Unmarshal(raw, &sm) == nil {
+			if hb, err := canon.JSON(sm["hooks"]); err == nil {
+				hh := canon.SHA256(hb)
+				hooksHash = &hh
+			}
+		}
+	}
+	// The events the claim verifier reconciles against, synthesised from
+	// the harness's native stream by the same code in every arm.
+	cfgHash := ""
+	if settingsHash != nil {
+		cfgHash = *settingsHash
+	}
+	streamTrace, err := StreamTrace(sr, in, cfgHash)
+	if err != nil {
+		return nil, fmt.Errorf("stream trace: %w", err)
+	}
+	out.StreamTraceJSONL = streamTrace
+	// The trace the hooks wrote in the workspace, concatenated; archived
+	// beside it and never read by the metric.
 	st := store.Open(in.Workspace)
 	dir := trace.SessionDir(st, sessionID)
 	if segs, err := trace.Segments(dir); err == nil {
 		for _, s := range segs {
 			if b, err := os.ReadFile(s); err == nil {
-				out.TraceJSONL = append(out.TraceJSONL, b...)
+				out.HookTraceJSONL = append(out.HookTraceJSONL, b...)
 			}
 		}
 	}
@@ -702,20 +780,6 @@ func (c *ClaudeCode) Collect(ctx context.Context, in *CollectInput) (*CollectOut
 	}
 	if sr.ClaudeCodeVersion != "" {
 		Set(out.Disclosure.Block("harness"), "version", sr.ClaudeCodeVersion, "")
-	}
-	// Pins per run (trace-spec 4.1) from the stream plus the generated
-	// settings file; the runner completes them from the disclosure.
-	var settingsHash, hooksHash *string
-	if raw, err := os.ReadFile(filepath.Join(in.ConfigDir, "settings.json")); err == nil {
-		sh := canon.SHA256(raw)
-		settingsHash = &sh
-		var sm map[string]any
-		if json.Unmarshal(raw, &sm) == nil {
-			if hb, err := canon.JSON(sm["hooks"]); err == nil {
-				hh := canon.SHA256(hb)
-				hooksHash = &hh
-			}
-		}
 	}
 	out.Pins = PinsFromStream(sr, c.Model, settingsHash, hooksHash, time.Now())
 	if raw, err := os.ReadFile(filepath.Join(in.ConfigDir, blockedLog)); err == nil {

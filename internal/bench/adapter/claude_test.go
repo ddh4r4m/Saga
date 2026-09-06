@@ -233,3 +233,43 @@ func TestParseStream(t *testing.T) {
 		t.Errorf("summed usage: %+v", r.Usage)
 	}
 }
+
+// streamArrayResult is a tool_result whose content is an array of text
+// blocks, the shape the harness uses for multi-part results.
+const streamArrayResult = `{"type":"system","subtype":"init","session_id":"s2","model":"claude-opus-5","tools":["Bash"],"permissionMode":"acceptEdits"}
+{"type":"assistant","message":{"id":"m1","model":"claude-opus-5","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"pytest -q"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","is_error":false,"content":[{"type":"text","text":"3 passed"},{"type":"text","text":"in 0.4s"}]}]}}
+{"type":"assistant","message":{"id":"m2","model":"claude-opus-5","content":[{"type":"tool_use","id":"t2","name":"Read","input":{"file_path":"src/a.py"}}]}}
+{"type":"result","subtype":"success","is_error":false,"num_turns":2,"result":"Done.\n\nDONE"}
+`
+
+func TestParseStreamToolUses(t *testing.T) {
+	// The duplicate assistant message of the shared fixture must not
+	// duplicate the tool use, and is_error flows through to the result.
+	r := ParseStream([]byte(stream))
+	if len(r.ToolUses) != 1 {
+		t.Fatalf("tool uses: %+v", r.ToolUses)
+	}
+	tu := r.ToolUses[0]
+	if tu.ID != "t1" || tu.Name != "Bash" || tu.Input["command"] != "ls" {
+		t.Errorf("tool use: %+v", tu)
+	}
+	if tu.Result == nil || !tu.Result.IsError || tu.Result.Text != "" {
+		t.Errorf("result: %+v", tu.Result)
+	}
+	// A content array joins its text blocks with newlines; a tool use the
+	// stream never answers keeps a nil result.
+	r = ParseStream([]byte(streamArrayResult))
+	if len(r.ToolUses) != 2 {
+		t.Fatalf("tool uses: %+v", r.ToolUses)
+	}
+	if r.ToolUses[0].Result == nil || r.ToolUses[0].Result.Text != "3 passed\nin 0.4s" || r.ToolUses[0].Result.IsError {
+		t.Errorf("array result: %+v", r.ToolUses[0].Result)
+	}
+	if r.ToolUses[1].Result != nil || r.ToolUses[1].Input["file_path"] != "src/a.py" {
+		t.Errorf("unanswered tool use: %+v", r.ToolUses[1])
+	}
+	if r.ToolCalls[0].Error || r.ToolCalls[1].Error {
+		t.Errorf("tool call errors: %+v", r.ToolCalls)
+	}
+}

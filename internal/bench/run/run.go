@@ -461,7 +461,7 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 		}
 		row.OutcomeReason = &msg
 		row.CostUSDReason = strp("run excluded: " + reason)
-		writeArchive(runDir, &row, disclosure, nil, nil, nil, "")
+		writeArchive(runDir, &row, disclosure, nil, nil, nil, nil, "")
 		return row
 	}
 	if err := task.Stage(ctx, t, ws); err != nil {
@@ -583,7 +583,10 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 	if err != nil {
 		return infra("diff", err)
 	}
-	j, err := JudgeRun(claims.RunDirInput{FinalMessage: col.FinalMessage, FinalAvailable: col.FinalMessage != "", TraceJSONL: col.TraceJSONL, WorkspaceDiff: diff, Workspace: ws})
+	// The trace it reconciles against is the stream-derived chain, and the
+	// workspace is used for path normalisation and existence only: gate
+	// status never feeds the metric (docs/12 section 13, 2026-09-06).
+	j, err := JudgeRun(claims.RunDirInput{FinalMessage: col.FinalMessage, FinalAvailable: col.FinalMessage != "", TraceJSONL: col.StreamTraceJSONL, WorkspaceDiff: diff, Workspace: ws, NoGate: true})
 	if err != nil {
 		return infra("claims", err)
 	}
@@ -594,8 +597,8 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 		f := false
 		row.ClaimedDone, row.ClaimedDoneReason = &f, strp("harness ended in the ABANDON terminal; trace claim event: "+j.ClaimedDoneReason)
 	}
-	if withClaim, err := AppendDerived(col.TraceJSONL, "bench-"+seed[:16], 0, j.Event); err == nil {
-		col.TraceJSONL = withClaim
+	if withClaim, err := AppendDerived(col.StreamTraceJSONL, "bench-"+seed[:16], 0, j.Event); err == nil {
+		col.StreamTraceJSONL = withClaim
 	} else {
 		opts.logf("%s arm %s run %d: derived claim event not appended: %v", t.ID, opts.Arm, i, err)
 	}
@@ -645,7 +648,7 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 	} else {
 		oracleText = []byte(fmt.Sprintf("--- not graded: %s\n--- exit -1\n", deref(row.Oracle.ApplyError)))
 	}
-	writeArchive(runDir, &row, disclosure, col.TraceJSONL, oracleText, diff, col.FinalMessage)
+	writeArchive(runDir, &row, disclosure, col.StreamTraceJSONL, col.HookTraceJSONL, oracleText, diff, col.FinalMessage)
 	return row
 }
 
@@ -676,11 +679,11 @@ func repeats(seq []adapter.ToolCall) int {
 }
 
 // artifactKeys names the section 9.3 artifacts block entries.
-var artifactKeys = map[string]string{"trace.jsonl": "trace", "harness.json": "harness", "workspace.diff": "diff", "oracle.txt": "oracle", "scan.json": "scan", "final_message.txt": "final_message"}
+var artifactKeys = map[string]string{"trace.jsonl": "trace", "hook-trace.jsonl": "hook_trace", "harness.json": "harness", "workspace.diff": "diff", "oracle.txt": "oracle", "scan.json": "scan", "final_message.txt": "final_message"}
 
 // writeArchive writes the section 3.4 files and SHA256SUMS, then run.json
 // with the artifact hashes.
-func writeArchive(dir string, row *Row, disclosure adapter.Disclosure, traceJSONL, oracleText, diff []byte, finalMessage string) {
+func writeArchive(dir string, row *Row, disclosure adapter.Disclosure, traceJSONL, hookTraceJSONL, oracleText, diff []byte, finalMessage string) {
 	write := func(name string, b []byte) {
 		if b == nil {
 			b = []byte{}
@@ -689,6 +692,9 @@ func writeArchive(dir string, row *Row, disclosure adapter.Disclosure, traceJSON
 		row.Artifacts[artifactKeys[name]] = adapter.BytesSHA256(b)
 	}
 	write("trace.jsonl", traceJSONL)
+	// The hook-written trace of a treatment arm, empty in a bare arm; it
+	// documents what the hooks saw and feeds no metric (bench-spec 3.4).
+	write("hook-trace.jsonl", hookTraceJSONL)
 	if v, err := schema.Normalize(disclosure); err == nil {
 		if err := schema.ValidateID("saga.bench.harness/1", v); err != nil {
 			row.OutcomeReason = strp("disclosure schema: " + err.Error())
@@ -701,7 +707,7 @@ func writeArchive(dir string, row *Row, disclosure adapter.Disclosure, traceJSON
 	sj, _ := json.MarshalIndent(row.Scan, "", "  ")
 	write("scan.json", append(sj, '\n'))
 	write("final_message.txt", []byte(finalMessage))
-	names := []string{"trace.jsonl", "harness.json", "workspace.diff", "oracle.txt", "scan.json", "final_message.txt"}
+	names := []string{"trace.jsonl", "hook-trace.jsonl", "harness.json", "workspace.diff", "oracle.txt", "scan.json", "final_message.txt"}
 	if v, err := schema.Normalize(row); err == nil {
 		if err := schema.ValidateID(RowSchema, v); err != nil {
 			row.OutcomeReason = strp("row schema: " + err.Error())

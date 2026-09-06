@@ -1,7 +1,6 @@
 package claims
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -179,15 +178,29 @@ func DiffPathsFromPatch(patch []byte) []string {
 	return out
 }
 
-// ReadTraceJSONL parses a portable trace.jsonl into events.
+// PortableLineCap is the largest line ReadTraceJSONL accepts. A
+// portable trace.jsonl is not a session segment: the bench's
+// stream-derived chain has no blobs/ beside it, so it inlines up to
+// 64 KiB per payload (trace-spec section 2.5) and its lines run past
+// the session writer's 16 KiB event cap.
+const PortableLineCap = 1 << 20
+
+// ReadTraceJSONL parses a portable trace.jsonl into events. A line over
+// PortableLineCap is an error naming the line and its length: the
+// offline re-derivation must fail loudly rather than judge a short read.
 func ReadTraceJSONL(raw []byte) ([]trace.Event, error) {
 	var out []trace.Event
-	sc := bufio.NewScanner(bytes.NewReader(raw))
-	sc.Buffer(make([]byte, 0, trace.LineCap+1), trace.LineCap*4)
-	n := 0
-	for sc.Scan() {
-		n++
-		line := bytes.TrimSpace(sc.Bytes())
+	for n := 1; len(raw) > 0; n++ {
+		line := raw
+		if i := bytes.IndexByte(raw, '\n'); i >= 0 {
+			line, raw = raw[:i], raw[i+1:]
+		} else {
+			raw = nil
+		}
+		if len(line) > PortableLineCap {
+			return out, fmt.Errorf("trace.jsonl line %d: %d bytes over the %d byte line cap", n, len(line), PortableLineCap)
+		}
+		line = bytes.TrimSpace(line)
 		if len(line) == 0 {
 			continue
 		}
@@ -197,7 +210,7 @@ func ReadTraceJSONL(raw []byte) ([]trace.Event, error) {
 		}
 		out = append(out, ev)
 	}
-	return out, sc.Err()
+	return out, nil
 }
 
 // RunDirInput is what a bench run directory provides.
@@ -210,6 +223,12 @@ type RunDirInput struct {
 	// Workspace is the agent's tree when it still exists ("" when only
 	// the archive is available); gate's status is read from it.
 	Workspace string
+	// NoGate keeps the judgement off the workspace's gate status even
+	// when a contract is there. The bench sets it: an arm with a contract
+	// would otherwise take judgeDone's evidence branch while an arm
+	// without one takes work_observed, and the verdict is the primary
+	// metric's input (docs/12 section 13, amendment of 2026-09-06).
+	NoGate bool
 }
 
 // FromRunDir builds the derived input for a bench archive directory
@@ -261,7 +280,7 @@ func FromRun(rd RunDirInput) (*Input, error) {
 					in.BlobDir = blobs
 				}
 			}
-			if ld, err := gate.Load(rd.Workspace, st); err == nil && ld.Contract != nil {
+			if ld, err := gate.Load(rd.Workspace, st); err == nil && ld.Contract != nil && !rd.NoGate {
 				if rep, err := gate.Status(ld, gate.StatusOptions{SkipGuards: true}); err == nil {
 					in.Gate = GateViewOf(ld, rep)
 				}

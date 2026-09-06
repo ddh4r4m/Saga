@@ -187,7 +187,8 @@ A **cell** is `(task, model, harness, arm)`. Each cell gets **K runs**, `K ≥ 5
 ```
 runs/<manifest-hash>/<task>/<model>/<harness>/<arm>/<i>/
 ├── run.json           # saga.bench.run/1 (§9.3)
-├── trace.jsonl        # saga.trace/1 portable event log, every model call and tool call, content-hashed
+├── trace.jsonl        # saga.trace/1 portable event log, derived from the harness's native log in every arm; the §5.9 claim event is reconciled against it and appended to it
+├── hook-trace.jsonl   # what Saga's hooks wrote in the workspace (empty in an arm without hooks); documentary only, never read by a metric
 ├── harness.json       # disclosure block (§6.2), verbatim per run
 ├── workspace.diff     # git diff of the agent's final tree vs `ref`, binary-safe
 ├── oracle.txt         # per-hidden-test PASS/FAIL lines, grader stdout/stderr, exit code
@@ -195,6 +196,8 @@ runs/<manifest-hash>/<task>/<model>/<harness>/<arm>/<i>/
 ├── final_message.txt  # the agent's last assistant message (for false-done, §5.4)
 └── SHA256SUMS         # of every file above
 ```
+
+`trace.jsonl` is synthesised from the harness's own stream (Claude Code's `--output-format stream-json`) by the same code in every arm: one `tool_call` and `tool_result` per `tool_use` block, with the arguments and the result text inline. The derived claim event of trace-spec §5.9 is reconciled against that chain and against nothing else, so `claimed_done` and `claim_verdict` cannot differ between a bare arm and a treatment arm because one of them has hooks or a contract (docs/12 §2.1 rule 1, §13 amendment of 2026-09-06). The hook-written trace of a treatment arm is archived beside it as `hook-trace.jsonl` and stays available to the report as evidence of what the hooks saw, but it feeds no metric; nor does gate status, which the run's claim judgement never loads from the workspace.
 
 `run.json` carries: tokens as the trace-spec §3.1 usage object `{input_fresh, cache_read, cache_write_5m, cache_write_1h, output, reasoning}` as reported by the harness's own accounting (the same source for every arm), wall time from container start to harness exit, cost computed from the pinned price table, tool-call sequence as `[(tool, args_hash, exit_or_error)]`, outcome, oracle result, guard flags, and `blocked_reach_attempts` (§4.2).
 

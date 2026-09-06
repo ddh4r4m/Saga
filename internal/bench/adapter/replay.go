@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/ddh4r4m/saga/internal/bench/task"
-	"github.com/ddh4r4m/saga/internal/canon"
 	"github.com/ddh4r4m/saga/internal/trace"
 )
 
@@ -140,7 +139,7 @@ func (r *Replay) Collect(ctx context.Context, in *CollectInput) (*CollectOutput,
 	if err != nil {
 		return nil, fmt.Errorf("replay trace: %w", err)
 	}
-	out.TraceJSONL = tr
+	out.StreamTraceJSONL = tr
 	cfg := BytesSHA256([]byte("replay:" + r.Patch))
 	pins := trace.NewPins("replay", "", &cfg, nil, "", "", nil)
 	pins.Harness["version"], pins.Harness["version_reason"] = "1", nil
@@ -159,46 +158,21 @@ func strp(s string) *string { return &s }
 // the archive layout is exercised end to end.
 func replayTrace(in *CollectInput, out *CollectOutput) ([]byte, error) {
 	seed := in.Seed + "0000000000000000"
-	session := "bench-" + seed[:16]
-	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	prev := canon.Genesis
-	var buf []byte
-	var firstErr error
-	seq := 0
-	emit := func(turn int, typ string, body map[string]any) {
-		seq++
-		ev := trace.Event{Schema: trace.Schema, Seq: seq, TS: trace.FormatTS(start.Add(time.Duration(seq) * time.Millisecond)), MonoNS: int64(seq) * 1e6,
-			Session: session, Turn: turn, Agent: "main", Type: typ, Source: "cli", Body: body, Prev: prev}
-		h, err := ev.ComputeHash()
-		if err == nil {
-			ev.Hash = h
-			err = ev.Validate()
-		}
-		if err != nil {
-			if firstErr == nil {
-				firstErr = err
-			}
-			return
-		}
-		line, _ := canon.JSON(ev)
-		buf = append(buf, line...)
-		buf = append(buf, '\n')
-		prev = h
-	}
+	e := newEmitter("bench-"+seed[:16], "cli", time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
 	cwd := BytesSHA256([]byte(in.Workspace))
-	emit(0, trace.TypeSession, map[string]any{"phase": "start", "harness": "replay", "cwd_hash": cwd, "config_hash": BytesSHA256([]byte("replay")), "changed": []string{}})
-	emit(1, trace.TypeTurn, map[string]any{"phase": "user", "prompt_hash": BytesSHA256([]byte(in.PromptOf())), "prompt_bytes": len(in.PromptOf())})
+	e.emit(0, trace.TypeSession, map[string]any{"phase": "start", "harness": "replay", "cwd_hash": cwd, "config_hash": BytesSHA256([]byte("replay")), "changed": []string{}})
+	e.emit(1, trace.TypeTurn, map[string]any{"phase": "user", "prompt_hash": BytesSHA256([]byte(in.PromptOf())), "prompt_bytes": len(in.PromptOf())})
 	for _, tc := range out.ToolSequence {
-		emit(1, trace.TypeToolCall, map[string]any{"tool": tc.Tool, "args_hash": tc.ArgsHash, "component": "harness", "cwd_rel": ".", "index_version": nil})
+		call := e.emit(1, trace.TypeToolCall, map[string]any{"tool": tc.Tool, "args_hash": tc.ArgsHash, "component": "harness", "cwd_rel": ".", "index_version": nil})
 		exit := 0
 		var errStr any
 		if tc.Error {
 			exit = 1
 			errStr = "patch did not apply"
 		}
-		emit(1, trace.TypeToolResult, map[string]any{"for_seq": seq, "exit": exit, "error": errStr, "result_hash": BytesSHA256(nil), "result_bytes": 0, "truncated": false, "wall_ms": 0, "served": "live"})
+		e.emit(1, trace.TypeToolResult, map[string]any{"for_seq": call, "exit": exit, "error": errStr, "result_hash": BytesSHA256(nil), "result_bytes": 0, "truncated": false, "wall_ms": 0, "served": "live"})
 	}
-	emit(1, trace.TypeTurn, map[string]any{"phase": "assistant_end", "final_message_hash": BytesSHA256([]byte(out.FinalMessage)), "final_message_bytes": len(out.FinalMessage), "claimed_done": nil, "claimed_done_reason": "derived by saga trace claims over final_message.txt"})
-	emit(1, trace.TypeSession, map[string]any{"phase": "end", "harness": "replay", "cwd_hash": cwd, "config_hash": BytesSHA256([]byte("replay")), "changed": []string{}})
-	return buf, firstErr
+	e.emit(1, trace.TypeTurn, map[string]any{"phase": "assistant_end", "final_message_hash": BytesSHA256([]byte(out.FinalMessage)), "final_message_bytes": len(out.FinalMessage), "claimed_done": nil, "claimed_done_reason": "derived by saga trace claims over final_message.txt"})
+	e.emit(1, trace.TypeSession, map[string]any{"phase": "end", "harness": "replay", "cwd_hash": cwd, "config_hash": BytesSHA256([]byte("replay")), "changed": []string{}})
+	return e.done()
 }

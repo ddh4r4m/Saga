@@ -68,6 +68,10 @@ var summaryRules = []struct {
 	{regexp.MustCompile(`(?m)^Test Suites:\s+(\d+) failed`), "failed_count"},
 	{regexp.MustCompile(`(?m)^\s*(\d+) passing\b`), "passed_count"},
 	{regexp.MustCompile(`(?m)^\s*(\d+) failing\b`), "failed_count"},
+	// node --test: the family is in testSigs, its summary block is
+	// "pass N" / "fail N" lines, each prefixed by an info glyph on a TTY.
+	{regexp.MustCompile(`(?m)^(?:\x{2139}\s*)?pass (\d+)\s*$`), "passed_count"},
+	{regexp.MustCompile(`(?m)^(?:\x{2139}\s*)?fail (\d+)\s*$`), "failed_count"},
 	{regexp.MustCompile(`(?m)^(?:FAIL|--- FAIL)\b`), "fail"},
 	{regexp.MustCompile(`(?m)^ok\s+[\w./-]+`), "pass"},
 	{regexp.MustCompile(`(?m)^PASS$`), "pass"},

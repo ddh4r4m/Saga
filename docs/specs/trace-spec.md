@@ -111,6 +111,7 @@ Hashing happens after masking, so a changed mask never changes a stored hash ret
 | Blob above 8 MiB | | head 64 KiB + tail 64 KiB kept, `truncated: true`, hash of the full payload retained |
 | Event line | 16 KiB | writer refuses and records a `tool_result` with `error: "event_oversize"` |
 | Session file segment | 64 MiB | rotate to `events.<n+1>.jsonl`; `prev` chain continues across segments |
+| Bench stream-derived chain (`source: "stream-json"`, bench-spec §3.4) | 64 KiB per payload | a portable `trace.jsonl` has no `blobs/` beside it, so a `*_ref` would be unresolvable and the 4 KiB and 16 KiB rows above do not apply to it; a result past the cap keeps its first quarter and its last three quarters with one `[saga: N bytes elided]` marker line between them, `truncated: true`, and `result_hash` and `result_bytes` over the full text. The head-and-tail rule is load-bearing: a runner prints its summary last and §5.8's `tests_pass` check reads that summary |
 
 Tool results are truncated never mid-line and keep the error-aware tail (doc 05 §5, tool-result truncation row).
 
@@ -480,6 +481,8 @@ Every check reads events only; nothing is executed at Stop.
 **Verdicts.** Per claim and per turn: `verified`, `unverified`, `contradicted`. The turn verdict is the worst claim (`contradicted` > `unverified` > `verified`). A turn with no claims writes no claim event.
 
 **Event.** The reserved `gate` event with `kind: "claim"` (§2.2, contracts §6), written by trace with `source` `hook:Stop`, `hook:SubagentStop`, `cli` (offline) or `derived` (bench import); no new event type, so the §2.8 enum is unchanged. Attribution of its message, when one is emitted, is `trace`.
+
+The events a claim is reconciled against carry their own `source`. In a live session they are the hook-written ones. In the bench they are always `source: "stream-json"`: the run's chain is synthesised offline from the harness's native stream-json log by one code path for every arm, so a bare arm with no hooks and a treatment arm with them present the same tool observations to §5.7 and §5.8, and the bench's claim judgement never loads gate status from the workspace (bench-spec §3.4, docs/12 §13 amendment of 2026-09-06). The derived claim event is then appended to that chain, continuing its `prev` links, and `saga trace claims <run-dir>` over the archive reproduces it.
 
 ```json
 {"kind":"claim","for_turn":47,"trigger":"stop","final_message_hash":"sha256:…","claims_list":"sha256:…",

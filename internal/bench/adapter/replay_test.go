@@ -32,12 +32,12 @@ func TestReplayTraceValid(t *testing.T) {
 	if !strings.Contains(col.FinalMessage, "broken-1") {
 		t.Errorf("index 2 should apply broken-1: %q", col.FinalMessage)
 	}
-	lines := strings.Split(strings.TrimSpace(string(col.TraceJSONL)), "\n")
+	lines := strings.Split(strings.TrimSpace(string(col.StreamTraceJSONL)), "\n")
 	if len(lines) != 6 {
-		t.Fatalf("%d trace events, want 6:\n%s", len(lines), col.TraceJSONL)
+		t.Fatalf("%d trace events, want 6:\n%s", len(lines), col.StreamTraceJSONL)
 	}
 	for _, want := range []string{`"type":"session"`, `"type":"turn"`, `"type":"tool_call"`, `"type":"tool_result"`} {
-		if !strings.Contains(string(col.TraceJSONL), want) {
+		if !strings.Contains(string(col.StreamTraceJSONL), want) {
 			t.Errorf("trace lacks %s", want)
 		}
 	}
