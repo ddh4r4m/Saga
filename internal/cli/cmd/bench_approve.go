@@ -78,6 +78,13 @@ func (a *App) benchApproveCorpus(args []string) error {
 		return cli.Errorf(cli.ExitEnvironment, "approve-corpus: %s is unreadable", *sagaBin)
 	}
 
+	// The composed PATH the identity is taken over. It is printed so a
+	// mismatch between approving and running is visible rather than
+	// showing up as "covered 0 of 40" with no reason (brief 2026-09-06
+	// canonical bench path).
+	probe := &adapter.ClaudeCode{SagaBinary: *sagaBin}
+	fmt.Fprintf(a.Stdout, "path: %s\n", strings.Join(probe.BenchPath(""), string(os.PathListSeparator)))
+
 	ctx, cancel := signalContext()
 	defer cancel()
 

@@ -283,6 +283,13 @@ func (c *ClaudeCode) Env(configDir string) []string {
 			env[k] = v
 		}
 	}
+	// PATH is composed, never inherited. The approval identity hashes the
+	// whole of it (gate-spec 8), so an inherited PATH binds the corpus
+	// approvals to the shell that gave them: the owner approved 101
+	// records at 7d80087 and `--check` from another shell reported
+	// covered 0 of 40 for the same binary and the same task set. See
+	// BenchPath.
+	delete(env, "PATH")
 	for _, kv := range os.Environ() {
 		k, v, _ := strings.Cut(kv, "=")
 		if strings.HasPrefix(k, "ANTHROPIC_") || strings.HasPrefix(k, "CLAUDE_CODE_") || strings.HasPrefix(k, "LC_") {
@@ -295,22 +302,11 @@ func (c *ClaudeCode) Env(configDir string) []string {
 	// (gate.AgentShellMarkers), not a credential; it must not leak into
 	// the bench's shells.
 	delete(env, "CLAUDE_CODE_ENTRYPOINT")
-	if exists(filepath.Join(configDir, shimDir, "saga")) {
-		env["PATH"] = filepath.Join(configDir, shimDir) + string(os.PathListSeparator) + env["PATH"]
-	}
-	// The gate arm's saga lives at a path derived from the binary's hash
-	// rather than under the per-run config dir, so the approval
-	// identity's PATH component is the same for every run of the same
-	// binary and changes when the binary does (ADR 0010 decision 1). The
-	// corpus approval store is named alongside it; a run consumes
-	// records and never writes one.
-	if c.SagaBinary != "" {
-		if dir, err := BenchBinDir(c.SagaBinary); err == nil && exists(filepath.Join(dir, "saga")) {
-			env["PATH"] = dir + string(os.PathListSeparator) + env["PATH"]
-			if c.CorpusStore != "" {
-				env[gate.ApprovalEnv] = c.CorpusStore
-			}
-		}
+	env["PATH"] = strings.Join(c.BenchPath(configDir), string(os.PathListSeparator))
+	// The corpus approval store a gate arm consumes; a run never writes
+	// one (ADR 0010 decision 3).
+	if c.CorpusStore != "" {
+		env[gate.ApprovalEnv] = c.CorpusStore
 	}
 	keys := make([]string, 0, len(env))
 	for k := range env {
@@ -472,6 +468,10 @@ func (c *ClaudeCode) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOut
 		envMap[k] = v
 	}
 	d["env_vars"] = envMap
+	// The composed PATH, so a reader can see what the agent had and what
+	// the approval identity was taken over (brief 2026-09-06 canonical
+	// bench path). It is never the caller's inherited PATH.
+	d["bench_path"] = c.BenchPath(in.ConfigDir)
 	if !withGate {
 		d["blocks_detail"] = BlocksDetail(nil, nil)
 	} else {
@@ -1369,3 +1369,65 @@ func (c *ClaudeCode) approvalStoreBlock(taskSet string) map[string]any {
 	out["approvals"] = approvals
 	return out
 }
+
+// SystemPathDirs are the system directories the composed PATH ends
+// with. They are fixed rather than inherited so a caller's shell cannot
+// move them.
+var SystemPathDirs = []string{"/usr/bin", "/bin", "/usr/sbin", "/sbin"}
+
+// BenchPath composes the PATH a bench run and an approval both use. The
+// approval identity hashes the whole of PATH (gate-spec 8), so
+// inheriting it bound the corpus approvals to the shell that gave them:
+// the owner approved 101 records and `approve-corpus --check` from
+// another shell found none of them, for the same binary and the same
+// task set.
+//
+// The list is, in order: the control arm's shim directory when this
+// config dir has one (the bare arm never enters an identity), the
+// stable bench bin directory for this binary (ADR 0010 decision 1), the
+// directory `node` resolves to, the directory `python3` resolves to,
+// and the four system directories. Duplicates are dropped, keeping the
+// first. `claude` is not looked up here: the launcher passes its
+// absolute path, so the agent's PATH never has to name it.
+//
+// A toolchain that moves changes the identity, the run reads `not
+// pre-approved` and the message names the path. That is the correct
+// failure: a task graded with a different `node` is a different cell.
+func (c *ClaudeCode) BenchPath(configDir string) []string {
+	var dirs []string
+	add := func(d string) {
+		if d == "" {
+			return
+		}
+		for _, seen := range dirs {
+			if seen == d {
+				return
+			}
+		}
+		dirs = append(dirs, d)
+	}
+	if configDir != "" && exists(filepath.Join(configDir, shimDir, "saga")) {
+		add(filepath.Join(configDir, shimDir))
+	}
+	if c.SagaBinary != "" {
+		if d, err := BenchBinDir(c.SagaBinary); err == nil {
+			add(d)
+		}
+	}
+	for _, tool := range ToolchainTools {
+		if p, err := exec.LookPath(tool); err == nil {
+			if abs, err := filepath.Abs(p); err == nil {
+				add(filepath.Dir(abs))
+			}
+		}
+	}
+	for _, d := range SystemPathDirs {
+		add(d)
+	}
+	return dirs
+}
+
+// ToolchainTools are the interpreters the corpus needs on PATH; their
+// directories are part of the composed PATH and so of the approval
+// identity.
+var ToolchainTools = []string{"node", "python3"}
