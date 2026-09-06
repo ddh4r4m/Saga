@@ -56,3 +56,31 @@ func NormalizePath(root, mention string) string {
 	}
 	return p
 }
+
+// SourceExtensions are the file extensions a claim's token may end in to
+// count as a path when it names no directory. The list is the corpus's
+// languages plus the data and document files the tasks carry.
+var SourceExtensions = []string{
+	".py", ".ts", ".mts", ".mjs", ".js", ".json", ".toml", ".md",
+	".txt", ".sh", ".yaml", ".yml", ".csv", ".html", ".css",
+}
+
+// PathShaped reports whether a token can be a path at all: it names a
+// directory, or it ends in a source extension. A dotted identifier is
+// not a path however much it looks like one. "I added a per-SKU
+// `threading.Lock` inside `Inventory`" was read as a claim to have
+// touched a file named threading.Lock, found absent, and contradicted;
+// so was `Object.freeze`. Both messages were true (2026-09-06 dev run
+// finding 3).
+func PathShaped(p string) bool {
+	if strings.Contains(p, "/") {
+		return true
+	}
+	lower := strings.ToLower(p)
+	for _, ext := range SourceExtensions {
+		if strings.HasSuffix(lower, ext) {
+			return true
+		}
+	}
+	return false
+}

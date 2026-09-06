@@ -124,6 +124,13 @@ func ParseCommand(raw string) Command {
 			if !sigSet {
 				c.Sig = sig
 				sigSet = true
+			} else if !testSig(c.Sig, c.Raw) && testSig(sig, c.Raw) {
+				// A later stage that is a test run wins the signature: in
+				// `while read x; do pytest -q; done` the loop's condition
+				// comes first but pytest is what ran, and a signature of
+				// `read` reads no_test_run on a green suite (2026-09-06
+				// dev run finding 4).
+				c.Sig = sig
 			}
 			normWords := append([]string{}, strings.Fields(sig)...)
 			if si > 0 {
@@ -152,11 +159,42 @@ func ParseCommand(raw string) Command {
 	return c
 }
 
-// stripPrefixes drops variable assignments and wrapper prefixes.
+// loopHeads open a compound statement whose head is not a command:
+// everything up to the `do` or `then` is a condition or an iteration
+// list, and signing it as the command reads `for` where the test run is.
+// ts-0014 of the 2026-09-06 dev run ran `node --test` five times in a
+// loop, green each time, and the claim verifier read `no_test_run` and
+// contradicted a true message.
+var iterHeads = map[string]bool{"for": true, "case": true, "select": true}
+
+// condHeads open a compound statement whose head IS a command: `until
+// pytest -q; do sleep 1; done` runs pytest. Only the keyword is stripped.
+var condHeads = map[string]bool{"while": true, "until": true, "if": true, "elif": true}
+
+// shellKeywords are structure words that precede the command itself.
+var shellKeywords = map[string]bool{"do": true, "then": true, "else": true, "done": true, "fi": true, "esac": true, "{": true, "(": true, "!": true}
+
+// stripPrefixes drops variable assignments, wrapper prefixes and the
+// shell structure that wraps a command: a loop or conditional head, the
+// `do`/`then` that follows it, and a subshell or brace group.
 func stripPrefixes(words []string) []string {
 	for len(words) > 0 {
 		w := words[0]
+		// A subshell or brace group wraps the command in the same token
+		// as its first word: `(node --test x)`, `{node --test x;}`.
+		if len(w) > 1 && (strings.HasPrefix(w, "(") || strings.HasPrefix(w, "{")) {
+			words = append([]string{w[:1], w[1:]}, words[1:]...)
+			w = words[0]
+		}
 		switch {
+		case iterHeads[w]:
+			// An iteration list is not a command; the body is a later
+			// segment of the same line.
+			return nil
+		case condHeads[w]:
+			words = words[1:]
+		case shellKeywords[w]:
+			words = words[1:]
 		case reAssign.MatchString(w):
 			words = words[1:]
 		case len(words) >= 2 && wrapperPairs[w+" "+words[1]]:
@@ -283,4 +321,10 @@ func Matches(claimed, executed Command) bool {
 		}
 	}
 	return true
+}
+
+// testSig reports whether a bare signature is a test family, without
+// building a whole Command for the question.
+func testSig(sig, raw string) bool {
+	return IsTestCommand(Command{Sig: sig, Raw: raw})
 }

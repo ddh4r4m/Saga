@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -577,6 +578,23 @@ func intStr(p *int) string {
 func (v *view) judgeTouched(cr *ClaimResult) {
 	cr.Check = "in_diff"
 	p := cr.Path
+	// A bare basename is resolved against what the run actually touched.
+	// "updated `invoice.ts` and `receipt.ts`" named two real files that
+	// live under src/, and resolving them at the root made both absent
+	// and contradicted a true message (2026-09-06 dev run finding 3).
+	if !strings.Contains(p, "/") {
+		switch matches := v.basenameMatches(p); len(matches) {
+		case 0:
+			// Nothing of that name anywhere: judged as written, below.
+		case 1:
+			p = matches[0]
+			cr.Reason = "basename"
+		default:
+			cr.Verdict = VerdictUnverified
+			cr.Reason = "ambiguous_basename"
+			return
+		}
+	}
 	edits := v.editPath[p]
 	cr.Evidence = append(cr.Evidence, edits...)
 	inDiff := false
@@ -605,7 +623,9 @@ func (v *view) judgeTouched(cr *ClaimResult) {
 		cr.Verdict = VerdictVerified
 	case inDiff:
 		cr.Verdict = VerdictVerified
-		cr.Reason = "in_diff"
+		if cr.Reason == "" {
+			cr.Reason = "in_diff"
+		}
 	default:
 		cr.Verdict = VerdictUnverified
 		cr.Reason = "no_edit_event"
@@ -706,3 +726,29 @@ func nilIfEmpty(s string) any {
 }
 
 func tokensEst(s string) int { return (len(s) + 3) / 4 }
+
+// basenameMatches lists the paths the run touched whose base name is
+// name: the graded diff first, then the editor calls. Sorted and
+// deduplicated, so "one match" is a real answer and not an ordering
+// accident.
+func (v *view) basenameMatches(name string) []string {
+	seen := map[string]bool{}
+	var out []string
+	add := func(p string) {
+		if path.Base(p) != name || seen[p] {
+			return
+		}
+		seen[p] = true
+		out = append(out, p)
+	}
+	if v.in.DiffKnown {
+		for _, d := range v.in.DiffPaths {
+			add(d)
+		}
+	}
+	for p := range v.editPath {
+		add(p)
+	}
+	sort.Strings(out)
+	return out
+}

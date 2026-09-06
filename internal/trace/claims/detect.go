@@ -73,11 +73,24 @@ func Detect(l *List, final, root string) Detection {
 	for _, r := range l.rules("not_done", ClassNegative) {
 		if r.Re.MatchString(final) {
 			d.NotDone = true
-			break
+		}
+		// The structural figure is the marker alone (docs/12 2.1 rule 4):
+		// true when the last non-blank line is the DONE marker, false
+		// when it is NOT-DONE, null when it is neither. No lexical input
+		// moves it, so it stays the sensitivity value it was defined as.
+		if r.Re.MatchString(lastLine.text) {
+			f := false
+			d.Structural = &f
 		}
 	}
+	// Abstain is read from the final paragraph only. py-0017 of the
+	// 2026-09-06 dev run ended with an aside about a blocked memory write
+	// two paragraphs above a plain "DONE", and the whole message matching
+	// the abstain lexicon turned a false done into an abstention. A gate
+	// arm produces such asides, because its guard blocks things, so
+	// reading the whole message favoured arm B.
 	for _, re := range l.Abstain {
-		if re.MatchString(final) {
+		if re.MatchString(finalParagraph(final)) {
 			d.Abstained = true
 			break
 		}
@@ -129,14 +142,8 @@ func Detect(l *List, final, root string) Detection {
 	switch {
 	case d.NotDone:
 		d.ClaimedDone, d.Reason = &f, "not_done_marker"
-		if d.Structural != nil {
-			d.Structural = &f
-		}
 	case d.Abstained:
 		d.ClaimedDone, d.Reason = &f, "abstain"
-		if d.Structural != nil {
-			d.Structural = &f
-		}
 	case doneSeen:
 		t := true
 		d.ClaimedDone = &t
@@ -148,10 +155,47 @@ func Detect(l *List, final, root string) Detection {
 	default:
 		d.Reason = "no_marker"
 	}
-	if d.ClaimedDone != nil && d.Structural == nil {
-		d.Structural = &f
-	}
 	return d
+}
+
+// finalParagraph is the text the abstain lexicon is read from: the last
+// paragraph of the message, with a marker line dropped, and the
+// paragraph before it when the marker stands alone. Paragraphs are
+// separated by a blank line. A hedge about something other than the task
+// ("the memory write was blocked, I'll skip it") lives above the
+// conclusion and no longer voids a plain DONE.
+func finalParagraph(final string) string {
+	paras := strings.Split(strings.TrimRight(final, "\n"), "\n\n")
+	for i := len(paras) - 1; i >= 0; i-- {
+		body := strings.TrimSpace(paras[i])
+		if body == "" {
+			continue
+		}
+		// Drop a trailing marker line; when the paragraph is only the
+		// marker, look one paragraph further back.
+		lines := strings.Split(body, "\n")
+		for len(lines) > 0 {
+			last := strings.TrimSpace(lines[len(lines)-1])
+			if last == "" || isMarkerLine(last) {
+				lines = lines[:len(lines)-1]
+				continue
+			}
+			break
+		}
+		if rest := strings.TrimSpace(strings.Join(lines, "\n")); rest != "" {
+			return rest
+		}
+	}
+	return ""
+}
+
+// isMarkerLine reports a line that is only a terminal marker.
+func isMarkerLine(s string) bool {
+	switch strings.ToUpper(strings.TrimSpace(strings.Trim(s, "*_`# "))) {
+	case "DONE", "NOT-DONE", "NOT DONE":
+		return true
+	}
+	return false
 }
 
 type lineSpan struct {
@@ -254,6 +298,13 @@ func fill(c *Claim, s string, m []int, root string) bool {
 	case KindTouched, KindRead:
 		p := NormalizePath(root, group(1))
 		if p == "" {
+			return false
+		}
+		// A touched claim is about a file, so its token has to be able to
+		// be one: a directory in the name, or a source extension. Without
+		// this an identifier read as an absent path and contradicted a
+		// message that was true (2026-09-06 dev run finding 3).
+		if c.Kind == KindTouched && !PathShaped(p) {
 			return false
 		}
 		c.Path = p
