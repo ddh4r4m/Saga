@@ -923,6 +923,11 @@ func (c *ClaudeCode) Collect(ctx context.Context, in *CollectInput) (*CollectOut
 			}
 		}
 	}
+	// The hook's own timing sidecar, beside the chain and outside it
+	// (trace-spec 2.9). Absent in an arm without hooks.
+	if b, err := os.ReadFile(filepath.Join(dir, trace.LatencyFile)); err == nil {
+		out.HookLatencyJSONL = b
+	}
 	m := out.Disclosure.Block("model")
 	if sr.Model != "" {
 		Set(m, "id", sr.Model, "")
@@ -943,7 +948,11 @@ func (c *ClaudeCode) Collect(ctx context.Context, in *CollectInput) (*CollectOut
 	// The bare arm is recognised by its own shim: the same signal Env
 	// uses. Its per-surface block account carries the reach count.
 	// The safety hook runs in every arm, so its log is read in every arm.
-	out.GuardDenies = guard.CountDenies(filepath.Join(in.ConfigDir, guardLog))
+	// It is also the only hook a bare arm has, which makes its own wall
+	// time that arm's whole hook overhead (docs/12 commitment 7).
+	guardLogPath := filepath.Join(in.ConfigDir, guardLog)
+	out.GuardDenies = guard.CountDenies(guardLogPath)
+	out.SafetyLatencyMS = guard.Latencies(guardLogPath)
 	if exists(filepath.Join(in.ConfigDir, shimDir, "saga")) {
 		if raw, err := os.ReadFile(filepath.Join(in.ConfigDir, blockedLog)); err == nil {
 			out.BlockedReachAttempts = len(strings.Split(strings.TrimRight(string(raw), "\n"), "\n"))

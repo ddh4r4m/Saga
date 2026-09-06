@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ddh4r4m/saga/internal/bench/run"
 	"github.com/ddh4r4m/saga/internal/cli"
 	"github.com/ddh4r4m/saga/internal/hookio"
 	"github.com/ddh4r4m/saga/internal/trace"
@@ -189,4 +190,56 @@ func TestSessionEventRecordsInjectedContext(t *testing.T) {
 	if !found {
 		t.Fatal("no session event")
 	}
+}
+
+// TestOverheadFromARealSession (docs/12 commitment 7, end to end): drive
+// real hook invocations through the composed entry, then measure them
+// with the same code the bench uses. This is the wiring the report
+// depends on, exercised without a model.
+func TestOverheadFromARealSession(t *testing.T) {
+	root, dir := latencySession(t, "lat-4")
+	lines, err := trace.ReadLatency(filepath.Join(dir, trace.LatencyFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var hookTrace []byte
+	segs, err := trace.Segments(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range segs {
+		b, err := os.ReadFile(s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		hookTrace = append(hookTrace, b...)
+	}
+	ov, why := run.ComputeOverhead(run.OverheadInput{
+		Latency: lines, HookTraceJSONL: hookTrace, WallS: 12, Components: []string{"gate"},
+	})
+	if ov == nil {
+		t.Fatalf("a session with hooks reported no overhead: %s", why)
+	}
+	if ov.Invocations != len(lines) {
+		t.Errorf("invocations %d, want %d", ov.Invocations, len(lines))
+	}
+	for _, ev := range []string{"SessionStart", "UserPromptSubmit", "PreToolUse"} {
+		e, ok := ov.ByEvent[ev]
+		if !ok {
+			t.Errorf("%s missing from by_event: %v", ev, ov.ByEvent)
+			continue
+		}
+		if e.N != 1 || e.MaxMS < 0 {
+			t.Errorf("%s %+v", ev, e)
+		}
+	}
+	if ov.WallShare == nil {
+		t.Error("no wall share")
+	}
+	// The gate arm's contract sentence is injected text no hook sees.
+	if ov.InjectedTokensEst == 0 {
+		t.Error("a gate arm reports no injected tokens at all")
+	}
+	t.Logf("root %s: %d invocations, wall %d ms, share %.4f, injected %d tokens, by_event %+v",
+		root, ov.Invocations, ov.WallMS, *ov.WallShare, ov.InjectedTokensEst, ov.ByEvent)
 }

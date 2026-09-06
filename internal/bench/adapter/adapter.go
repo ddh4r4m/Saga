@@ -168,7 +168,16 @@ type CollectOutput struct {
 	// an arm without hooks; it is archived as hook-trace.jsonl and never
 	// feeds a metric.
 	HookTraceJSONL []byte
-	TranscriptPath string
+	// HookLatencyJSONL is the composed hook's own timing sidecar for this
+	// run, nil in an arm without hooks. It is archived as
+	// hook-latency.jsonl and is what the overhead table reads (docs/12
+	// commitment 7); it is not hash-chained and is never evidence.
+	HookLatencyJSONL []byte
+	// SafetyLatencyMS is one entry per safety-hook invocation that
+	// recorded its own wall time. The safety hook runs in every arm, so
+	// this is filled in every arm.
+	SafetyLatencyMS []int
+	TranscriptPath  string
 	// Disclosure additions learnt at collect time (model id, version).
 	Disclosure Disclosure
 }

@@ -1,7 +1,7 @@
 {
   "$comment": "saga.bench.run/1: one row per run (bench-spec section 9.3). Usage is the contracts section 7.2 object as reported by the harness; cost is priced from the pinned table, null with a reason when unpriced.",
   "type": "object",
-  "required": ["schema", "manifest", "task", "model", "harness", "arm", "i", "sequence", "seed", "outcome", "claimed_done", "oracle", "scan", "usage", "cost_usd", "wall_s", "turns", "tool_calls", "drift", "compliance", "blocked_reach_attempts", "guard_denies", "component_used", "tool_sequence", "artifacts"],
+  "required": ["schema", "manifest", "task", "model", "harness", "arm", "i", "sequence", "seed", "outcome", "claimed_done", "oracle", "scan", "usage", "cost_usd", "wall_s", "turns", "tool_calls", "drift", "compliance", "blocked_reach_attempts", "guard_denies", "overhead", "overhead_reason", "component_used", "tool_sequence", "artifacts"],
   "additionalProperties": false,
   "properties": {
     "schema": {"const": "saga.bench.run/1"},
@@ -93,6 +93,36 @@
     "compliance": {"type": "array", "items": {"type": "object"}},
     "blocked_reach_attempts": {"type": "integer", "minimum": 0},
     "guard_denies": {"$comment": "safety hook denials in this run, in every arm (docs/12 row 6)", "type": "integer", "minimum": 0},
+    "overhead": {
+      "$comment": "docs/12 commitment 7: what the hooks cost this run, from the hook-latency sidecar and the safety hook's log; null with overhead_reason on an archive written before hook wall time was recorded",
+      "type": ["object", "null"],
+      "required": ["invocations", "by_event", "wall_ms", "wall_share", "injected_tokens_est", "timed_out"],
+      "additionalProperties": false,
+      "properties": {
+        "invocations": {"type": "integer", "minimum": 0},
+        "by_event": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["n", "p50_ms", "p95_ms", "max_ms", "total_ms", "timed_out"],
+            "additionalProperties": false,
+            "properties": {
+              "n": {"type": "integer", "minimum": 0},
+              "p50_ms": {"type": "integer", "minimum": 0},
+              "p95_ms": {"type": "integer", "minimum": 0},
+              "max_ms": {"type": "integer", "minimum": 0},
+              "total_ms": {"type": "integer", "minimum": 0},
+              "timed_out": {"type": "integer", "minimum": 0}
+            }
+          }
+        },
+        "wall_ms": {"type": "integer", "minimum": 0},
+        "wall_share": {"type": ["number", "null"], "minimum": 0},
+        "injected_tokens_est": {"type": "integer", "minimum": 0},
+        "timed_out": {"type": "integer", "minimum": 0}
+      }
+    },
+    "overhead_reason": {"type": ["string", "null"]},
     "component_used": {"type": ["boolean", "null"]},
     "tool_sequence": {
       "type": "array",

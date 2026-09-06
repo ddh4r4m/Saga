@@ -19,7 +19,7 @@
       "type": "object",
       "additionalProperties": {
         "type": "object",
-        "required": ["runs", "tasks", "k", "model", "harness", "pass_at_1", "pass_at_1_ci95", "clean_pass_at_1", "pass_k", "instability", "medians", "per_solved", "false_done", "false_done_reason", "regression_rate", "regression_rate_pass", "regression_rate_fail", "scope_violation_rate", "scope_files_median", "cheat_rate", "integrity_fail_rate", "integrity_fail_count", "outcomes", "blocked_reach_attempts", "guard_denies", "per_task"],
+        "required": ["runs", "tasks", "k", "model", "harness", "pass_at_1", "pass_at_1_ci95", "clean_pass_at_1", "pass_k", "instability", "medians", "per_solved", "false_done", "false_done_reason", "regression_rate", "regression_rate_pass", "regression_rate_fail", "scope_violation_rate", "scope_files_median", "cheat_rate", "integrity_fail_rate", "integrity_fail_count", "outcomes", "blocked_reach_attempts", "guard_denies", "overhead", "overhead_reason", "per_task"],
         "additionalProperties": false,
         "properties": {
           "runs": {"type": "integer"},
@@ -68,6 +68,36 @@
           "outcomes": {"type": "object", "additionalProperties": {"type": "integer"}},
           "blocked_reach_attempts": {"type": "integer"},
           "guard_denies": {"$comment": "safety-hook denials over the arm (docs/12 row 6); the hook is identical in every arm", "type": "integer"},
+          "overhead": {
+            "$comment": "docs/12 commitment 7: measured hook overhead for this arm; null with overhead_reason when no run recorded hook wall time",
+            "type": ["object", "null"],
+            "required": ["runs", "median_invocations", "by_event", "median_wall_share", "median_injected_tokens_est", "timed_out"],
+            "additionalProperties": false,
+            "properties": {
+              "runs": {"type": "integer", "minimum": 0},
+              "median_invocations": {"type": "number", "minimum": 0},
+              "by_event": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "required": ["runs", "invocations", "p50_ms", "p95_ms", "max_ms", "timed_out"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "runs": {"type": "integer", "minimum": 0},
+                    "invocations": {"type": "integer", "minimum": 0},
+                    "p50_ms": {"type": "integer", "minimum": 0},
+                    "p95_ms": {"type": "integer", "minimum": 0},
+                    "max_ms": {"type": "integer", "minimum": 0},
+                    "timed_out": {"type": "integer", "minimum": 0}
+                  }
+                }
+              },
+              "median_wall_share": {"type": ["number", "null"], "minimum": 0},
+              "median_injected_tokens_est": {"type": "number", "minimum": 0},
+              "timed_out": {"type": "integer", "minimum": 0}
+            }
+          },
+          "overhead_reason": {"type": ["string", "null"]},
           "per_task": {
             "type": "array",
             "items": {

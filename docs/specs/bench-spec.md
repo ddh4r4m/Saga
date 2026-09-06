@@ -190,7 +190,8 @@ A **cell** is `(task, model, harness, arm)`. Each cell gets **K runs**, `K ≥ 5
 runs/<manifest-hash>/<task>/<model>/<harness>/<arm>/<i>/
 ├── run.json           # saga.bench.run/1 (§9.3)
 ├── trace.jsonl        # saga.trace/1 portable event log, derived from the harness's native log in every arm; the §5.9 claim event is reconciled against it and appended to it
-├── hook-trace.jsonl   # what Saga's hooks wrote in the workspace (empty in an arm without hooks); documentary only, never read by a metric
+├── hook-trace.jsonl   # what Saga's hooks wrote in the workspace (empty in an arm without hooks); no outcome metric reads it, only the injected-token count of 5.12
+├── hook-latency.jsonl # the hook's own timing sidecar (trace-spec 2.9), empty in an arm without hooks; not hash-chained, never evidence, read only by 5.12
 ├── harness.json       # disclosure block (§6.2), verbatim per run
 ├── workspace.diff     # git diff of the agent's final tree vs `ref`, binary-safe
 ├── oracle.txt         # per-hidden-test PASS/FAIL lines, grader stdout/stderr, exit code
@@ -199,11 +200,11 @@ runs/<manifest-hash>/<task>/<model>/<harness>/<arm>/<i>/
 └── SHA256SUMS         # of every file above
 ```
 
-`trace.jsonl` is synthesised from the harness's own stream (Claude Code's `--output-format stream-json`) by the same code in every arm: one `tool_call` and `tool_result` per `tool_use` block, with the arguments and the result text inline. The derived claim event of trace-spec §5.9 is reconciled against that chain and against nothing else, so `claimed_done` and `claim_verdict` cannot differ between a bare arm and a treatment arm because one of them has hooks or a contract (docs/12 §2.1 rule 1, §13 amendment of 2026-09-06). The hook-written trace of a treatment arm is archived beside it as `hook-trace.jsonl` and stays available to the report as evidence of what the hooks saw, but it feeds no metric; nor does gate status, which the run's claim judgement never loads from the workspace.
+`trace.jsonl` is synthesised from the harness's own stream (Claude Code's `--output-format stream-json`) by the same code in every arm: one `tool_call` and `tool_result` per `tool_use` block, with the arguments and the result text inline. The derived claim event of trace-spec §5.9 is reconciled against that chain and against nothing else, so `claimed_done` and `claim_verdict` cannot differ between a bare arm and a treatment arm because one of them has hooks or a contract (docs/12 §2.1 rule 1, §13 amendment of 2026-09-06). The hook-written trace of a treatment arm is archived beside it as `hook-trace.jsonl` and stays available to the report as evidence of what the hooks saw. It feeds no *outcome* metric, and the one figure it does feed is a cost, not a result: the injected-token count of §5.12, which is read from event bodies and can move no pass rate. Gate status feeds nothing at all; the run's claim judgement never loads it from the workspace.
 
 `cost_usd` is the harness's own figure when it reports one (§10.1, docs/12 §9: the same source for every arm); the pinned price table's figure is recorded beside it as `cost_usd_pinned` with `cost_ratio_pinned`. The 2026-09-06 smoke found the pinned figure 1.5 times the harness's on all twelve runs, constant across arms, so the ratio is recorded per run and the table is left for a separate reconciliation.
 
-`run.json` carries: tokens as the trace-spec §3.1 usage object `{input_fresh, cache_read, cache_write_5m, cache_write_1h, output, reasoning}` as reported by the harness's own accounting (the same source for every arm), wall time from container start to harness exit, cost computed from the pinned price table, tool-call sequence as `[(tool, args_hash, exit_or_error)]`, outcome, oracle result, guard flags, `blocked_reach_attempts` (§4.2) and `guard_denies` (§4.2.1).
+`run.json` carries: tokens as the trace-spec §3.1 usage object `{input_fresh, cache_read, cache_write_5m, cache_write_1h, output, reasoning}` as reported by the harness's own accounting (the same source for every arm), wall time from container start to harness exit, cost computed from the pinned price table, tool-call sequence as `[(tool, args_hash, exit_or_error)]`, outcome, oracle result, guard flags, `blocked_reach_attempts` (§4.2), `guard_denies` (§4.2.1) and `overhead` (§5.12).
 
 Grading happens in a **separate grading container**: the agent's `workspace.diff` is applied to a clean checkout of `ref`, then `oracle/` is copied in and `run.sh` executed. The agent's container never sees the oracle and cannot alter the tree the oracle runs on.
 
@@ -347,6 +348,23 @@ Ids are the trace-spec §5.1 ids, spelled identically, so offline and online cou
 | tokens/cost per solved | ratio |, (reported with bootstrap CI only) | bootstrap |
 | drift index, compliance AUC, decay β | descriptive | Wilcoxon | bootstrap |
 | layer-declared metrics (§5.11) | as declared | Wilcoxon where paired per task | bootstrap |
+| hook overhead (§5.12) | per-event latency and per-run share | descriptive, printed per arm with the paired delta | none (medians over runs) |
+
+### 5.12 Hook overhead
+
+docs/12 §12 commitment 7: **measured** hook overhead (p50 and p95 per event, wall overhead, injected tokens) is reported beside the primary. It is a secondary metric, pre-registered by that commitment, and it is descriptive: it says what the component cost, not whether the cost was worth it.
+
+Sources, all per run, none of them an estimate of wall time:
+
+| Field | From |
+|---|---|
+| per-event p50, p95, max, n | `hook-latency.jsonl`, the sidecar of trace-spec §2.9: one line per composed-hook invocation with its own `total_ms` |
+| the `safety` event row | the safety hook's own log (guard-spec §8.4.1), which carries `latency_ms` per invocation. It runs in every arm and is the only hook a bare arm has, so it is that arm's whole hook overhead |
+| `timed_out` | sidecar lines whose invocation the deadline abandoned. Those fail open (docs/12 §9), so the count sits beside the latency rather than inside it |
+| hook wall over run wall | the sum of the run's invocation totals over `wall_s` |
+| `injected_tokens_est` | the per-event estimates in `hook-trace.jsonl` (`message_tokens_est` on a `gate` or claim event, `context_tokens_est` on a `session` event, trace-spec §3.5) plus the fixed contract sentence of a gate arm's staged prompt, which no hook ever sees |
+
+`run.json.overhead` carries the per-run block, or `null` with `overhead_reason` when nothing recorded wall time. `report.json` carries `overhead` per arm, with per-event figures taken over the arm's per-run p50 and p95 rather than over every invocation, since `run.json` keeps percentiles and not the raw list. **Nothing is back-filled.** An archive written before the recording existed reports null with its reason, in `run.json`, in `report.json` and in the table, because a hook whose cost was never measured is not a free one. A bare arm's `0` injected tokens is the opposite case: a measurement, not an absence.
 
 ### 5.11 Layer-declared metrics
 
@@ -438,7 +456,7 @@ runs/<manifest-hash>/
 
 1. **Header**, manifest hash, tier, date, total cost, link to pre-registration.
 2. **Setup**, models, harnesses, arms, blocks, task set hash, K, isolation, exclusions count.
-3. **Primary outcome**, the one metric named in pre-registration, with Δ, CI, Wilcoxon, n.
+3. **Primary outcome**, the one metric named in pre-registration, with Δ, CI, Wilcoxon, n, followed immediately by the **measured hook overhead** table of §5.12. Overhead sits here and not in an appendix (docs/12 §12 commitment 7): a component that helps and costs is a different result from one that helps and is free, and the reader must not have to go looking for the difference.
 4. **Secondary outcomes**, §5.10 table.
 5. **Variance**, pass@1 vs pass^k per arm; per-task instability list (tasks where 0 < c < K).
 6. **Negative results** *(mandatory, non-empty)*, every pre-registered hypothesis not supported; every comparison whose CI includes zero; every `component_unused` cell; every task with 0% across all arms (flagged `possibly broken`, doc 03 §1.5); every exclusion; every contamination flag. If a run truly has none, the section says "No null or negative pre-registered outcomes; N exploratory comparisons were null: …", the exploratory list cannot be empty because §4 always yields some.
@@ -562,6 +580,7 @@ Precedence when several apply: 6, 7, 2, 3, 4, 5, 1 (contracts §4).
   "drift": {"repeat": 1, "edit_fail_streak": 0, "oscillation": 0, "out_of_scope_read": 2, "late_scope_expansion": 0},
   "compliance": [{"rule": "pnpm-only", "turns": [1, 9, 22], "ok": [1, 1, 0]}],
   "blocked_reach_attempts": 0, "guard_denies": 0, "component_used": true,
+  "overhead": {"invocations": 11, "by_event": {"PreToolUse": {"n": 8, "p50_ms": 14, "p95_ms": 62, "max_ms": 62, "total_ms": 132, "timed_out": 0}}, "wall_ms": 194, "wall_share": 0.0031, "injected_tokens_est": 480, "timed_out": 0}, "overhead_reason": null,
   "artifacts": {"trace": "sha256:…", "diff": "sha256:…", "harness": "sha256:…"}
 }
 ```

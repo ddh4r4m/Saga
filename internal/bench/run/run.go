@@ -28,6 +28,8 @@ import (
 	"github.com/ddh4r4m/saga/internal/bench/task"
 	"github.com/ddh4r4m/saga/internal/canon"
 	"github.com/ddh4r4m/saga/internal/cli"
+	"github.com/ddh4r4m/saga/internal/guard"
+	"github.com/ddh4r4m/saga/internal/hookio"
 	"github.com/ddh4r4m/saga/internal/schema"
 	"github.com/ddh4r4m/saga/internal/trace"
 	"github.com/ddh4r4m/saga/internal/trace/claims"
@@ -483,7 +485,7 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 		}
 		row.OutcomeReason = &msg
 		row.CostUSDReason = strp("run excluded: " + reason)
-		writeArchive(runDir, &row, disclosure, nil, nil, nil, nil, "")
+		writeArchive(runDir, &row, disclosure, nil, nil, nil, nil, nil, "")
 		return row
 	}
 	if err := task.Stage(ctx, t, ws); err != nil {
@@ -530,6 +532,16 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 	row.Turns, row.ToolCalls = col.Turns, col.ToolCalls
 	row.BlockedReachAttempts = col.BlockedReachAttempts
 	row.GuardDenies = col.GuardDenies
+	// What the hooks cost, from the sidecar the composed hook wrote and
+	// the safety hook's own log (docs/12 commitment 7).
+	if ov, why := ComputeOverhead(OverheadInput{
+		Latency: parseLatency(col.HookLatencyJSONL), Safety: safetyLines(col.SafetyLatencyMS),
+		HookTraceJSONL: col.HookTraceJSONL, WallS: row.WallS, Components: opts.Components,
+	}); ov != nil {
+		row.Overhead = ov
+	} else {
+		row.OverheadReason = strp(why)
+	}
 	if col.ToolSequence != nil {
 		row.ToolSequence = col.ToolSequence
 	}
@@ -698,7 +710,7 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 	} else {
 		oracleText = []byte(fmt.Sprintf("--- not graded: %s\n--- exit -1\n", deref(row.Oracle.ApplyError)))
 	}
-	writeArchive(runDir, &row, disclosure, col.StreamTraceJSONL, col.HookTraceJSONL, oracleText, diff, col.FinalMessage)
+	writeArchive(runDir, &row, disclosure, col.StreamTraceJSONL, col.HookTraceJSONL, col.HookLatencyJSONL, oracleText, diff, col.FinalMessage)
 	return row
 }
 
@@ -729,11 +741,11 @@ func repeats(seq []adapter.ToolCall) int {
 }
 
 // artifactKeys names the section 9.3 artifacts block entries.
-var artifactKeys = map[string]string{"trace.jsonl": "trace", "hook-trace.jsonl": "hook_trace", "harness.json": "harness", "workspace.diff": "diff", "oracle.txt": "oracle", "scan.json": "scan", "final_message.txt": "final_message"}
+var artifactKeys = map[string]string{"trace.jsonl": "trace", "hook-trace.jsonl": "hook_trace", "hook-latency.jsonl": "hook_latency", "harness.json": "harness", "workspace.diff": "diff", "oracle.txt": "oracle", "scan.json": "scan", "final_message.txt": "final_message"}
 
 // writeArchive writes the section 3.4 files and SHA256SUMS, then run.json
 // with the artifact hashes.
-func writeArchive(dir string, row *Row, disclosure adapter.Disclosure, traceJSONL, hookTraceJSONL, oracleText, diff []byte, finalMessage string) {
+func writeArchive(dir string, row *Row, disclosure adapter.Disclosure, traceJSONL, hookTraceJSONL, hookLatencyJSONL, oracleText, diff []byte, finalMessage string) {
 	write := func(name string, b []byte) {
 		if b == nil {
 			b = []byte{}
@@ -745,6 +757,9 @@ func writeArchive(dir string, row *Row, disclosure adapter.Disclosure, traceJSON
 	// The hook-written trace of a treatment arm, empty in a bare arm; it
 	// documents what the hooks saw and feeds no metric (bench-spec 3.4).
 	write("hook-trace.jsonl", hookTraceJSONL)
+	// The hook's own timing sidecar (trace-spec 2.9): the source of the
+	// overhead table, outside the hash chain and never evidence.
+	write("hook-latency.jsonl", hookLatencyJSONL)
 	if v, err := schema.Normalize(disclosure); err == nil {
 		if err := schema.ValidateID("saga.bench.harness/1", v); err != nil {
 			// A schema gap is a bench defect, not a run outcome. Twice in
@@ -762,7 +777,7 @@ func writeArchive(dir string, row *Row, disclosure adapter.Disclosure, traceJSON
 	sj, _ := json.MarshalIndent(row.Scan, "", "  ")
 	write("scan.json", append(sj, '\n'))
 	write("final_message.txt", []byte(finalMessage))
-	names := []string{"trace.jsonl", "hook-trace.jsonl", "harness.json", "workspace.diff", "oracle.txt", "scan.json", "final_message.txt"}
+	names := []string{"trace.jsonl", "hook-trace.jsonl", "hook-latency.jsonl", "harness.json", "workspace.diff", "oracle.txt", "scan.json", "final_message.txt"}
 	if v, err := schema.Normalize(row); err == nil {
 		if err := schema.ValidateID(RowSchema, v); err != nil {
 			row.Outcome = "infra"
@@ -828,4 +843,31 @@ func interleaving(opts Options) string {
 // metrics package's whole surface.
 func metricsRound6(f float64) float64 {
 	return math.Round(f*1e6) / 1e6
+}
+
+// parseLatency reads the sidecar lines a run archived; a malformed line
+// is skipped, because a measurement never fails a run.
+func parseLatency(raw []byte) []hookio.LatencyLine {
+	var out []hookio.LatencyLine
+	for _, l := range strings.Split(string(raw), "\n") {
+		if strings.TrimSpace(l) == "" {
+			continue
+		}
+		var line hookio.LatencyLine
+		if json.Unmarshal([]byte(l), &line) == nil {
+			out = append(out, line)
+		}
+	}
+	return out
+}
+
+// safetyLines turns the collected safety latencies back into log lines,
+// which is the shape ComputeOverhead takes.
+func safetyLines(ms []int) []guard.SafetyLogLine {
+	out := make([]guard.SafetyLogLine, 0, len(ms))
+	for i := range ms {
+		v := ms[i]
+		out = append(out, guard.SafetyLogLine{LatencyMS: &v})
+	}
+	return out
 }

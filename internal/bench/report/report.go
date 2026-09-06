@@ -78,10 +78,50 @@ type ArmStats struct {
 	// same code with the same command string in every arm (docs/12 row
 	// 6), so this counts what the agent tried, not what the arm allowed;
 	// on the controls C-01 to C-40 it is zero.
-	GuardDenies int       `json:"guard_denies"`
-	PerTask     []PerTask `json:"per_task"`
+	GuardDenies int `json:"guard_denies"`
+	// Overhead is what the hooks cost this arm (docs/12 commitment 7):
+	// null with a reason on an archive whose runs did not record hook
+	// wall time. It is reported beside the primary, not in an appendix.
+	Overhead       *ArmOverhead `json:"overhead"`
+	OverheadReason *string      `json:"overhead_reason"`
+	PerTask        []PerTask    `json:"per_task"`
 
 	cells []metrics.Cell
+}
+
+// EventOverhead is one event type's cost across an arm's runs.
+type EventOverhead struct {
+	// Runs is how many runs saw this event type, Invocations the total.
+	Runs        int `json:"runs"`
+	Invocations int `json:"invocations"`
+	// P50MS and P95MS are over every invocation of the arm, not over
+	// per-run medians: the question is what one hook call costs.
+	P50MS int `json:"p50_ms"`
+	P95MS int `json:"p95_ms"`
+	MaxMS int `json:"max_ms"`
+	// TimedOut counts invocations the deadline abandoned. Those fail
+	// open (docs/12 section 9), so the number belongs beside the latency
+	// rather than inside it.
+	TimedOut int `json:"timed_out"`
+}
+
+// ArmOverhead is docs/12 commitment 7 for one arm.
+type ArmOverhead struct {
+	// Runs is how many of the arm's runs recorded hook wall time.
+	Runs int `json:"runs"`
+	// MedianInvocations is the median hook invocations per run.
+	MedianInvocations float64 `json:"median_invocations"`
+	// ByEvent is per event type over the arm's invocations.
+	ByEvent map[string]EventOverhead `json:"by_event"`
+	// MedianWallShare is the median over runs of hook wall time divided
+	// by run wall time; null when no run had wall time to divide by.
+	MedianWallShare *float64 `json:"median_wall_share"`
+	// MedianInjectedTokensEst is the median over runs. A bare arm's
+	// figure is 0 because nothing injected, not because nothing was
+	// measured.
+	MedianInjectedTokensEst float64 `json:"median_injected_tokens_est"`
+	// TimedOut is the arm's total of abandoned invocations.
+	TimedOut int `json:"timed_out"`
 }
 
 // ClaimContradiction is the trace-spec 5.9 metric: runs whose final-turn
@@ -204,6 +244,7 @@ func ArmFrom(m *run.Manifest, rows []run.Row) *ArmStats {
 			a.Model = r.Model
 		}
 	}
+	a.Overhead, a.OverheadReason = armOverhead(rows)
 	a.PassAt1 = metrics.Round6(metrics.PassAt1(cells))
 	rates := make([]float64, len(cells))
 	for i, c := range cells {
@@ -530,6 +571,13 @@ func (r *Report) Markdown() string {
 		}
 	}
 	w("")
+	// Commitment 7 of docs/12 section 12: overhead beside the primary,
+	// never in an appendix. A component that helps and costs is a
+	// different result from one that helps and is free.
+	for _, l := range overheadTable(r, order) {
+		w("%s", l)
+	}
+	w("")
 	w("## 4. Secondary outcomes")
 	w("")
 	w("| arm | pass@1 | 95%% CI | clean pass@1 | pass^K | instability | false-done | regression | scope viol. | cheat rate | median tokens | median cost | median wall s | median turns | tokens/solved | usd/solved |")
@@ -699,4 +747,144 @@ func newDetectorPrecision() map[string]*float64 {
 		m[n] = nil
 	}
 	return m
+}
+
+// armOverhead aggregates docs/12 commitment 7 over an arm's runs. A run
+// that recorded nothing is excluded rather than counted as zero, and an
+// arm in which no run recorded anything reports null with the reason its
+// runs gave, because an unmeasured hook is not a free one.
+func armOverhead(rows []run.Row) (*ArmOverhead, *string) {
+	out := &ArmOverhead{ByEvent: map[string]EventOverhead{}}
+	perEvent := map[string][]int{}
+	eventRuns := map[string]int{}
+	timedOut := map[string]int{}
+	var invocations, shares, injected []float64
+	reason := ""
+	for _, r := range rows {
+		if r.Overhead == nil {
+			if reason == "" && r.OverheadReason != nil {
+				reason = *r.OverheadReason
+			}
+			continue
+		}
+		out.Runs++
+		invocations = append(invocations, float64(r.Overhead.Invocations))
+		injected = append(injected, float64(r.Overhead.InjectedTokensEst))
+		if r.Overhead.WallShare != nil {
+			shares = append(shares, *r.Overhead.WallShare)
+		}
+		out.TimedOut += r.Overhead.TimedOut
+		for ev, e := range r.Overhead.ByEvent {
+			eventRuns[ev]++
+			timedOut[ev] += e.TimedOut
+			// The per-run block keeps percentiles, not the raw list, so
+			// the arm's percentiles are taken over the per-run p50 and
+			// p95 rather than over every invocation. Recording each
+			// invocation in run.json would put a metric's raw data in the
+			// archive for no decision it changes.
+			perEvent[ev] = append(perEvent[ev], e.P50MS, e.P95MS)
+			if e.MaxMS > out.ByEvent[ev].MaxMS {
+				m := out.ByEvent[ev]
+				m.MaxMS = e.MaxMS
+				out.ByEvent[ev] = m
+			}
+			m := out.ByEvent[ev]
+			m.Invocations += e.N
+			out.ByEvent[ev] = m
+		}
+	}
+	if out.Runs == 0 {
+		if reason == "" {
+			reason = "no run recorded hook wall time"
+		}
+		return nil, &reason
+	}
+	for ev, ms := range perEvent {
+		sort.Ints(ms)
+		m := out.ByEvent[ev]
+		m.Runs, m.P50MS, m.P95MS, m.TimedOut = eventRuns[ev], pctlInt(ms, 50), pctlInt(ms, 95), timedOut[ev]
+		out.ByEvent[ev] = m
+	}
+	out.MedianInvocations = metrics.Median(invocations)
+	out.MedianInjectedTokensEst = metrics.Median(injected)
+	if len(shares) > 0 {
+		v := metrics.Median(shares)
+		out.MedianWallShare = &v
+	}
+	return out, nil
+}
+
+// pctlInt is the nearest-rank percentile of a sorted slice.
+func pctlInt(sorted []int, p int) int {
+	if len(sorted) == 0 {
+		return 0
+	}
+	i := (len(sorted)*p + 99) / 100
+	if i < 1 {
+		i = 1
+	}
+	if i > len(sorted) {
+		i = len(sorted)
+	}
+	return sorted[i-1]
+}
+
+// overheadTable renders docs/12 commitment 7 for the arms in order. It
+// is printed in section 3, beside the primary, because a component that
+// helps and costs is a different result from one that helps and is free.
+func overheadTable(r *Report, order []string) []string {
+	var lines []string
+	w := func(f string, a ...any) { lines = append(lines, fmt.Sprintf(f, a...)) }
+	w("### Measured hook overhead (docs/12 commitment 7)")
+	w("")
+	w("| arm | runs | hook calls / run (median) | event | n | p50 ms | p95 ms | max ms | timed out | hook wall / run wall (median) | injected tokens (median) |")
+	w("|---|---|---|---|---|---|---|---|---|---|---|")
+	for _, id := range order {
+		a := r.Arms[id]
+		if a == nil {
+			continue
+		}
+		if a.Overhead == nil {
+			why := "not recorded"
+			if a.OverheadReason != nil {
+				why = *a.OverheadReason
+			}
+			w("| %s | | | | | | | | | | %s |", id, why)
+			continue
+		}
+		o := a.Overhead
+		events := make([]string, 0, len(o.ByEvent))
+		for ev := range o.ByEvent {
+			events = append(events, ev)
+		}
+		sort.Strings(events)
+		share := ""
+		if o.MedianWallShare != nil {
+			share = fmt.Sprintf("%.4f", *o.MedianWallShare)
+		}
+		for i, ev := range events {
+			e := o.ByEvent[ev]
+			if i == 0 {
+				w("| %s | %d | %.1f | %s | %d | %d | %d | %d | %d | %s | %.0f |", id, o.Runs, o.MedianInvocations, ev, e.Invocations, e.P50MS, e.P95MS, e.MaxMS, e.TimedOut, share, o.MedianInjectedTokensEst)
+				continue
+			}
+			w("| | | | %s | %d | %d | %d | %d | %d | | |", ev, e.Invocations, e.P50MS, e.P95MS, e.MaxMS, e.TimedOut)
+		}
+	}
+	// A paired report also states the difference, which is the number the
+	// primary is read against: what the component cost to produce it.
+	if len(order) == 2 {
+		x, y := r.Arms[order[0]], r.Arms[order[1]]
+		if x != nil && y != nil && x.Overhead != nil && y.Overhead != nil {
+			w("")
+			line := fmt.Sprintf("%s minus %s: injected tokens %+.0f", order[1], order[0], y.Overhead.MedianInjectedTokensEst-x.Overhead.MedianInjectedTokensEst)
+			if x.Overhead.MedianWallShare != nil && y.Overhead.MedianWallShare != nil {
+				line += fmt.Sprintf(", hook wall share %+.4f", *y.Overhead.MedianWallShare-*x.Overhead.MedianWallShare)
+			}
+			w("%s (medians over runs).", line)
+		}
+	}
+	w("")
+	w("Per-event figures are over the arm's per-run p50 and p95, from the hook-latency sidecar of trace-spec 2.9; `safety` is the deny-only hook of guard-spec 8.4.1, which runs in every arm and is the only hook a bare arm has. `timed out` counts invocations the deadline abandoned, which fail open (docs/12 section 9). Injected tokens are the per-event estimates in the hook trace plus the contract sentence of a gate arm's staged prompt; a bare arm's 0 is a measurement, not an absence.")
+	return lines
 }

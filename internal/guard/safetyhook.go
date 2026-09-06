@@ -191,3 +191,25 @@ func CountDenies(path string) int {
 	}
 	return n
 }
+
+// Latencies reads a safety log and returns the wall time of each
+// invocation that recorded one, for the bench's overhead table. A line
+// written before latency_ms existed is skipped rather than counted as
+// zero.
+func Latencies(path string) []int {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	var out []int
+	for _, l := range strings.Split(string(raw), "\n") {
+		if strings.TrimSpace(l) == "" {
+			continue
+		}
+		var line SafetyLogLine
+		if json.Unmarshal([]byte(l), &line) == nil && line.LatencyMS != nil {
+			out = append(out, *line.LatencyMS)
+		}
+	}
+	return out
+}

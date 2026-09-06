@@ -119,10 +119,15 @@ type Row struct {
 	// GuardDenies is the safety hook's denial count for this run, in
 	// every arm (docs/12 row 6). The hook is identical on both sides, so
 	// a difference between arms is a difference in what the agent tried.
-	GuardDenies   int                `json:"guard_denies"`
-	ComponentUsed *bool              `json:"component_used"`
-	ToolSequence  []adapter.ToolCall `json:"tool_sequence"`
-	Artifacts     map[string]string  `json:"artifacts"`
+	GuardDenies int `json:"guard_denies"`
+	// Overhead is what the hooks cost this run (docs/12 commitment 7):
+	// null with a reason on an archive written before hook wall time was
+	// recorded, because nothing is back-filled.
+	Overhead       *Overhead          `json:"overhead"`
+	OverheadReason *string            `json:"overhead_reason"`
+	ComponentUsed  *bool              `json:"component_used"`
+	ToolSequence   []adapter.ToolCall `json:"tool_sequence"`
+	Artifacts      map[string]string  `json:"artifacts"`
 }
 
 // Validate checks the row against the embedded schema.
