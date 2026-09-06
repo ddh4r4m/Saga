@@ -45,7 +45,7 @@ command -v "$CLAUDE_BIN" >/dev/null || { echo "harness-probes: $CLAUDE_BIN not o
 command -v python3 >/dev/null || { echo "harness-probes: python3 not on PATH" >&2; exit 6; }
 
 mkdir -p "$OUT/bin"
-go -C "$ROOT" build -o "$OUT/bin/saga" ./cmd/saga || { echo "harness-probes: cannot build saga" >&2; exit 6; }
+bash "$ROOT/scripts/build-saga.sh" "$OUT/bin/saga" || { echo "harness-probes: cannot build saga" >&2; exit 6; }
 SAGA="$OUT/bin/saga"
 
 CLAUDE_VER=$("$CLAUDE_BIN" --version 2>&1 | head -1)

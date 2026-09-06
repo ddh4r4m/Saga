@@ -44,7 +44,10 @@ command -v node >/dev/null || { echo "bench-smoke: node not on PATH (ts tasks)" 
 command -v python3 >/dev/null || { echo "bench-smoke: python3 not on PATH (py tasks)" >&2; exit 6; }
 
 mkdir -p "$OUT/bin"
-go -C "$ROOT" build -trimpath -ldflags "-s -w -X main.version=$(git -C "$ROOT" rev-parse --short HEAD)" -o "$OUT/bin/saga" ./cmd/saga
+# The shared build: no version stamp, so a docs-only commit does not
+# change the bytes and stale every corpus approval (ADR 0010; the
+# manifest still records the commit as bench_version.git).
+bash "$ROOT/scripts/build-saga.sh" "$OUT/bin/saga"
 SAGA="$OUT/bin/saga"
 
 # ADR 0010: the run needs no human act, but it does need the corpus to
@@ -85,6 +88,7 @@ set +e
   --model "$MODEL" \
   --wall-cap "$WALL_CAP" \
   --saga-bin "$SAGA" \
+  --bench-git "$(git -C "$ROOT" rev-parse --short HEAD)" \
   --keep \
   --prereg "$ROOT/docs/12-experiment-protocol.md" \
   --out "$OUT/archive" 2>&1 | tee -a "$OUT/run.log"

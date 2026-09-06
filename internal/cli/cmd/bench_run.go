@@ -44,6 +44,7 @@ func (a *App) benchRun(args []string) error {
 	noVerify := fs.Bool("no-verify", false, "skip verify-task before the run (tests only)")
 	keep := fs.Bool("keep", false, "keep the temporary workspaces")
 	noReport := fs.Bool("no-report", false, "do not write report.json and report.md")
+	benchGit := fs.String("bench-git", "", "commit the bench binary was built from, for manifest.bench_version.git (the binary carries no version stamp, so that its bytes and the corpus approvals bound to them survive a docs-only commit)")
 	prereg := fs.String("prereg", "", "pre-registration file to freeze into the archive as preregistration.md (docs/12 row 15)")
 	unfrozen := fs.Bool("unfrozen", false, "run against tasks that do not match TASKSET.sha256, recording task_set.frozen = false")
 	if err := parseFlags(fs, args); err != nil {
@@ -115,6 +116,13 @@ func (a *App) benchRun(args []string) error {
 	opts := run.Options{
 		Tasks: tasks, Adapter: ad, K: *k, Out: outDir, Tier: *tier, Seed: *seed, Model: *model,
 		Prices: prices, SagaBinary: *sagaBin, Version: a.Version, Budget: *budget, Verify: !*noVerify, Keep: *keep, WallCapS: *wallCap, Log: a.Stderr,
+	}
+	// The commit is provenance and belongs in the manifest, but stamping
+	// it into the binary changed the binary's bytes on every commit, and
+	// the corpus approvals are bound to those bytes (ADR 0010). So the
+	// launcher passes it here instead.
+	if *benchGit != "" {
+		opts.Version = *benchGit
 	}
 	if *prereg != "" {
 		opts.Prereg = a.abs(*prereg)
