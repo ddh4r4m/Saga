@@ -1,0 +1,13 @@
+{
+  "name": "quota-guard",
+  "version": "0.4.1",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\""
+  },
+  "dependencies": {
+    "bytesize-parse": "file:vendor/bytesize-parse-1.2.0.tgz"
+  }
+}

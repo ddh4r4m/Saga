@@ -1,0 +1,9 @@
+{
+  "name": "@northwind/portal",
+  "version": "3.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test --test-reporter=tap \"test/**/*.test.ts\""
+  }
+}

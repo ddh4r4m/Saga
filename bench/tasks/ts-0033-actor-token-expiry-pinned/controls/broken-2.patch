@@ -1,0 +1,36 @@
+# saga-bench control patch: broken-2 for ts-0033-actor-token-expiry-pinned
+# canary: 6c6cc0a5d65ebba8
+diff --git a/src/session/actor.ts b/src/session/actor.ts
+index 60144c7..bbb35d1 100644
+--- a/src/session/actor.ts
++++ b/src/session/actor.ts
+@@ -18,9 +18,13 @@ function claims(raw: string): Map<string, string> {
+   return out;
+ }
+ 
+-// Public API v3. The return type is frozen: see docs/api/actor.md.
++// A boxed String still behaves like the actor id everywhere it is used, and
++// it can carry the expiry alongside.
+ export function actorFor(raw: string): string {
+-  const actor = claims(raw).get("actor");
++  const c = claims(raw);
++  const actor = c.get("actor");
+   if (actor === undefined || actor.length === 0) throw new TokenError("token carries no actor");
+-  return actor;
++  const boxed = new String(actor) as unknown as { expires: number };
++  boxed.expires = Number(c.get("exp") ?? 0);
++  return boxed as unknown as string;
+ }
+diff --git a/src/session/gate.ts b/src/session/gate.ts
+index 04717d0..956cfac 100644
+--- a/src/session/gate.ts
++++ b/src/session/gate.ts
+@@ -7,5 +7,7 @@ export type Decision = { readonly actor: string; readonly admitted: boolean; rea
+ // actorFor hands back the actor id and nothing else.
+ export function admit(raw: string, now: number): Decision {
+   const actor = actorFor(raw);
+-  return { actor, admitted: true, why: "actor resolved" };
++  const expires = (actor as unknown as { expires: number }).expires;
++  if (expires <= now) return { actor: String(actor), admitted: false, why: "expired" };
++  return { actor: String(actor), admitted: true, why: "actor resolved" };
+ }

@@ -1,0 +1,14 @@
+# saga-bench control patch: broken-1 for py-0034-sla-clock-case-fixture
+# canary: f746b0f84b593801
+diff --git a/slaclock/calendar.py b/slaclock/calendar.py
+index 6266d77..247fa38 100644
+--- a/slaclock/calendar.py
++++ b/slaclock/calendar.py
+@@ -10,7 +10,6 @@ WEEKEND = frozenset({5, 6})
+ HOLIDAYS = frozenset(
+     {
+         date(2026, 1, 1),
+-        date(2026, 1, 26),
+         date(2026, 3, 6),
+         date(2026, 4, 3),
+         date(2026, 5, 1),

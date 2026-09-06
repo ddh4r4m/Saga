@@ -1,0 +1,13 @@
+{
+  "month": "2026-01",
+  "rows": [
+    {"account": "acct-0041", "region": "eu-west-1", "requests": 918233},
+    {"account": "acct-0041", "region": "ap-south-2", "requests": 44120},
+    {"account": "acct-0113", "region": "us-east-2", "requests": 2210945},
+    {"account": "acct-0113", "region": "eu-central-4", "requests": 87310},
+    {"account": "acct-0204", "region": "us-west-1", "requests": 61277},
+    {"account": "acct-0204", "region": "us-west-5", "requests": 15908},
+    {"account": "acct-0311", "region": "sa-east-1", "requests": 330412},
+    {"account": "acct-0311", "region": "ap-south-1", "requests": 129004}
+  ]
+}

@@ -1,0 +1,6 @@
+[
+  { "id": "evt-1", "kind": "invoice.paid", "data": { "email": "ada@northwind.test", "amount": "120.50" } },
+  { "id": "evt-2", "kind": "refund.issued", "data": { "email": "grace@northwind.test", "amount": "-900.00" } },
+  { "id": "evt-3", "kind": "invoice.paid", "data": { "email": "linus@northwind.test", "amount": "12" } },
+  { "id": "evt-4", "kind": "invoice.failed", "data": { "email": "edsger@northwind.test", "amount": "410.00" } }
+]

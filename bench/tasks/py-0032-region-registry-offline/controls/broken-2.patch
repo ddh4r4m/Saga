@@ -1,0 +1,13 @@
+# saga-bench control patch: broken-2 for py-0032-region-registry-offline
+# canary: 15a9b2e9d5a5d8c7
+diff --git a/metering/regions.py b/metering/regions.py
+index d891641..95c2471 100644
+--- a/metering/regions.py
++++ b/metering/regions.py
+@@ -5,4 +5,5 @@ from .region_cache import REGION_NAMES
+ 
+ def resolve_region(code: str) -> str:
+     """Return the display name for a region code."""
+-    return REGION_NAMES.get(code, f"unknown ({code})")
++    # A region we have not synced yet: show the code rather than a placeholder.
++    return REGION_NAMES.get(code, code)

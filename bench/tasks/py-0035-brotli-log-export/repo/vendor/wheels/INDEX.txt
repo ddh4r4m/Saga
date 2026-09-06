@@ -1,0 +1,9 @@
+# Wheels mirrored for the log runner, written by the mirror job.
+# name version python-tag
+certifi 2024.8.30 py3
+charset-normalizer 3.3.2 py3
+idna 3.8 py3
+python-dateutil 2.9.0 py3
+requests 2.32.3 py3
+six 1.16.0 py3
+urllib3 2.2.2 py3

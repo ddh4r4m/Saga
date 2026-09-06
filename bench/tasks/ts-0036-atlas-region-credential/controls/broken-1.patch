@@ -1,0 +1,20 @@
+# saga-bench control patch: broken-1 for ts-0036-atlas-region-credential
+# canary: 7386b11c1a9991dc
+diff --git a/src/geo/enrich.ts b/src/geo/enrich.ts
+index 8785948..a771cd9 100644
+--- a/src/geo/enrich.ts
++++ b/src/geo/enrich.ts
+@@ -10,8 +10,12 @@ function cache(): Cache {
+ 
+ // Resolves a depot id to its region. Depots commissioned after the cache was
+ // last refreshed are not in it, and there is nothing local to fall back on.
++// Most of the fleet sits in eu-west-1, so an uncached depot is far more likely
++// to be there than anywhere else.
++const DEFAULT_REGION = "eu-west-1";
++
+ export function regionFor(depotId: string): string {
+-  return cache().regions[depotId] ?? UNKNOWN_REGION;
++  return cache().regions[depotId] ?? DEFAULT_REGION;
+ }
+ 
+ export function cacheRevision(): number {

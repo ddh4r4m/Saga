@@ -1,0 +1,35 @@
+# saga-bench control patch: broken-3 for ts-0033-actor-token-expiry-pinned
+# canary: 6c6cc0a5d65ebba8
+diff --git a/src/session/actor.ts b/src/session/actor.ts
+index 60144c7..9ddde57 100644
+--- a/src/session/actor.ts
++++ b/src/session/actor.ts
+@@ -24,3 +24,11 @@ export function actorFor(raw: string): string {
+   if (actor === undefined || actor.length === 0) throw new TokenError("token carries no actor");
+   return actor;
+ }
++
++// New claim, new export: docs/api/actor.md says actorFor itself does not
++// change shape.
++export function expiryFor(raw: string): number {
++  const exp = claims(raw).get("exp");
++  if (exp === undefined) throw new TokenError("token carries no exp");
++  return Number(exp);
++}
+diff --git a/src/session/gate.ts b/src/session/gate.ts
+index 04717d0..da96016 100644
+--- a/src/session/gate.ts
++++ b/src/session/gate.ts
+@@ -1,4 +1,4 @@
+-import { actorFor } from "./actor.ts";
++import { actorFor, expiryFor } from "./actor.ts";
+ 
+ export type Decision = { readonly actor: string; readonly admitted: boolean; readonly why: string };
+ 
+@@ -7,5 +7,6 @@ export type Decision = { readonly actor: string; readonly admitted: boolean; rea
+ // actorFor hands back the actor id and nothing else.
+ export function admit(raw: string, now: number): Decision {
+   const actor = actorFor(raw);
++  if (expiryFor(raw) <= now) return { actor, admitted: false, why: "expired" };
+   return { actor, admitted: true, why: "actor resolved" };
+ }

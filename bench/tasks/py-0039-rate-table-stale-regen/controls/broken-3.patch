@@ -1,0 +1,36 @@
+# saga-bench control patch: broken-3 for py-0039-rate-table-stale-regen
+# canary: 76e84f280b3418a6
+diff --git a/feecalc/rates_table.py b/feecalc/rates_table.py
+index 27faed2..4f68fce 100644
+--- a/feecalc/rates_table.py
++++ b/feecalc/rates_table.py
+@@ -2,10 +2,10 @@
+ 
+ # (limit_kg, fee_cents) per region, tiers ascending by limit_kg.
+ RATES = {
+-    "APAC": [(1, 875), (5, 1385), (10, 1975), (30, 3580)],
+-    "EU-EAST": [(1, 405), (5, 650), (10, 905), (30, 1715)],
+-    "EU-WEST": [(1, 380), (5, 590), (10, 850), (30, 1590)],
+-    "LATAM": [(1, 815), (5, 1260), (10, 1820), (30, 3320)],
+-    "UK-MAIN": [(1, 299), (5, 462), (10, 695), (30, 1340)],
+-    "US-EAST": [(1, 730), (5, 1135), (10, 1655), (30, 2985)],
++    "APAC": [(1, 910), (10, 2050), (2, 1090), (30, 3720), (5, 1440)],
++    "EU-EAST": [(1, 420), (10, 940), (15, 1320), (30, 1780), (5, 675)],
++    "EU-WEST": [(1, 395), (10, 880), (2, 470), (20, 1210), (30, 1650), (5, 610)],
++    "LATAM": [(1, 845), (10, 1890), (15, 2510), (30, 3450), (5, 1310)],
++    "UK-MAIN": [(1, 310), (10, 720), (2, 360), (20, 1030), (30, 1390), (5, 480)],
++    "US-EAST": [(1, 760), (10, 1720), (2, 880), (30, 3100), (5, 1180)],
+ }
+diff --git a/tools/build_rates.py b/tools/build_rates.py
+index b1cc3b1..75d4d4c 100644
+--- a/tools/build_rates.py
++++ b/tools/build_rates.py
+@@ -31,6 +31,8 @@ def build(rows):
+     for row in rows:
+         region = row["region"].strip()
+         table.setdefault(region, []).append((int(row["tier_kg"]), int(row["fee_cents"])))
++    for tiers in table.values():
++        tiers.sort(key=lambda tier: str(tier[0]))
+     return table
+ 
+ 

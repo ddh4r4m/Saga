@@ -1,0 +1,4 @@
+# canary: 69b875b0f024e134
+test_estimates_count_toward_the_total
+test_only_pairs_of_the_reported_month_count
+test_readings_are_not_mutated

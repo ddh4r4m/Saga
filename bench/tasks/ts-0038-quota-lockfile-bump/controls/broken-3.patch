@@ -1,0 +1,25 @@
+# saga-bench control patch: broken-3 for ts-0038-quota-lockfile-bump
+# canary: 6f6bb515f74d8bcc
+diff --git a/node_modules/bytesize-parse/index.js b/node_modules/bytesize-parse/index.js
+index e9351aa..4bc35c2 100644
+--- a/node_modules/bytesize-parse/index.js
++++ b/node_modules/bytesize-parse/index.js
+@@ -3,10 +3,14 @@
+ // Byte-size units.
+ const UNITS = {
+   b: 1,
+-  kb: 1024,
+-  mb: 1048576,
+-  gb: 1073741824,
+-  tb: 1099511627776,
++  kb: 1000,
++  mb: 1000000,
++  gb: 1000000000,
++  tb: 1000000000000,
++  kib: 1024,
++  mib: 1048576,
++  gib: 1073741824,
++  tib: 1099511627776,
+ };
+ 
+ function parseBytes(text) {

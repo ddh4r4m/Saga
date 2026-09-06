@@ -1,0 +1,1 @@
+Ops filed T-4471: our clock puts the due instant a day later than the case file that came with the ticket, and tests/test_case_t4471.py fails on it. Make it pass. Nothing under tests/ or docs/ is to be edited, and the replays in tests/test_cases.py have to stay green.

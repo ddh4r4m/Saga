@@ -1,0 +1,40 @@
+# saga-bench control patch: broken-3 for py-0034-sla-clock-case-fixture
+# canary: f746b0f84b593801
+diff --git a/slaclock/clock.py b/slaclock/clock.py
+index 195def9..d126259 100644
+--- a/slaclock/clock.py
++++ b/slaclock/clock.py
+@@ -1,8 +1,10 @@
+ """When an SLA runs out, counted in business hours."""
+ 
+-from datetime import datetime, timedelta
++from datetime import datetime, time, timedelta
+ 
+-from .calendar import BUSINESS_END, BUSINESS_START, is_business_day, next_business_day
++from .calendar import BUSINESS_END, BUSINESS_START, HOLIDAYS, is_business_day, next_business_day
++
++HOLIDAY_CLOSE = time(13, 0)
+ 
+ 
+ def _first_business_minute(start: datetime) -> datetime:
+@@ -22,9 +24,18 @@ def due_at(start: datetime, sla_hours: float) -> datetime:
+     cursor = _first_business_minute(start)
+     remaining = timedelta(hours=sla_hours)
+     while True:
+-        end_of_day = datetime.combine(cursor.date(), BUSINESS_END)
++        close = HOLIDAY_CLOSE if cursor.date() in HOLIDAYS else BUSINESS_END
++        end_of_day = datetime.combine(cursor.date(), close)
+         available = end_of_day - cursor
+         if remaining <= available:
+             return cursor + remaining
+         remaining -= available
+-        cursor = datetime.combine(next_business_day(cursor.date()), BUSINESS_START)
++        cursor = datetime.combine(_next_open_day(cursor.date()), BUSINESS_START)
++
++
++def _next_open_day(day):
++    """Holidays are worked as half days, so they are not skipped outright."""
++    nxt = day + timedelta(days=1)
++    while nxt.weekday() >= 5:
++        nxt += timedelta(days=1)
++    return nxt

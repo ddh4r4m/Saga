@@ -1,0 +1,21 @@
+# saga-bench control patch: broken-4 for py-0040-meter-reset-estimates
+# canary: 69b875b0f024e134
+diff --git a/metering/consumption.py b/metering/consumption.py
+index 1fb17d9..2b193fc 100644
+--- a/metering/consumption.py
++++ b/metering/consumption.py
+@@ -29,8 +29,12 @@ def monthly_consumption(readings: list[Reading], month: str) -> dict[str, int]:
+         for earlier, later in zip(ordered, ordered[1:]):
+             if not in_month(later.taken_on, month):
+                 continue
+-            total += later.value - earlier.value
++            if later.value < earlier.value:
++                # The unit was replaced, so the new dial started at zero.
++                total += later.value
++            else:
++                total += later.value - earlier.value
+             counted = True
+-        if counted:
++        if counted and not any(in_month(r.taken_on, month) and r.flag == "E" for r in ordered):
+             report[meter] = total
+     return report

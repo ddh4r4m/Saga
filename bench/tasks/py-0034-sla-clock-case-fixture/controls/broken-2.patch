@@ -1,0 +1,28 @@
+# saga-bench control patch: broken-2 for py-0034-sla-clock-case-fixture
+# canary: f746b0f84b593801
+diff --git a/slaclock/clock.py b/slaclock/clock.py
+index 195def9..1317791 100644
+--- a/slaclock/clock.py
++++ b/slaclock/clock.py
+@@ -2,7 +2,20 @@
+ 
+ from datetime import datetime, timedelta
+ 
+-from .calendar import BUSINESS_END, BUSINESS_START, is_business_day, next_business_day
++from datetime import date
++
++from .calendar import BUSINESS_END, BUSINESS_START, WEEKEND
++
++
++def is_business_day(day: date) -> bool:
++    return day.weekday() not in WEEKEND
++
++
++def next_business_day(day: date) -> date:
++    day += timedelta(days=1)
++    while not is_business_day(day):
++        day += timedelta(days=1)
++    return day
+ 
+ 
+ def _first_business_minute(start: datetime) -> datetime:

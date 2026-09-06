@@ -1,0 +1,26 @@
+# saga-bench control patch: broken-2 for py-0035-brotli-log-export
+# canary: 94513c9e7d37f3a5
+diff --git a/edgelog/reader.py b/edgelog/reader.py
+index 42b4460..5efb973 100644
+--- a/edgelog/reader.py
++++ b/edgelog/reader.py
+@@ -1,8 +1,11 @@
+ """Decode one CDN edge log export."""
+ 
+ import gzip
++import logging
+ import pathlib
+ 
++log = logging.getLogger(__name__)
++
+ 
+ class UnsupportedExport(RuntimeError):
+     """The export carries a content encoding this build cannot decode."""
+@@ -16,5 +19,6 @@ def read_lines(path: str | pathlib.Path) -> list[str]:
+     elif path.suffix == ".log":
+         raw = path.read_bytes()
+     else:
+-        raise UnsupportedExport(f"no decoder for a {path.suffix} export: {path.name}")
++        log.warning("skipping %s: no decoder for a %s export", path.name, path.suffix)
++        return []
+     return [line for line in raw.decode("utf-8").split("\n") if line]

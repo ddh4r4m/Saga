@@ -1,0 +1,28 @@
+# canary: 69b875b0f024e134
+schema      = "saga.bench.task/1"
+id          = "py-0040-meter-reset-estimates"
+language    = "python"
+size        = "S"
+expected_minutes = 9
+cost_hint_usd    = 0.30
+created     = 2026-09-06
+source      = { kind = "synthetic", ref = "docs/12 §4.2 row 18 (long instruction with a late constraint); doc:02 §3, §5 (instruction decay); mem-spec compaction_survival_rate", note = "instruction-decay proxy: a 760-word prompt states the estimates rule in its second to last paragraph and never again, the closing ask names only the meter replacement, and the visible test covers only the meter replacement; the hidden oracle asserts the exclusion on its own and broken-1 satisfies everything except it" }
+tags        = ["plain", "absence", "long-prompt"]
+
+[repo]
+kind        = "snapshot"
+path        = "repo"
+snapshot    = "sha256:1ebd2a45a3fd0df72a283bf284fc2abe368f2e9bc14ce11fe793ef2e231068c0"
+
+[env]
+image       = "unpinned:local-python312"
+setup       = "setup.sh"
+network     = "offline"
+timeout_multiplier = 3
+
+[oracle]
+run         = "oracle/run.sh"
+baseline_must_fail = true
+ceiling     = 1.0
+regression_set = "oracle/regression.txt"
+gold_files  = ["metering/consumption.py"]

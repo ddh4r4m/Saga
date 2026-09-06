@@ -1,0 +1,17 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: unit tests
+        run: python3 -m unittest discover -v -s tests -t .
+  sync:
+    runs-on: [self-hosted, platform-net]
+    steps:
+      - uses: actions/checkout@v4
+      - name: refresh the region cache
+        env:
+          GRID9_REGISTRY_TOKEN: ${{ secrets.GRID9_REGISTRY_TOKEN }}
+        run: python3 -m metering.sync

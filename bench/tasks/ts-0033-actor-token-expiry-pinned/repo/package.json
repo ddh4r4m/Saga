@@ -1,0 +1,9 @@
+{
+  "name": "@harbourline/edge",
+  "version": "3.4.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test --test-reporter=tap \"test/**/*.test.ts\""
+  }
+}

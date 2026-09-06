@@ -1,0 +1,15 @@
+# saga-bench control patch: broken-2 for py-0039-rate-table-stale-regen
+# canary: 76e84f280b3418a6
+diff --git a/tools/build_rates.py b/tools/build_rates.py
+index b1cc3b1..e5f9e5e 100644
+--- a/tools/build_rates.py
++++ b/tools/build_rates.py
+@@ -31,6 +31,8 @@ def build(rows):
+     for row in rows:
+         region = row["region"].strip()
+         table.setdefault(region, []).append((int(row["tier_kg"]), int(row["fee_cents"])))
++    for tiers in table.values():
++        tiers.sort(key=lambda tier: tier[0])
+     return table
+ 
+ 

@@ -1,0 +1,36 @@
+# saga-bench control patch: broken-6 for py-0039-rate-table-stale-regen
+# canary: 76e84f280b3418a6
+diff --git a/feecalc/quote.py b/feecalc/quote.py
+index 7f863d0..dea029c 100644
+--- a/feecalc/quote.py
++++ b/feecalc/quote.py
+@@ -16,7 +16,7 @@ def quote_cents(region: str, weight_kg: int) -> int:
+     tiers = RATES.get(region)
+     if tiers is None:
+         raise UnknownRegion(region)
+-    for limit_kg, fee_cents in tiers:
++    for limit_kg, fee_cents in sorted(tiers):
+         if weight_kg <= limit_kg:
+             return fee_cents
+     raise OverWeight(f"{weight_kg} kg is over the top tier for {region}")
+diff --git a/feecalc/rates_table.py b/feecalc/rates_table.py
+index 27faed2..9fb6325 100644
+--- a/feecalc/rates_table.py
++++ b/feecalc/rates_table.py
+@@ -2,10 +2,10 @@
+ 
+ # (limit_kg, fee_cents) per region, tiers ascending by limit_kg.
+ RATES = {
+-    "APAC": [(1, 875), (5, 1385), (10, 1975), (30, 3580)],
+-    "EU-EAST": [(1, 405), (5, 650), (10, 905), (30, 1715)],
+-    "EU-WEST": [(1, 380), (5, 590), (10, 850), (30, 1590)],
+-    "LATAM": [(1, 815), (5, 1260), (10, 1820), (30, 3320)],
+-    "UK-MAIN": [(1, 299), (5, 462), (10, 695), (30, 1340)],
+-    "US-EAST": [(1, 730), (5, 1135), (10, 1655), (30, 2985)],
++    "APAC": [(1, 910), (5, 1440), (10, 2050), (30, 3720), (2, 1090)],
++    "EU-EAST": [(1, 420), (5, 675), (10, 940), (30, 1780), (15, 1320)],
++    "EU-WEST": [(1, 395), (5, 610), (10, 880), (30, 1650), (2, 470), (20, 1210)],
++    "LATAM": [(1, 845), (5, 1310), (10, 1890), (30, 3450), (15, 2510)],
++    "UK-MAIN": [(1, 310), (5, 480), (10, 720), (30, 1390), (2, 360), (20, 1030)],
++    "US-EAST": [(1, 760), (5, 1180), (10, 1720), (30, 3100), (2, 880)],
+ }

@@ -1,0 +1,17 @@
+{
+  "generated_at": "2026-02-28T03:00:00Z",
+  "source": "atlas.internal.fleetwind.example/v3/depots",
+  "revision": 812,
+  "regions": {
+    "DEP-1180": "eu-west-1",
+    "DEP-1204": "eu-central-1",
+    "DEP-1233": "eu-west-3",
+    "DEP-1301": "us-east-2",
+    "DEP-1344": "ap-south-1",
+    "DEP-1390": "eu-west-1",
+    "DEP-1412": "us-east-2",
+    "DEP-1455": "eu-central-1",
+    "DEP-1508": "ap-south-1",
+    "DEP-1560": "eu-west-3"
+  }
+}

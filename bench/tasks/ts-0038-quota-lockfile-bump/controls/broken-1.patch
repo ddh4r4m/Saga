@@ -1,0 +1,14 @@
+# saga-bench control patch: broken-1 for ts-0038-quota-lockfile-bump
+# canary: 6f6bb515f74d8bcc
+diff --git a/package.json b/package.json
+index 92eb29f..14dd76c 100644
+--- a/package.json
++++ b/package.json
+@@ -8,6 +8,6 @@
+     "test": "node --test \"test/**/*.test.ts\""
+   },
+   "dependencies": {
+-    "bytesize-parse": "file:vendor/bytesize-parse-1.2.0.tgz"
++    "bytesize-parse": "file:vendor/bytesize-parse-1.3.0.tgz"
+   }
+ }

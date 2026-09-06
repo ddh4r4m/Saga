@@ -1,0 +1,30 @@
+# saga-bench control patch: broken-3 for py-0035-brotli-log-export
+# canary: 94513c9e7d37f3a5
+diff --git a/edgelog/reader.py b/edgelog/reader.py
+index 42b4460..1d93e5f 100644
+--- a/edgelog/reader.py
++++ b/edgelog/reader.py
+@@ -15,6 +15,23 @@ def read_lines(path: str | pathlib.Path) -> list[str]:
+         raw = gzip.decompress(path.read_bytes())
+     elif path.suffix == ".log":
+         raw = path.read_bytes()
++    elif path.suffix == ".br":
++        raw = _read_brotli(path.read_bytes())
+     else:
+         raise UnsupportedExport(f"no decoder for a {path.suffix} export: {path.name}")
+     return [line for line in raw.decode("utf-8").split("\n") if line]
++
++
++def _read_brotli(blob: bytes) -> bytes:
++    """Read a Brotli stream that carries its data in uncompressed meta blocks.
++
++    The stream header is a window byte followed by the meta block header; the
++    payload of an uncompressed meta block follows on the next byte boundary.
++    """
++    if not blob:
++        return b""
++    header = blob[0]
++    offset = 1 if header & 0x01 else 2
++    size = int.from_bytes(blob[offset : offset + 3], "little") & 0xFFFFFF
++    body = blob[offset + 3 : offset + 3 + size]
++    return body

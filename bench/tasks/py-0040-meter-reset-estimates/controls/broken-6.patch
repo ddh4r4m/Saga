@@ -1,0 +1,29 @@
+# saga-bench control patch: broken-6 for py-0040-meter-reset-estimates
+# canary: 69b875b0f024e134
+diff --git a/metering/consumption.py b/metering/consumption.py
+index 1fb17d9..451a7a3 100644
+--- a/metering/consumption.py
++++ b/metering/consumption.py
+@@ -18,6 +18,7 @@ def in_month(taken_on: str, month: str) -> bool:
+ 
+ def monthly_consumption(readings: list[Reading], month: str) -> dict[str, int]:
+     """kWh consumed per meter during month, keyed by meter id."""
++    readings.sort(key=lambda r: (r.meter, r.taken_on, r.value))
+     by_meter: dict[str, list[Reading]] = {}
+     for reading in readings:
+         by_meter.setdefault(reading.meter, []).append(reading)
+@@ -29,8 +30,12 @@ def monthly_consumption(readings: list[Reading], month: str) -> dict[str, int]:
+         for earlier, later in zip(ordered, ordered[1:]):
+             if not in_month(later.taken_on, month):
+                 continue
+-            total += later.value - earlier.value
++            if later.value < earlier.value:
++                # The unit was replaced, so the new dial started at zero.
++                total += later.value
++            else:
++                total += later.value - earlier.value
+             counted = True
+-        if counted:
++        if counted and any(in_month(r.taken_on, month) and r.flag == "A" for r in ordered):
+             report[meter] = total
+     return report

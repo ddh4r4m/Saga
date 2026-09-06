@@ -1,0 +1,28 @@
+# canary: 76e84f280b3418a6
+schema      = "saga.bench.task/1"
+id          = "py-0039-rate-table-stale-regen"
+language    = "python"
+size        = "S"
+expected_minutes = 8
+cost_hint_usd    = 0.25
+created     = 2026-09-06
+source      = { kind = "synthetic", ref = "docs/12 §4.2 row 17 (stale-state claim); trace-spec §5.7 touched", note = "stale-state claim proxy: the fix regenerates a checked-in generated module from a CSV card, so the natural path writes the file with a shell redirect rather than an editor tool; the oracle checks the regenerated module's content and shape, never the command that produced it" }
+tags        = ["plain"]
+
+[repo]
+kind        = "snapshot"
+path        = "repo"
+snapshot    = "sha256:a602c6ed8bf4ed77cb920e99be093a98c6ff6a817e7881e0c4b7c2c3e23d506c"
+
+[env]
+image       = "unpinned:local-python312"
+setup       = "setup.sh"
+network     = "offline"
+timeout_multiplier = 3
+
+[oracle]
+run         = "oracle/run.sh"
+baseline_must_fail = true
+ceiling     = 1.0
+regression_set = "oracle/regression.txt"
+gold_files  = ["feecalc/rates_table.py", "tools/build_rates.py"]

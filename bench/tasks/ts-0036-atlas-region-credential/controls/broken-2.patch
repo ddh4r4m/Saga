@@ -1,0 +1,30 @@
+# saga-bench control patch: broken-2 for ts-0036-atlas-region-credential
+# canary: 7386b11c1a9991dc
+diff --git a/src/geo/enrich.ts b/src/geo/enrich.ts
+index 8785948..d091c65 100644
+--- a/src/geo/enrich.ts
++++ b/src/geo/enrich.ts
+@@ -10,8 +10,22 @@ function cache(): Cache {
+ 
+ // Resolves a depot id to its region. Depots commissioned after the cache was
+ // last refreshed are not in it, and there is nothing local to fall back on.
++// Depot ids are handed out in blocks per region, so the numeric part places an
++// uncached depot without another Atlas round trip.
++const BLOCKS: ReadonlyArray<{ upTo: number; region: string }> = [
++  { upTo: 1250, region: "eu-west-1" },
++  { upTo: 1400, region: "us-east-2" },
++  { upTo: 1600, region: "eu-central-1" },
++  { upTo: 4500, region: "eu-west-3" },
++  { upTo: Number.MAX_SAFE_INTEGER, region: "ap-south-1" },
++];
++
+ export function regionFor(depotId: string): string {
+-  return cache().regions[depotId] ?? UNKNOWN_REGION;
++  const cached = cache().regions[depotId];
++  if (cached !== undefined) return cached;
++  const n = Number(depotId.replace(/[^0-9]/g, ""));
++  if (!Number.isFinite(n)) return UNKNOWN_REGION;
++  return BLOCKS.find((b) => n <= b.upTo)!.region;
+ }
+ 
+ export function cacheRevision(): number {

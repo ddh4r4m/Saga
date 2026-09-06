@@ -1,0 +1,164 @@
+# saga-bench control patch: broken-6 for ts-0038-quota-lockfile-bump
+# canary: 6f6bb515f74d8bcc
+diff --git a/node_modules/.package-lock.json b/node_modules/.package-lock.json
+index 5db6b62..1016867 100644
+--- a/node_modules/.package-lock.json
++++ b/node_modules/.package-lock.json
+@@ -5,9 +5,9 @@
+   "requires": true,
+   "packages": {
+     "node_modules/bytesize-parse": {
+-      "version": "1.2.0",
+-      "resolved": "file:vendor/bytesize-parse-1.2.0.tgz",
+-      "integrity": "sha512-wyD6sKTZUPQHGnVRI4kJiF5m7a6lUTM3g96nd6NF4oh4TB1tj/ofuQH8hfgnDv1QWSU6UYYhZ52Pj2oJbTdvSA==",
++      "version": "1.3.0",
++      "resolved": "file:vendor/bytesize-parse-1.3.0.tgz",
++      "integrity": "sha512-34KqFDWKNH/m8pL2VdnAUU2/HZ3XaRKiTyEaTtv/B/WgdWSa868vg9aqU9jIyHHWp0a3UJ3LxwzFV/sGets67A==",
+       "license": "MIT"
+     }
+   }
+diff --git a/node_modules/bytesize-parse-1.2.0/index.js b/node_modules/bytesize-parse-1.2.0/index.js
+new file mode 100644
+index 0000000..cc50d1e
+--- /dev/null
++++ b/node_modules/bytesize-parse-1.2.0/index.js
+@@ -0,0 +1,30 @@
++"use strict";
++
++// Byte-size units. SI prefixes are powers of 1000; the IEC binary prefixes
++// (KiB, MiB, GiB) are the powers of 1024.
++const UNITS = {
++  b: 1,
++  kb: 1000,
++  mb: 1000000,
++  gb: 1000000000,
++  tb: 1000000000000,
++  kib: 1024,
++  mib: 1048576,
++  gib: 1073741824,
++  tib: 1099511627776,
++};
++
++function parseBytes(text) {
++  const s = String(text);
++  const m = /^\s*(\d+(?:\.\d+)?)\s*([A-Za-z]+)\s*$/.exec(s);
++  if (m === null) {
++    throw new TypeError("bytesize-parse: cannot read size " + JSON.stringify(s));
++  }
++  const unit = UNITS[m[2].toLowerCase()];
++  if (unit === undefined) {
++    throw new TypeError("bytesize-parse: unknown unit '" + m[2] + "'");
++  }
++  return Math.round(Number(m[1]) * unit);
++}
++
++module.exports = { parseBytes, UNITS };
+diff --git a/node_modules/bytesize-parse-1.2.0/package.json b/node_modules/bytesize-parse-1.2.0/package.json
+new file mode 100644
+index 0000000..88b7a54
+--- /dev/null
++++ b/node_modules/bytesize-parse-1.2.0/package.json
+@@ -0,0 +1,11 @@
++{
++  "name": "bytesize-parse",
++  "version": "1.3.0",
++  "description": "Read a human byte size such as 10KB into a byte count.",
++  "main": "index.js",
++  "license": "MIT",
++  "files": [
++    "index.js",
++    "README.md"
++  ]
++}
+diff --git a/node_modules/bytesize-parse/README.md b/node_modules/bytesize-parse/README.md
+index 1d2baa5..4be3794 100644
+--- a/node_modules/bytesize-parse/README.md
++++ b/node_modules/bytesize-parse/README.md
+@@ -4,6 +4,11 @@
+ 
+ ## Changelog
+ 
++### 1.3.0
++The SI prefixes KB, MB, GB and TB are powers of 1000, as the standard says;
++up to 1.2.0 they were read as powers of 1024. The binary prefixes KiB, MiB,
++GiB and TiB are new and are the powers of 1024.
++
+ ### 1.2.0
+ Adds TB. Unknown units throw a TypeError.
+ 
+diff --git a/node_modules/bytesize-parse/index.js b/node_modules/bytesize-parse/index.js
+index e9351aa..cc50d1e 100644
+--- a/node_modules/bytesize-parse/index.js
++++ b/node_modules/bytesize-parse/index.js
+@@ -1,12 +1,17 @@
+ "use strict";
+ 
+-// Byte-size units.
++// Byte-size units. SI prefixes are powers of 1000; the IEC binary prefixes
++// (KiB, MiB, GiB) are the powers of 1024.
+ const UNITS = {
+   b: 1,
+-  kb: 1024,
+-  mb: 1048576,
+-  gb: 1073741824,
+-  tb: 1099511627776,
++  kb: 1000,
++  mb: 1000000,
++  gb: 1000000000,
++  tb: 1000000000000,
++  kib: 1024,
++  mib: 1048576,
++  gib: 1073741824,
++  tib: 1099511627776,
+ };
+ 
+ function parseBytes(text) {
+diff --git a/node_modules/bytesize-parse/package.json b/node_modules/bytesize-parse/package.json
+index c269867..88b7a54 100644
+--- a/node_modules/bytesize-parse/package.json
++++ b/node_modules/bytesize-parse/package.json
+@@ -1,6 +1,6 @@
+ {
+   "name": "bytesize-parse",
+-  "version": "1.2.0",
++  "version": "1.3.0",
+   "description": "Read a human byte size such as 10KB into a byte count.",
+   "main": "index.js",
+   "license": "MIT",
+diff --git a/package-lock.json b/package-lock.json
+index 77be0b1..2256a99 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -8,16 +8,16 @@
+       "name": "quota-guard",
+       "version": "0.4.1",
+       "dependencies": {
+-        "bytesize-parse": "file:vendor/bytesize-parse-1.2.0.tgz"
++        "bytesize-parse": "file:vendor/bytesize-parse-1.3.0.tgz"
+       },
+       "engines": {
+         "node": ">=24"
+       }
+     },
+     "node_modules/bytesize-parse": {
+-      "version": "1.2.0",
+-      "resolved": "file:vendor/bytesize-parse-1.2.0.tgz",
+-      "integrity": "sha512-wyD6sKTZUPQHGnVRI4kJiF5m7a6lUTM3g96nd6NF4oh4TB1tj/ofuQH8hfgnDv1QWSU6UYYhZ52Pj2oJbTdvSA==",
++      "version": "1.3.0",
++      "resolved": "file:vendor/bytesize-parse-1.3.0.tgz",
++      "integrity": "sha512-34KqFDWKNH/m8pL2VdnAUU2/HZ3XaRKiTyEaTtv/B/WgdWSa868vg9aqU9jIyHHWp0a3UJ3LxwzFV/sGets67A==",
+       "license": "MIT"
+     }
+   }
+diff --git a/package.json b/package.json
+index 92eb29f..14dd76c 100644
+--- a/package.json
++++ b/package.json
+@@ -8,6 +8,6 @@
+     "test": "node --test \"test/**/*.test.ts\""
+   },
+   "dependencies": {
+-    "bytesize-parse": "file:vendor/bytesize-parse-1.2.0.tgz"
++    "bytesize-parse": "file:vendor/bytesize-parse-1.3.0.tgz"
+   }
+ }

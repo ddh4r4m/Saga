@@ -1,0 +1,158 @@
+# saga-bench control patch: broken-4 for ts-0038-quota-lockfile-bump
+# canary: 6f6bb515f74d8bcc
+diff --git a/node_modules/.package-lock.json b/node_modules/.package-lock.json
+index 5db6b62..f98d082 100644
+--- a/node_modules/.package-lock.json
++++ b/node_modules/.package-lock.json
+@@ -5,9 +5,9 @@
+   "requires": true,
+   "packages": {
+     "node_modules/bytesize-parse": {
+-      "version": "1.2.0",
+-      "resolved": "file:vendor/bytesize-parse-1.2.0.tgz",
+-      "integrity": "sha512-wyD6sKTZUPQHGnVRI4kJiF5m7a6lUTM3g96nd6NF4oh4TB1tj/ofuQH8hfgnDv1QWSU6UYYhZ52Pj2oJbTdvSA==",
++      "version": "1.3.0",
++      "resolved": "file:vendor/bytesize-parse-1.3.0.tgz",
++      "integrity": "sha512-B6a/JHCGhrgDBHR6YHIVXqkwRQm4uYR1RM6tBgjVakU+iaeuU+U/SLRr8E7K7k5efDNPmKanbPMe9w0GCcNtCA==",
+       "license": "MIT"
+     }
+   }
+diff --git a/node_modules/bytesize-parse/README.md b/node_modules/bytesize-parse/README.md
+index 1d2baa5..1d80a45 100644
+--- a/node_modules/bytesize-parse/README.md
++++ b/node_modules/bytesize-parse/README.md
+@@ -4,8 +4,16 @@
+ 
+ ## Changelog
+ 
++### 1.3.0
++The SI prefixes KB, MB, GB and TB are powers of 1000, as the standard says;
++up to 1.2.0 they were read as powers of 1024. The binary prefixes KiB, MiB,
++GiB and TiB are new and are the powers of 1024.
++
+ ### 1.2.0
+ Adds TB. Unknown units throw a TypeError.
+ 
+ ### 1.1.0
+ First published version.
++
++### note
++Repacked locally by the quota-guard team.
+diff --git a/node_modules/bytesize-parse/index.js b/node_modules/bytesize-parse/index.js
+index e9351aa..cc50d1e 100644
+--- a/node_modules/bytesize-parse/index.js
++++ b/node_modules/bytesize-parse/index.js
+@@ -1,12 +1,17 @@
+ "use strict";
+ 
+-// Byte-size units.
++// Byte-size units. SI prefixes are powers of 1000; the IEC binary prefixes
++// (KiB, MiB, GiB) are the powers of 1024.
+ const UNITS = {
+   b: 1,
+-  kb: 1024,
+-  mb: 1048576,
+-  gb: 1073741824,
+-  tb: 1099511627776,
++  kb: 1000,
++  mb: 1000000,
++  gb: 1000000000,
++  tb: 1000000000000,
++  kib: 1024,
++  mib: 1048576,
++  gib: 1073741824,
++  tib: 1099511627776,
+ };
+ 
+ function parseBytes(text) {
+diff --git a/node_modules/bytesize-parse/package.json b/node_modules/bytesize-parse/package.json
+index c269867..88b7a54 100644
+--- a/node_modules/bytesize-parse/package.json
++++ b/node_modules/bytesize-parse/package.json
+@@ -1,6 +1,6 @@
+ {
+   "name": "bytesize-parse",
+-  "version": "1.2.0",
++  "version": "1.3.0",
+   "description": "Read a human byte size such as 10KB into a byte count.",
+   "main": "index.js",
+   "license": "MIT",
+diff --git a/package-lock.json b/package-lock.json
+index 77be0b1..55e78df 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -8,16 +8,16 @@
+       "name": "quota-guard",
+       "version": "0.4.1",
+       "dependencies": {
+-        "bytesize-parse": "file:vendor/bytesize-parse-1.2.0.tgz"
++        "bytesize-parse": "file:vendor/bytesize-parse-1.3.0.tgz"
+       },
+       "engines": {
+         "node": ">=24"
+       }
+     },
+     "node_modules/bytesize-parse": {
+-      "version": "1.2.0",
+-      "resolved": "file:vendor/bytesize-parse-1.2.0.tgz",
+-      "integrity": "sha512-wyD6sKTZUPQHGnVRI4kJiF5m7a6lUTM3g96nd6NF4oh4TB1tj/ofuQH8hfgnDv1QWSU6UYYhZ52Pj2oJbTdvSA==",
++      "version": "1.3.0",
++      "resolved": "file:vendor/bytesize-parse-1.3.0.tgz",
++      "integrity": "sha512-B6a/JHCGhrgDBHR6YHIVXqkwRQm4uYR1RM6tBgjVakU+iaeuU+U/SLRr8E7K7k5efDNPmKanbPMe9w0GCcNtCA==",
+       "license": "MIT"
+     }
+   }
+diff --git a/package.json b/package.json
+index 92eb29f..14dd76c 100644
+--- a/package.json
++++ b/package.json
+@@ -8,6 +8,6 @@
+     "test": "node --test \"test/**/*.test.ts\""
+   },
+   "dependencies": {
+-    "bytesize-parse": "file:vendor/bytesize-parse-1.2.0.tgz"
++    "bytesize-parse": "file:vendor/bytesize-parse-1.3.0.tgz"
+   }
+ }
+diff --git a/vendor/bytesize-parse-1.3.0.tgz b/vendor/bytesize-parse-1.3.0.tgz
+index 5c70b2d622e07c7bf0e217db5b3ee03d76910dcf..09e5a936511feb75c11ec6fa4bc8be7a4be54730 100644
+GIT binary patch
+literal 899
+zcmV-}1AP1+iwFP!00002|Ls<7Z`(Ey&S(9KgEF9U6U&lc+XO)oXK9h8$$-TDGRH${
+ziMF{&q()Lp+#>(Ica-WnUIuK#8eo9$gQ+{-@lHJ5<ELQBEt~U}kSV_pe=|GZL82(?
+zcf0VE9VPDc`mlpPQ5^UC5&A`OH0ZQ(-FXHnjb$23`43(a1y<|-MEuflFjkAi`iGv^
+zYQb=6dDDnb97-vy3E}z-3e9KYo*Q7AL!s`tHlSt@<C`9WU2r%%J%Oo^OfOfybXIUK
+zhWl_qKkvk_;ljy%{fKrq^b#eFg%6i!qiZ;V&mO?^0OEaIZ|MQk&~sit*XsP6T3hTR
+zOKrRr&f4y}BPyl)syFDnGb(-18Fb@Um5Z%RuV44@du$H|<oJMBGb?3cg_2M(Z8+VM
+z2`s<24OegV1_rCY#><rRYU^;dljBb7*BkRPxJmbdHwQN%u8lVhvW$<Lzp&<~$sTDx
+zv_gK*lfbxOF@pd@kB&f=SyrXO5*J$Cf#i2ES{D3NYo!B!N)=(-ny$VBNSKt$g61p*
+z*G?by;HT@KFGJ%h6tg8JaakT#Wm3zrQrC%bK5kD!tKL(yPMG0AWAe48$`8vb5jSQ+
+z^7J3oR?1tc?qrqj1r<iQaPeRGtBN$YrIv8P>>|_(69t!LKIJ;d$MK{AFI_ZxKX_iQ
+z(lX<CafQ;Bn(%q8OZ)YQg-zVq%7zp*{?{x111R~t_#bsT-A(+Dd)@vP|DQu>Xno0Y
+z?jOL$nEHf<{vQa`h<daghn+C0tSL8%7KN>Mt_WlpEXtfopi?TuF=es<W)Mx!hajX?
+z=;L-19A_I=N99boGrlsA%9@FUOXI4#I2%>AnaH?7%h&<U;{epJPLF@QI1TgEM}2~@
+zu$}I|KmV)Cdv^X84QO08_+O7OVLSidUv}Z~(0ks;HGbpM<ob<|jzyR!Cj8Gs?RmSq
+zaI#=>&NDS9Z5JGHcq1f!>s<1js39@KAuyT3X!r!X+$Z=T#)w^#Dbq-0*wP$&WdWEt
+z4%=Zw+e^S8UU3}^*r1m{nK#%eteB~X%(N;%R22|+A^oq&YW+%>+B;71Rz|}RKCBTM
+zQ*$8pjRCEKVhnmKG%~HCoMyr-cnUSb);`GDxOc^AE^#kY3Cpr2Ua%|W_flEboR@SF
+Zma{zEV%%1?vXy@=UjWRz_m2P)007m*zaans
+
+literal 863
+zcmV-l1EBmLiwFP!00002|Ls<7Z`v>r?&ti9Q#xs(FCl>dYpZH1T{m@IJ85NKMwx07
+z10KYQY-d2H{`Z~jj8fJ~o3tTK;y&Qq`ObIo<sP1##A7m~RmKxK^S{Wge;`2+G@}Tf
+zvZI9cMiaL1CkVr4GeEx}3|jRXu3Kx6LMkG#l)vzjD6m-n6LAYkK`Oyw<sLaswF>RI
+zqWhBFQ7AZ5(ueDF$ORp+8I?c;g*=;5At4(;h;MoXYDD4u>=gQp6ER=->a)BH*4~3l
+z{qu&kD<)jKFCS5hd?(JhRPgcYymJl5@XZ0}A40f?>sUWv8vUG>&!swiP)mz?WGRhf
+zW~{Zy9ATB{MWfX;XIQ;eZ$;q?>!Pgb;GluuW3AQFj`w&qgM!D3WgK!MB-OVhJw<1#
+zV(PVTAhG&uyi7i{TStqX6nCnhZ{&`5lk9pg4{v;2D=#bB(mmP#ME37`yIOlz_34bp
+zo;1O103L=O9|JEY6PpT49EofSoKB%L&*_;Eneg1ct_a(<Z|XaQm~fsc5R@cf+UdeB
+zyuE&Z<x5i`8_Y3@$#TCaQ@0!|HJ#|D-CECA**o2=QzEHX>HVn5`e9iG;>Lh+n*331
+z1t0Tl%5A#mx-gv!7x%fls7O#%2o9G-jeL<|BJZk5`&4*oH|$kl$3&y|z2l@=QcNgb
+zT%HM~oA7O^OMB&qg-zVr$cp48{+BEM17v)?_#f2k(JKCjji|Z7|8<BST9=cQx`(hb
+zrmjXq_bUQ5qMqIk{kk7mYeHo#Sgy*Q4;o|$jEa<S(5G0$kwrWLA`wk5+Q7KV(8uh?
+zIL^wqN2P?BGk!1-Yn`x|a%rl%JnvZBfK8}GOV<F+;{en@oSnS7JoD4UMZJfxu$k`P
+zpZ~?>t)2e`&G4uB4;oRhng4ajHas4B$GKhNH?E#sw{mM(gnVMce;#Vb+1`fJ5#d8R
+z$%b0n1_K;U2Z`S@m%Px_P&30e5S~D%{RF$*)9|4gBX)@=L?D$Rb9v+xIbh<@ula%A
+zo&yF^%XKhdg<gWryuwal!Au=wrnUfPE706U>%Sta<tt%o=On>f>9l?LxI}1V$$`iN
+p16l-y81$M6WLkOApD;P136u!yZ}4g(8`;QO<vWxuvB&@t006Ait>^#%
+

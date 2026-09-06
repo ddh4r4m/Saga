@@ -1,0 +1,3 @@
+# Runtime dependencies. The runner resolves these from the offline wheelhouse
+# in vendor/wheels; see docs/offline-build.md.
+brotli==1.1.0

@@ -1,0 +1,6 @@
+# canary: 6f6bb515f74d8bcc
+plan-limit-strings-unchanged
+vendored-tarballs-unchanged
+install-is-only-the-vendored-package
+unknown-unit-still-throws
+unknown-plan-still-throws

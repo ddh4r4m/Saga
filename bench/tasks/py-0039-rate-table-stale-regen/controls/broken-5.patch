@@ -1,0 +1,94 @@
+# saga-bench control patch: broken-5 for py-0039-rate-table-stale-regen
+# canary: 76e84f280b3418a6
+diff --git a/data/rate_card.csv b/data/rate_card.csv
+index 46c038c..f37bbfa 100644
+--- a/data/rate_card.csv
++++ b/data/rate_card.csv
+@@ -1,33 +1,33 @@
+ region,tier_kg,fee_cents
+-EU-WEST,1,395
+-EU-WEST,5,610
+-EU-WEST,10,880
+-EU-WEST,30,1650
++APAC,1,910
++APAC,2,1090
++APAC,5,1440
++APAC,10,2050
++APAC,30,3720
+ EU-EAST,1,420
+ EU-EAST,5,675
+ EU-EAST,10,940
++EU-EAST,15,1320
+ EU-EAST,30,1780
++EU-WEST,1,395
++EU-WEST,2,470
++EU-WEST,5,610
++EU-WEST,10,880
++EU-WEST,20,1210
++EU-WEST,30,1650
++LATAM,1,845
++LATAM,5,1310
++LATAM,10,1890
++LATAM,15,2510
++LATAM,30,3450
+ UK-MAIN,1,310
++UK-MAIN,2,360
+ UK-MAIN,5,480
+ UK-MAIN,10,720
++UK-MAIN,20,1030
+ UK-MAIN,30,1390
+ US-EAST,1,760
++US-EAST,2,880
+ US-EAST,5,1180
+ US-EAST,10,1720
+ US-EAST,30,3100
+-APAC,1,910
+-APAC,5,1440
+-APAC,10,2050
+-APAC,30,3720
+-LATAM,1,845
+-LATAM,5,1310
+-LATAM,10,1890
+-LATAM,30,3450
+-EU-WEST,2,470
+-EU-WEST,20,1210
+-UK-MAIN,2,360
+-UK-MAIN,20,1030
+-APAC,2,1090
+-LATAM,15,2510
+-US-EAST,2,880
+-EU-EAST,15,1320
+diff --git a/feecalc/rates_table.py b/feecalc/rates_table.py
+index 27faed2..c39b17b 100644
+--- a/feecalc/rates_table.py
++++ b/feecalc/rates_table.py
+@@ -2,10 +2,10 @@
+ 
+ # (limit_kg, fee_cents) per region, tiers ascending by limit_kg.
+ RATES = {
+-    "APAC": [(1, 875), (5, 1385), (10, 1975), (30, 3580)],
+-    "EU-EAST": [(1, 405), (5, 650), (10, 905), (30, 1715)],
+-    "EU-WEST": [(1, 380), (5, 590), (10, 850), (30, 1590)],
+-    "LATAM": [(1, 815), (5, 1260), (10, 1820), (30, 3320)],
+-    "UK-MAIN": [(1, 299), (5, 462), (10, 695), (30, 1340)],
+-    "US-EAST": [(1, 730), (5, 1135), (10, 1655), (30, 2985)],
++    "APAC": [(1, 910), (2, 1090), (5, 1440), (10, 2050), (30, 3720)],
++    "EU-EAST": [(1, 420), (5, 675), (10, 940), (15, 1320), (30, 1780)],
++    "EU-WEST": [(1, 395), (2, 470), (5, 610), (10, 880), (20, 1210), (30, 1650)],
++    "LATAM": [(1, 845), (5, 1310), (10, 1890), (15, 2510), (30, 3450)],
++    "UK-MAIN": [(1, 310), (2, 360), (5, 480), (10, 720), (20, 1030), (30, 1390)],
++    "US-EAST": [(1, 760), (2, 880), (5, 1180), (10, 1720), (30, 3100)],
+ }
+diff --git a/tools/build_rates.py b/tools/build_rates.py
+index b1cc3b1..e5f9e5e 100644
+--- a/tools/build_rates.py
++++ b/tools/build_rates.py
+@@ -31,6 +31,8 @@ def build(rows):
+     for row in rows:
+         region = row["region"].strip()
+         table.setdefault(region, []).append((int(row["tier_kg"]), int(row["fee_cents"])))
++    for tiers in table.values():
++        tiers.sort(key=lambda tier: tier[0])
+     return table
+ 
+ 

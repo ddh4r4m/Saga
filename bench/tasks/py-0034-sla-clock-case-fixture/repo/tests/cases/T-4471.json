@@ -1,0 +1,9 @@
+{
+  "ticket": "T-4471",
+  "plan": "gold",
+  "start": "2026-01-23T14:30:00",
+  "sla_hours": 12,
+  "expect": "2026-01-26T17:30:00",
+  "filed_by": "ops-oncall",
+  "note": "exported from the ticket record, do not hand-edit"
+}

@@ -1,0 +1,47 @@
+# saga-bench control patch: broken-1 for ts-0033-actor-token-expiry-pinned
+# canary: 6c6cc0a5d65ebba8
+diff --git a/src/session/actor.ts b/src/session/actor.ts
+index 60144c7..205655c 100644
+--- a/src/session/actor.ts
++++ b/src/session/actor.ts
+@@ -18,9 +18,11 @@ function claims(raw: string): Map<string, string> {
+   return out;
+ }
+ 
+-// Public API v3. The return type is frozen: see docs/api/actor.md.
+-export function actorFor(raw: string): string {
+-  const actor = claims(raw).get("actor");
++export type Actor = { readonly actor: string; readonly expires: number };
++
++export function actorFor(raw: string): Actor {
++  const c = claims(raw);
++  const actor = c.get("actor");
+   if (actor === undefined || actor.length === 0) throw new TokenError("token carries no actor");
+-  return actor;
++  return { actor, expires: Number(c.get("exp") ?? 0) };
+ }
+diff --git a/src/session/audit.ts b/src/session/audit.ts
+index ea440a4..ba679b2 100644
+--- a/src/session/audit.ts
++++ b/src/session/audit.ts
+@@ -4,5 +4,5 @@ import { record } from "../../vendor/auditlog/index.ts";
+ // Every admitted request gets one audit line. The vendored library takes the
+ // actor id as a primitive string and keys its index on it.
+ export function auditLine(raw: string, action: string): string {
+-  return record(actorFor(raw), action);
++  return record(actorFor(raw).actor, action);
+ }
+diff --git a/src/session/gate.ts b/src/session/gate.ts
+index 04717d0..e2db3cb 100644
+--- a/src/session/gate.ts
++++ b/src/session/gate.ts
+@@ -6,6 +6,7 @@ export type Decision = { readonly actor: string; readonly admitted: boolean; rea
+ // (seconds since the epoch). The exp claim is not reachable from here:
+ // actorFor hands back the actor id and nothing else.
+ export function admit(raw: string, now: number): Decision {
+-  const actor = actorFor(raw);
+-  return { actor, admitted: true, why: "actor resolved" };
++  const parsed = actorFor(raw);
++  if (parsed.expires <= now) return { actor: parsed.actor, admitted: false, why: "expired" };
++  return { actor: parsed.actor, admitted: true, why: "actor resolved" };
+ }

@@ -1,0 +1,23 @@
+# saga-bench control patch: broken-1 for ts-0037-webhook-batch-swallow
+# canary: 79096aee991b23d5
+diff --git a/src/dispatch.ts b/src/dispatch.ts
+index 2d4a599..5ba4e56 100644
+--- a/src/dispatch.ts
++++ b/src/dispatch.ts
+@@ -19,9 +19,13 @@ export async function dispatchAll(events: Iterable<HookEvent>, transport: Transp
+   let position = 0;
+   for (const event of events) {
+     position += 1;
+-    const payload = renderEvent(event);
+-    await transport.send(payload);
+-    result.sent.push(payload);
++    try {
++      const payload = renderEvent(event);
++      await transport.send(payload);
++      result.sent.push(payload);
++    } catch {
++      continue;
++    }
+   }
+   return result;
+ }

@@ -1,0 +1,4 @@
+# canary: 79096aee991b23d5
+clean-batch-sends-everything
+transport-error-propagates
+render-unchanged

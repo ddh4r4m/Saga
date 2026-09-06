@@ -1,0 +1,10 @@
+[
+  { "id": "SH-70011", "depot": "DEP-1180", "weightKg": 412.5 },
+  { "id": "SH-70012", "depot": "DEP-1180", "weightKg": 88.0 },
+  { "id": "SH-70013", "depot": "DEP-1301", "weightKg": 1204.25 },
+  { "id": "SH-70014", "depot": "DEP-1455", "weightKg": 76.75 },
+  { "id": "SH-70015", "depot": "DEP-4471", "weightKg": 933.0 },
+  { "id": "SH-70016", "depot": "DEP-4471", "weightKg": 51.5 },
+  { "id": "SH-70017", "depot": "DEP-4478", "weightKg": 620.0 },
+  { "id": "SH-70018", "depot": "DEP-4483", "weightKg": 145.25 }
+]

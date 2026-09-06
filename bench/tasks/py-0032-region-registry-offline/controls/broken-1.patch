@@ -1,0 +1,19 @@
+# saga-bench control patch: broken-1 for py-0032-region-registry-offline
+# canary: 15a9b2e9d5a5d8c7
+diff --git a/metering/region_cache.py b/metering/region_cache.py
+index 512702a..e9089e0 100644
+--- a/metering/region_cache.py
++++ b/metering/region_cache.py
+@@ -6,9 +6,12 @@ successful sync; see docs/region-registry.md.
+ 
+ REGION_NAMES = {
+     "ap-south-1": "Mumbai 1",
++    "ap-south-2": "Mumbai 2",
++    "eu-central-4": "Frankfurt 4",
+     "eu-west-1": "Dublin 1",
+     "eu-west-3": "Dublin 3",
+     "sa-east-1": "Sao Paulo 1",
+     "us-east-2": "Ashburn 2",
+     "us-west-1": "Hillsboro 1",
++    "us-west-5": "Hillsboro 5",
+ }

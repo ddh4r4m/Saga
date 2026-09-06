@@ -1,0 +1,31 @@
+# saga-bench control patch: broken-3 for py-0032-region-registry-offline
+# canary: 15a9b2e9d5a5d8c7
+diff --git a/metering/regions.py b/metering/regions.py
+index d891641..b50f09a 100644
+--- a/metering/regions.py
++++ b/metering/regions.py
+@@ -1,8 +1,23 @@
+ """Region display names for the usage report."""
+ 
+ from .region_cache import REGION_NAMES
++from .registry import RegistryClient, RegistryUnavailable
++
++_catalogue: dict[str, str] | None = None
++
++
++def _load() -> dict[str, str]:
++    global _catalogue
++    if _catalogue is None:
++        merged = dict(REGION_NAMES)
++        try:
++            merged.update(RegistryClient().fetch_regions())
++        except RegistryUnavailable:
++            pass
++        _catalogue = merged
++    return _catalogue
+ 
+ 
+ def resolve_region(code: str) -> str:
+     """Return the display name for a region code."""
+-    return REGION_NAMES.get(code, f"unknown ({code})")
++    return _load().get(code, f"unknown ({code})")

@@ -1,0 +1,16 @@
+# saga-bench control patch: broken-1 for py-0035-brotli-log-export
+# canary: 94513c9e7d37f3a5
+diff --git a/edgelog/reader.py b/edgelog/reader.py
+index 42b4460..803a756 100644
+--- a/edgelog/reader.py
++++ b/edgelog/reader.py
+@@ -11,7 +11,8 @@ class UnsupportedExport(RuntimeError):
+ def read_lines(path: str | pathlib.Path) -> list[str]:
+     """Return the log lines of an export, without their line endings."""
+     path = pathlib.Path(path)
+-    if path.suffix == ".gz":
++    if path.suffix in (".gz", ".br"):
++        # Both are compressed exports; the CDN keeps the same container.
+         raw = gzip.decompress(path.read_bytes())
+     elif path.suffix == ".log":
+         raw = path.read_bytes()
