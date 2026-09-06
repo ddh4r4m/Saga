@@ -1,0 +1,139 @@
+{
+  "schema": "saga.doctor/1",
+  "ts": "2026-09-06T14:18:28.934Z",
+  "ok": true,
+  "checks": [
+    {
+      "id": "go_version",
+      "ok": true,
+      "detail": "go1.26.3 darwin/arm64",
+      "fix": null
+    },
+    {
+      "id": "binary",
+      "ok": true,
+      "detail": "saga dev sha256:523d8f450210",
+      "fix": null
+    },
+    {
+      "id": "harness_present",
+      "ok": true,
+      "detail": "claude 2.1.263 (Claude Code)",
+      "fix": null
+    },
+    {
+      "id": "saga_dir",
+      "ok": true,
+      "detail": "/tmp/saga-probes-3/p10/ws/.saga",
+      "fix": null
+    },
+    {
+      "id": "config",
+      "ok": true,
+      "detail": ".saga/config.toml parses (full mode)",
+      "fix": null
+    },
+    {
+      "id": "hooks_registered",
+      "ok": true,
+      "detail": "11/11 events bound in /tmp/saga-probes-3/p10/ws/.claude/settings.local.json, /tmp/saga-probes-3/p10/ws/.claude/settings.json, /Users/dharamdhurandhar/.claude/settings.json",
+      "fix": null
+    },
+    {
+      "id": "hooks_fire",
+      "ok": true,
+      "detail": "session 736b535a-a397-4f6e-b9bc-fef4b3115712: 1 tool_call, 1 tool_result, stop claim \"no-claims\"",
+      "fix": "drive one turn with the hooks installed, then rerun doctor in that workspace"
+    },
+    {
+      "id": "usage_source",
+      "ok": true,
+      "detail": "1/1 recent sessions have usage.source != estimated",
+      "fix": "check transcript_path is readable; trace-spec section 9.3"
+    },
+    {
+      "id": "pins",
+      "ok": true,
+      "detail": "pins/current.json present (saga dev)",
+      "fix": null
+    },
+    {
+      "id": "price_table",
+      "ok": true,
+      "detail": "sha256:a5f308325cec observed 2026-09-02 (11 models)",
+      "fix": null
+    },
+    {
+      "id": "retention",
+      "ok": true,
+      "detail": "1 sessions under .saga/trace; prune ships in M0 step 2",
+      "fix": null
+    }
+  ],
+  "binary": {
+    "go": "go1.26.3",
+    "path": "/tmp/saga-probes-3/bin/saga",
+    "sha256": "sha256:523d8f450210a03213af06a6f71547a6e7ae499720202376c6286e9b09acb173",
+    "sha256_reason": null,
+    "version": "dev"
+  },
+  "pins": {
+    "schema": "saga.trace.pins/1",
+    "harness": {
+      "binary_sha256": null,
+      "binary_sha256_reason": "not computed by the hook path",
+      "hooks_hash": null,
+      "name": "claude-code",
+      "settings_hash": null,
+      "version": null,
+      "version_reason": "not in hook input; saga doctor records it"
+    },
+    "model": {
+      "fingerprint": null,
+      "fingerprint_reason": "anthropic does not expose one",
+      "requested": null,
+      "requested_reason": "not in hook input",
+      "served": null,
+      "served_reason": "read from transcript per model_call"
+    },
+    "effort": {
+      "source": null,
+      "source_hash": null,
+      "value": null,
+      "value_reason": "absent from hook input"
+    },
+    "system_prompt": {
+      "sha256": null,
+      "sha256_reason": "not exposed by claude-code hooks; enable proxy"
+    },
+    "tools": {
+      "count": null,
+      "sha256": null,
+      "sha256_reason": "not exposed by claude-code hooks"
+    },
+    "cache": {
+      "observed_at": null,
+      "ttl_observed": null,
+      "ttl_pinned": "1h"
+    },
+    "price_table": "sha256:a5f308325cec416b3a1fbc7c4042468481d3398fde0f6712a82a326f2a521c0b",
+    "saga": {
+      "components": [
+        "trace",
+        "gate",
+        "doctor"
+      ],
+      "version": "dev"
+    }
+  },
+  "cache": null,
+  "drift_7d": null,
+  "budget": {
+    "session": "736b535a-a397-4f6e-b9bc-fef4b3115712",
+    "session_limit": null,
+    "session_usd": 0.027847
+  },
+  "canary": null,
+  "incidents": [],
+  "precision": null
+}

@@ -1,0 +1,26 @@
+harness-probes 2026-09-06T14:18:12Z
+claude: 2.1.263 (Claude Code)
+claude binary sha256: ef5d2909c8af49f31ab6d5487e90316777bc2fac170adfe8160716caa8aaf4f9
+saga: saga dev
+model: sonnet   out: /tmp/saga-probes-3
+
+P9: is a PreToolUse deny honoured when the hook exits non-zero?
+  P9 PASS: JSON deny honoured on exit 1: the command left no p9-ran.txt, and neither did the documented exit-2 control
+  evidence: /tmp/saga-probes-3/p9-json-exit1/native.jsonl and /tmp/saga-probes-3/p9-text-exit2/native.jsonl
+  proposed harness-facts row: /tmp/saga-probes-3/harness-facts-proposed.md
+
+P10: do the hooks fire, and does uninstall --dry-run list what install wrote?
+  P10 hooks_fire PASS: ok: session 736b535a-a397-4f6e-b9bc-fef4b3115712: 1 tool_call, 1 tool_result, stop claim "no-claims"
+  P10 uninstall --dry-run PASS: listing matches what install wrote (10 entries)
+  evidence: /tmp/saga-probes-3/p10/doctor.json, /tmp/saga-probes-3/p10/native.jsonl
+
+P17: capture a live PostToolUseFailure payload
+  P17 PASS: payload captured, fields: cwd,duration_ms,effort,error,hook_event_name,is_interrupt,permission_mode,prompt_id,session_id,tool_input,tool_name,tool_use_id,transcript_path
+  compare with harness-facts C34; the fixture replacement is a separate commit
+  evidence: /tmp/saga-probes-3/posttoolusefailure.json, /tmp/saga-probes-3/p17/native.jsonl
+
+summary:
+  P9 PASS
+  P10 PASS
+  P17 PASS
+evidence root: /tmp/saga-probes-3
