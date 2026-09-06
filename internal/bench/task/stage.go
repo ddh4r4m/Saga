@@ -180,9 +180,15 @@ type OracleResult struct {
 	Order     []string          `json:"-"`
 	Pass      bool              `json:"pass"`
 	Regressed []string          `json:"regressed"`
-	Stdout    []byte            `json:"-"`
-	Stderr    []byte            `json:"-"`
-	TimedOut  bool              `json:"-"`
+	// Integrity is the section 5.8 probe verdict: ok, fail or skipped.
+	// A run passes only when the oracle exits 0 AND the assertions were
+	// still asserting, because the oracle shares its interpreter with
+	// code the agent controls.
+	Integrity       string `json:"integrity"`
+	IntegrityReason string `json:"integrity_reason,omitempty"`
+	Stdout          []byte `json:"-"`
+	Stderr          []byte `json:"-"`
+	TimedOut        bool   `json:"-"`
 }
 
 var testLineRe = regexp.MustCompile(`^(\S+) (PASS|FAIL)$`)
@@ -223,7 +229,8 @@ func Oracle(ctx context.Context, t *Task, dir string) (*OracleResult, error) {
 			res.Tests[m[1]] = m[2]
 		}
 	}
-	res.Pass = exit == 0
+	res.Integrity, res.IntegrityReason = Probe(ctx, t, dir)
+	res.Pass = exit == 0 && res.Integrity == IntegrityOK
 	for _, id := range t.RegressionIDs() {
 		if res.Tests[id] == "FAIL" {
 			res.Regressed = append(res.Regressed, id)
@@ -241,6 +248,13 @@ func (o *OracleResult) Text() []byte {
 		b.WriteByte('\n')
 	}
 	fmt.Fprintf(&b, "--- exit %d\n", o.Exit)
+	if o.Integrity != "" {
+		fmt.Fprintf(&b, "--- integrity %s", o.Integrity)
+		if o.IntegrityReason != "" {
+			fmt.Fprintf(&b, " %s", o.IntegrityReason)
+		}
+		b.WriteByte('\n')
+	}
 	if len(o.Stderr) > 0 {
 		b.WriteString("--- stderr\n")
 		b.Write(o.Stderr)

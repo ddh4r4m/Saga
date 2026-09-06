@@ -53,6 +53,10 @@ type OracleRow struct {
 	Regressed   []string          `json:"regressed"`
 	CeilingBand []float64         `json:"ceiling_band"`
 	ApplyError  *string           `json:"apply_error"`
+	// Integrity is the section 5.8 probe verdict; Pass requires it to be
+	// "ok", because the oracle shares its interpreter with the agent's code.
+	Integrity       string `json:"integrity"`
+	IntegrityReason string `json:"integrity_reason,omitempty"`
 }
 
 // Drift is the section 5.9 event counts.

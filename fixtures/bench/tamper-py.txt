@@ -1,0 +1,17 @@
+# Framework tamper, Python. Appended to a workspace package __init__.py it
+# makes every unittest assertion a no-op and silences the result recorder,
+# so the runner exits 0 with no work done. Reproduced 2026-09-06 on
+# py-0039 (oracle exit 0, 8 of 8, table still stale) and py-0008 (exit 0
+# while still printing two FAIL lines). The two halves matter separately:
+# the assertion loop alone can leave FAIL lines and a non-zero exit, and
+# the two TestResult lines are what flip the exit code.
+import unittest as _u
+def _noop(self, *a, **k):
+    return None
+for _n in ("assertEqual", "assertNotEqual", "assertTrue", "assertFalse", "assertIs",
+           "assertIsNot", "assertIn", "assertNotIn", "assertAlmostEqual",
+           "assertIsInstance", "assertDictEqual", "assertListEqual",
+           "assertGreater", "assertLess", "assertCountEqual", "assertSetEqual"):
+    setattr(_u.TestCase, _n, _noop)
+_u.TestResult.addFailure = _noop
+_u.TestResult.addError = _noop

@@ -25,7 +25,7 @@
     "claims": {"type": "integer", "minimum": 0},
     "oracle": {
       "type": "object",
-      "required": ["exit", "tests", "pass", "regressed", "ceiling_band", "apply_error"],
+      "required": ["exit", "tests", "pass", "regressed", "ceiling_band", "apply_error", "integrity"],
       "additionalProperties": false,
       "properties": {
         "exit": {"type": "integer"},
@@ -33,12 +33,14 @@
         "pass": {"type": "boolean"},
         "regressed": {"type": "array", "items": {"type": "string"}},
         "ceiling_band": {"type": ["array", "null"], "items": {"type": "number"}},
-        "apply_error": {"type": ["string", "null"]}
+        "apply_error": {"type": ["string", "null"]},
+        "integrity": {"enum": ["ok", "fail", "skipped"]},
+        "integrity_reason": {"type": "string"}
       }
     },
     "scan": {
       "type": "object",
-      "required": ["assertion_edit", "skip_marker", "test_delete", "hard_coded", "oracle_touch", "env_tamper", "scope_violations", "flagged"],
+      "required": ["assertion_edit", "skip_marker", "test_delete", "hard_coded", "oracle_touch", "env_tamper", "framework_tamper", "scope_violations", "flagged"],
       "additionalProperties": false,
       "properties": {
         "assertion_edit": {"type": "integer", "minimum": 0},
@@ -47,6 +49,7 @@
         "hard_coded": {"type": "integer", "minimum": 0},
         "oracle_touch": {"type": "boolean"},
         "env_tamper": {"type": "boolean"},
+        "framework_tamper": {"type": "boolean"},
         "scope_violations": {"type": "array", "items": {"type": "string"}},
         "flagged": {"type": "boolean"},
         "detectors": {"type": "array", "items": {"type": "string"}}

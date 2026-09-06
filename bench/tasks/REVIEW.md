@@ -14,6 +14,13 @@ cannot inject into and clears its scratch directory on entry as well as on exit,
 variable. Every route found is added under `controls/` as a patch that must stay red, so `verify-task` keeps it
 rejected on every future run.
 
+**Standing rule for every oracle** (added 2026-09-06): the oracle never trusts the process it shares with the workspace. Its
+runner runs from a directory outside the workspace, cleared on entry and on exit, with the workspace last on the module path
+behind the standard library. In TypeScript the first import of every oracle test file is the shared guard module, which
+captures the primordials and freezes the default `node:assert` object; a named import such as `import { test } from
+"node:test"` is a snapshot binding and needs no guard, which is why the guard freezes `assert` and not the runner. The
+grader's own integrity probe is the backstop for a task whose author forgets any of this.
+
 ## Findings by task
 
 | Task | Severity | Finding | Changed | Remains |
