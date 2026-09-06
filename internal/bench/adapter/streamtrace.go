@@ -12,7 +12,7 @@ import (
 
 // InlineCap is the largest canonical payload a synthesised event carries
 // inline; beyond it the arguments are recorded by hash only and a result
-// is truncated (trace-spec section 2.6).
+// is truncated (trace-spec section 2.5).
 const InlineCap = 64 * 1024
 
 // emitter builds a validated, hash-chained saga.trace/1 log offline: one
