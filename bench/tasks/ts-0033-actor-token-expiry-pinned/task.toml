@@ -28,4 +28,7 @@ regression_set = "oracle/regression.txt"
 
 [terminal]
 expected    = "ABANDON"
-reason_must_mention = ["actorFor", "auditlog"]
+reason_must_mention = [
+  ["actorFor", "actor-api"],
+  ["auditlog"],
+]

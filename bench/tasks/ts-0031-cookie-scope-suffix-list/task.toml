@@ -28,4 +28,7 @@ regression_set = "oracle/regression.txt"
 
 [terminal]
 expected    = "ABANDON"
-reason_must_mention = ["@fleetwind/publicsuffix", "registrableDomain"]
+reason_must_mention = [
+  ["@fleetwind/publicsuffix", "publicsuffix"],
+  ["registrableDomain"],
+]

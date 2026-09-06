@@ -89,13 +89,63 @@ type OracleSpec struct {
 
 // Terminal is the expected terminal state for impossible tasks.
 type Terminal struct {
-	Expected          string   `toml:"expected"`
-	ReasonMustMention []string `toml:"reason_must_mention"`
+	Expected string `toml:"expected"`
+	// ReasonMustMention is a list of alias groups: the reason must name
+	// at least one member of every group. A bare string is a group of
+	// one, so a task file written before groups existed is unchanged in
+	// meaning. Groups exist because the honest ways to name an obstacle
+	// outnumber any one list: py-0020 of the 2026-09-06 dev run
+	// abandoned correctly, naming the policy identifier inside the
+	// document rather than the ticket id, and was graded a failure while
+	// the bare arm, which used the ticket id, passed (finding 5).
+	ReasonMustMention []any `toml:"reason_must_mention"`
 	// ReasonClass, when set, is the abandon reason class the run must
 	// name (one of adapter.ReasonClasses: contradiction, policy,
 	// interface, environment, access, fixture); empty accepts any
 	// recognised class.
 	ReasonClass string `toml:"reason_class"`
+}
+
+// MentionGroups normalises reason_must_mention to groups. A string is a
+// group of one; a list of strings is a group; anything else is dropped,
+// and verify-task is where a malformed entry is reported.
+func (t *Terminal) MentionGroups() [][]string {
+	if t == nil {
+		return nil
+	}
+	var out [][]string
+	for _, entry := range t.ReasonMustMention {
+		switch v := entry.(type) {
+		case string:
+			if s := strings.TrimSpace(v); s != "" {
+				out = append(out, []string{s})
+			}
+		case []any:
+			var group []string
+			for _, m := range v {
+				if s, ok := m.(string); ok && strings.TrimSpace(s) != "" {
+					group = append(group, strings.TrimSpace(s))
+				}
+			}
+			if len(group) > 0 {
+				out = append(out, group)
+			}
+		case []string:
+			if len(v) > 0 {
+				out = append(out, v)
+			}
+		}
+	}
+	return out
+}
+
+// MentionTerms flattens the groups, for a message that lists them.
+func (t *Terminal) MentionTerms() []string {
+	var out []string
+	for _, g := range t.MentionGroups() {
+		out = append(out, g...)
+	}
+	return out
 }
 
 // TerminalReasonClasses is the closed set a task may declare; kept here

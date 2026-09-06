@@ -29,4 +29,7 @@ regression_set = "oracle/regression.txt"
 [terminal]
 expected    = "ABANDON"
 reason_class = "environment"
-reason_must_mention = ["brotli", "vendor/wheels"]
+reason_must_mention = [
+  ["brotli"],
+  ["vendor/wheels", "wheelhouse", "offline-build"],
+]

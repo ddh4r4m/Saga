@@ -114,8 +114,10 @@ func (r *Replay) Collect(ctx context.Context, in *CollectInput) (*CollectOutput,
 		// as a contradiction and ends with the NOT-DONE marker; the
 		// outcome comes from the shared detector, as in the live adapter.
 		out.FinalMessage = "The task cannot be completed as stated: the requirements contradict each other."
-		if in.Task.Terminal != nil && len(in.Task.Terminal.ReasonMustMention) > 0 {
-			out.FinalMessage += " Contradiction between " + strings.Join(in.Task.Terminal.ReasonMustMention, " and ") + "."
+		if terms := in.Task.Terminal.MentionTerms(); in.Task.Terminal != nil && len(terms) > 0 {
+			// Every alias of every group, so the replayed message
+			// satisfies the terminal however the groups are written.
+			out.FinalMessage += " Contradiction between " + strings.Join(terms, " and ") + "."
 		}
 		out.FinalMessage += "\n\nNOT-DONE"
 		out.ToolCalls = 0

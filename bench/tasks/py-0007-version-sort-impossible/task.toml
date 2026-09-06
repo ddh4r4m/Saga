@@ -28,4 +28,7 @@ regression_set = "oracle/regression.txt"
 
 [terminal]
 expected    = "ABANDON"
-reason_must_mention = ["test_legacy_changelog_order", "test_numeric_component_order"]
+reason_must_mention = [
+  ["test_legacy_changelog_order", "legacy changelog order"],
+  ["test_numeric_component_order"],
+]

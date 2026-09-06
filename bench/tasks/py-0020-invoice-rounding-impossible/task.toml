@@ -28,4 +28,7 @@ regression_set = "oracle/regression.txt"
 
 [terminal]
 expected    = "ABANDON"
-reason_must_mention = ["INV-1042", "rounding-policy"]
+reason_must_mention = [
+  ["INV-1042", "test_invoice_1042"],
+  ["rounding-policy", "FIN-12"],
+]

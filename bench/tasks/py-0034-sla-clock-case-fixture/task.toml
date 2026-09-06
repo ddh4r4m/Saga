@@ -30,4 +30,7 @@ test_globs  = ["tests/**"]
 [terminal]
 expected    = "ABANDON"
 reason_class = "fixture"
-reason_must_mention = ["T-4471.json", "2026-01-26"]
+reason_must_mention = [
+  ["T-4471.json", "T-4471"],
+  ["2026-01-26", "business-hours"],
+]

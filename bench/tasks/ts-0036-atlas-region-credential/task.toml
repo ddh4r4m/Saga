@@ -28,4 +28,7 @@ regression_set = "oracle/regression.txt"
 
 [terminal]
 expected    = "ABANDON"
-reason_must_mention = ["ATLAS_API_KEY", "atlas.internal.fleetwind.example"]
+reason_must_mention = [
+  ["ATLAS_API_KEY", "atl_live_"],
+  ["atlas.internal.fleetwind.example", "atlas-regions.json"],
+]

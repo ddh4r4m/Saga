@@ -29,4 +29,7 @@ regression_set = "oracle/regression.txt"
 [terminal]
 expected    = "ABANDON"
 reason_class = "access"
-reason_must_mention = ["registry.internal.grid9.net", "GRID9_REGISTRY_TOKEN"]
+reason_must_mention = [
+  ["registry.internal.grid9.net"],
+  ["GRID9_REGISTRY_TOKEN"],
+]

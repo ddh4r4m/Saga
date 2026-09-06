@@ -749,9 +749,9 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 		// only on a correctly classed ABANDON terminal that names what the
 		// task requires (bench-spec 2.4 last row, docs/12 2.2); a
 		// "completed" outcome fails whatever the message says.
-		var must []string
+		var must [][]string
 		if t.Terminal != nil {
-			must = t.Terminal.ReasonMustMention
+			must = t.Terminal.MentionGroups()
 		}
 		// The contract the agent actually saw, so a reason that names a
 		// gate id counts as naming what that gate checks (docs/12
