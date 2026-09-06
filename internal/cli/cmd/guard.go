@@ -1,19 +1,25 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
+	claudecode "github.com/ddh4r4m/saga/adapters/claude-code"
 	"github.com/ddh4r4m/saga/internal/cli"
 	"github.com/ddh4r4m/saga/internal/guard"
+	"github.com/ddh4r4m/saga/internal/harness/claude"
+	"github.com/ddh4r4m/saga/internal/hookio"
 )
 
 const guardUsage = `saga guard: command validation (guard-spec section 2)
 
 usage:
   saga guard check-cmd [--shell bash|zsh|sh] [--cwd DIR] [--permission-mode M] [--env-file F] [--json] -- <command>
+  saga guard hook <harness> <event>         deny-only safety hook; reads the payload on stdin
   saga guard policy show [--json]           effective policy, sources and trust state
   saga guard policy validate [FILE]         parse a policy file; repo policies must only tighten
 
@@ -29,6 +35,8 @@ func (a *App) cmdGuard(args []string) error {
 	switch args[0] {
 	case "check-cmd":
 		return a.guardCheckCmd(args[1:])
+	case "hook":
+		return a.guardHook(args[1:])
 	case "policy":
 		return a.guardPolicy(args[1:])
 	case "-h", "--help", "help":
@@ -47,6 +55,72 @@ func splitDashDash(args []string) (flags, cmd []string) {
 		}
 	}
 	return args, nil
+}
+
+// guardHook is `saga guard hook claude-code PreToolUse`: the deny-only
+// safety net of docs/12 row 6, registered identically in both bench arms
+// so it is never a treatment. It is deliberately not the composed
+// `saga hook` chain: it takes no snapshot, reads no policy file, and
+// touches nothing under .saga. A hard deny (D1 to D11) renders the
+// documented deny JSON; everything else, including an ask verdict and
+// any internal error, renders {} and exits 0, because a false deny in
+// one arm would be exactly the asymmetry this hook exists to avoid.
+func (a *App) guardHook(args []string) error {
+	fs := a.flags("guard hook")
+	if err := parseFlags(fs, args); err != nil {
+		return err
+	}
+	rest := positionals[fs]
+	if len(rest) != 2 {
+		return cli.Errorf(cli.ExitUsage, "usage: saga guard hook <harness> <event>")
+	}
+	harness, event := rest[0], rest[1]
+	if harness != claudecode.Harness {
+		return cli.Errorf(cli.ExitUsage, "guard hook: only %s is implemented", claudecode.Harness)
+	}
+	raw, err := io.ReadAll(a.Stdin)
+	if err != nil {
+		fmt.Fprintln(a.Stdout, "{}")
+		return nil
+	}
+	in, perr := claude.Parse(event, raw)
+	if perr != nil || in == nil {
+		// Fail open, and say so in the log: the payload is the harness's,
+		// and a parse failure is our problem, not the agent's.
+		guard.LogSafety(os.Getenv(guard.LogEnv), "", "", "", guard.SafetyDecision{Err: fmt.Errorf("payload: %v", perr)})
+		fmt.Fprintln(a.Stdout, "{}")
+		return nil
+	}
+	if in.Event != hookio.EventPreToolUse {
+		fmt.Fprintln(a.Stdout, "{}")
+		return nil
+	}
+	cwd := in.Cwd
+	if cwd == "" {
+		cwd = a.Cwd
+	}
+	d := guard.SafetyCheck(in.ToolName, in.ToolInput, cwd, os.Environ())
+	guard.LogSafety(os.Getenv(guard.LogEnv), in.SessionID, in.ToolUseID, commandOf(in.ToolInput), d)
+	if !d.Deny {
+		fmt.Fprintln(a.Stdout, "{}")
+		return nil
+	}
+	out := map[string]any{"hookSpecificOutput": map[string]any{
+		"hookEventName":            "PreToolUse",
+		"permissionDecision":       "deny",
+		"permissionDecisionReason": d.Reason(),
+	}}
+	return writeJSON(a.Stdout, out)
+}
+
+// commandOf pulls the command text out of a tool input for hashing; it
+// is never logged in the clear.
+func commandOf(toolInput json.RawMessage) string {
+	var in struct {
+		Command string `json:"command"`
+	}
+	_ = json.Unmarshal(toolInput, &in)
+	return in.Command
 }
 
 func (a *App) guardCheckCmd(args []string) error {
