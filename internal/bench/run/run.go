@@ -73,7 +73,15 @@ type Options struct {
 	// and index; open records it in the manifest, and the rows' sequence
 	// numbers reconstruct the order (docs/12 row 4).
 	Interleaved bool
-	Log         io.Writer
+	// Prereg is a pre-registration file to freeze into the archive
+	// (docs/12 row 15). It is copied verbatim to preregistration.md and
+	// its sha256 goes in the manifest; empty leaves the manifest null and
+	// the report says the run was not pre-registered.
+	Prereg string
+	// Unfrozen runs against a task set that does not match TASKSET.sha256
+	// and records the fact in the manifest, rather than refusing.
+	Unfrozen bool
+	Log      io.Writer
 }
 
 // ArmSpec is one parsed `--arm` value: `<id>` or `<id>:bare` is the
@@ -190,6 +198,19 @@ func open(ctx context.Context, opts Options) (*session, error) {
 	}
 	cap := 1.5 * estimate
 
+	// The task set the corpus was frozen at (docs/12 row 15). A run over
+	// a changed task is refused rather than quietly measured against a
+	// different corpus than the one a pre-registration named.
+	frozen, ferr := FindFrozen(opts.Tasks)
+	if ferr != nil {
+		return nil, ferr
+	}
+	if !opts.Unfrozen {
+		if err := frozen.Check(opts.Tasks); err != nil {
+			return nil, err
+		}
+	}
+
 	// Verify and hash the task set.
 	var taskHashes []TaskHash
 	for _, t := range opts.Tasks {
@@ -245,6 +266,29 @@ func open(ctx context.Context, opts Options) (*session, error) {
 	if opts.Prices != nil {
 		h := opts.Prices.Hash
 		m.PriceTableSHA256 = &h
+	}
+	// A run that ignored the freeze says so in the manifest, so a report
+	// from it can never be read as pre-registered against the frozen set.
+	if opts.Unfrozen && frozen != nil {
+		no := false
+		m.TaskSet.Frozen = &no
+	} else if frozen != nil {
+		yes := true
+		m.TaskSet.Frozen = &yes
+	}
+	if opts.Prereg != "" {
+		raw, err := os.ReadFile(opts.Prereg)
+		if err != nil {
+			return nil, cli.Wrap(cli.ExitUsage, "prereg", err)
+		}
+		if err := os.MkdirAll(opts.Out, 0o755); err != nil {
+			return nil, cli.Wrap(cli.ExitEnvironment, "out", err)
+		}
+		if err := os.WriteFile(filepath.Join(opts.Out, PreregName), raw, 0o644); err != nil {
+			return nil, cli.Wrap(cli.ExitEnvironment, "prereg", err)
+		}
+		h := adapter.BytesSHA256(raw)
+		m.PreregistrationSHA256 = &h
 	}
 	if err := m.Validate(); err != nil {
 		return nil, cli.Wrap(cli.ExitUsage, "manifest", err)

@@ -13,15 +13,18 @@ import (
 	"github.com/ddh4r4m/saga/internal/trace"
 )
 
-const benchUsage = `usage: saga bench <verify-task|run|report|reconcile|compare>
+const benchUsage = `usage: saga bench <verify-task|run|report|reconcile|compare|taskset|badge>
 
   verify-task <task-dir>... [--keep <dir>] [--static] [--json]
   run     --tasks <glob> --adapter <bare|replay|claude-code> [--k <n>] --out <dir>
           [--arm <id>] [--model <id>] [--seed <hex>] [--replay <patch>] [--budget <usd>]
           [--tier smoke|user|dev|publish] [--claude-bin <path>] [--saga-bin <path>]
+          [--prereg <file>] [--unfrozen]
   report  <run-dir> [--json]
   reconcile   <archive-dir> --workspaces <kept-root> [--json]
   compare <run-dir-a> <run-dir-b> [--epsilon <x>] [--json]
+  taskset <tasks-glob>... [--write <file>]   freeze artefact: per-task hashes and the set hash
+  badge   <run-dir> --metric <m>             refused below tier publish (docs/12 commitment 4)
 `
 
 func (a *App) cmdBench(args []string) error {
@@ -40,6 +43,10 @@ func (a *App) cmdBench(args []string) error {
 		return a.benchCompare(args[1:])
 	case "reconcile":
 		return a.benchReconcile(args[1:])
+	case "taskset":
+		return a.benchTaskset(args[1:])
+	case "badge":
+		return a.benchBadge(args[1:])
 	case "-h", "--help", "help":
 		fmt.Fprint(a.Stdout, benchUsage)
 		return nil

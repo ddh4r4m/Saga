@@ -151,6 +151,12 @@ A task that has not passed `verify-task` at its current content hash cannot be i
 
 Mobile targets (Swift, Dart) run on macOS runners; the manifest records the host OS and the bench refuses to compare a Linux cell with a macOS cell for the same task.
 
+### 2.7 The frozen task set
+
+A pre-registration names a corpus, so the corpus needs an artefact to be named against. `bench/tasks/TASKSET.sha256` is that artefact: one `<task-id> <content-hash>` line per task, sorted by id, and a final `set <sha256>` line computed exactly the way the manifest's `task_set.sha256` is, so a freeze file and a manifest from the same corpus agree by construction rather than by convention. `saga bench taskset <glob> [--write <file>]` produces it.
+
+`saga bench run` reads the file when it sits beside the tasks and **refuses with exit 5** when a task's content hash differs from the frozen one, naming every difference at once; a task the frozen file does not name is a difference too, because the freeze is the whole set and not a floor. Running a subset is not: a smoke over three tasks is a legitimate use of a frozen forty. The two ways forward are both deliberate: rewrite the file with `saga bench taskset --write` when the corpus change is intended, or pass `--unfrozen`, which runs anyway and records `task_set.frozen: false` in the manifest so no report from that run can read as pre-registered against the frozen set. A corpus with no freeze artefact records nothing and is not refused.
+
 ---
 
 ## 3. Run model
@@ -171,6 +177,8 @@ The harness's own user-level config (`~/.claude`, `~/.codex`, `~/.gemini`, `~/.c
 ### 3.2 Cell, K, seeds
 
 A **cell** is `(task, model, harness, arm)`. Each cell gets **K runs**, `K ≥ 5` (ADR 0001), `K = 10` for `publish`. Run `i` of every arm for a given task shares `seed_i`; seeds are derived as `seed_i = HMAC(run_seed, task.id ‖ i)` and passed to the harness where a seed parameter exists (OpenAI `seed`; recorded as `unsupported` elsewhere). Seeds also fix the interleaving order: arms are executed **interleaved per task** (A₁, B₁, A₂, B₂, …), never all-A-then-all-B, so provider load and model updates affect arms symmetrically.
+
+**Pre-registration (docs/12 row 15).** `saga bench run --prereg <path>` copies the file verbatim into the archive root as `preregistration.md` and records its sha256 in `manifest.preregistration_sha256`; the archive-root `SHA256SUMS` covers it along with the manifest, the rows, the exclusions and the report. Without the flag the manifest stays null and the report header says the run was not pre-registered, so an unregistered run can never be mistaken for a registered one. `saga bench compare` **refuses with exit 2** when exactly one of the two arms is pre-registered, because a pre-registration is what makes the primary a test rather than a search and half a pairing that has one is a result nobody declared in advance; two arms citing *different* pre-registrations are compared with a warning in the report header, since the primary each declared may differ.
 
 ### 3.3 Limits
 
@@ -449,12 +457,14 @@ runs/<manifest-hash>/
 ├── report.json          # saga.bench.report/1 (§9.4)
 ├── report.md            # rendered from report.json, never hand-edited
 ├── exclusions.jsonl     # every infra-excluded run with reason
-└── <task>/…             # per-run archives (§3.4)
+├── status.json          # spend, cap, runs, runs not run
+├── SHA256SUMS           # over the files above, written last so it covers the report too
+└── <task>/…             # per-run archives (§3.4), each with its own SHA256SUMS
 ```
 
 ### 7.2 `report.md` sections (fixed order)
 
-1. **Header**, manifest hash, tier, date, total cost, link to pre-registration.
+1. **Header**, manifest hash, tier, date, total cost, the pre-registration hash (or "none"), any warning a reader must see before the numbers.
 2. **Setup**, models, harnesses, arms, blocks, task set hash, K, isolation, exclusions count.
 3. **Primary outcome**, the one metric named in pre-registration, with Δ, CI, Wilcoxon, n, followed immediately by the **measured hook overhead** table of §5.12. Overhead sits here and not in an appendix (docs/12 §12 commitment 7): a component that helps and costs is a different result from one that helps and is free, and the reader must not have to go looking for the difference.
 4. **Secondary outcomes**, §5.10 table.
@@ -469,7 +479,7 @@ runs/<manifest-hash>/
 
 A component may cite a number only as a badge produced by `saga bench badge <manifest-hash> --metric <m>`, rendered as
 `[bench: Δfalse-done −14.2 pp (95% CI −19.8, −8.1), k=10, opus-5/claude-code](runs/<hash>/report.md#primary)`.
-`saga bench verify-badge <url>` fetches the manifest, recomputes the metric from `rows.jsonl`, and exits 0 only if the number matches to the printed precision and the manifest's `tier` is `publish`. CI runs `verify-badge` over the README on every commit; a mismatch fails the build. Numbers from `user`/`smoke` tiers may appear only in the report itself, never in a README.
+`saga bench badge` refuses with exit 2 at any tier below `publish` (`report.BadgeTierOK`), which is docs/12 commitment 4: a number from a `smoke`, `user` or `dev` archive may appear in that archive's own report and nowhere else, because those tiers carry neither the K nor the pre-registration a claim needs. `saga bench verify-badge <url>` fetches the manifest, recomputes the metric from `rows.jsonl`, and exits 0 only if the number matches to the printed precision and the manifest's `tier` is `publish`. CI runs `verify-badge` over the README on every commit; a mismatch fails the build. Numbers from `user`/`smoke` tiers may appear only in the report itself, never in a README.
 
 ---
 
@@ -517,7 +527,7 @@ Task directories, images, adapter binaries, harness binaries, generated configs,
 | Image build from digest; task checkout; `setup.sh` under `network = offline` | Model output (doc 05 §4.1: 80 outputs in 1,000 temp-0 runs) |
 | Oracle verdict on a given diff (verified twice in `verify-task`) | Wall time; provider latency and retries |
 | Cheating/scope scan on a given diff | `setup.sh` under `registry-only`/`open` (mitigated by lockfiles; flagged) |
-| Metrics, CIs (seeded bootstrap), `report.json` and `report.md` from `rows.jsonl` | Harness internal behaviour across versions (pinned by hash; drift is a new cell, not the same one) |
+| Metrics, CIs (seeded bootstrap), `report.json` and `report.md` from `rows.jsonl` (`TestReportRegenerationIsByteIdentical` on the committed smoke archives, `TestReportDeterminismOnTheFrozenSet` over the whole 40-task corpus through the replay adapter in both arms) | Harness internal behaviour across versions (pinned by hash; drift is a new cell, not the same one) |
 | Manifest hash, badge verification | Model snapshot behind an unchanged id (fingerprint recorded when exposed; date recorded always) |
 
 ---
@@ -528,11 +538,14 @@ Task directories, images, adapter binaries, harness binaries, generated configs,
 
 ```
 saga bench init        [--from-repo <path>] [--lang <l>] [--tier smoke|user|dev|publish] [--out <dir>]
+saga bench taskset     <tasks-glob>... [--write <file>]        the 2.7 freeze artefact
+saga bench badge       <run-dir> --metric <m>                  refused below tier publish (7.3)
 saga bench add-task    <dir> [--from-trace <trace.jsonl>] [--from-issue <url>] [--lang <l>] [--size S|M|L|XL]
 saga bench verify-task <task-dir>... [--probe] [--all] [--json]
 saga bench run         --manifest <file> | (--tasks <glob> --model <id>... --harness <name>... --arm <spec>...)
                        [--k <n>] [--tier <t>] [--budget <usd>] [--isolation container|worktree]
                        [--seed <hex>] [--jobs <n>] [--resume <manifest-hash>] [--dry-run] [--json]
+                       [--prereg <file>] [--unfrozen]
 saga bench compare     <manifest-hash> --arms A,B [--metric <m>...] [--epsilon <x>] [--json]
 saga bench report      <manifest-hash> [--from rows.jsonl] [--format md|json|both] [--out <dir>]
 saga bench replay      <run-dir> [--strict]

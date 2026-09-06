@@ -178,6 +178,10 @@ type BenchVersion struct {
 type TaskSet struct {
 	SHA256 string     `json:"sha256"`
 	Tasks  []TaskHash `json:"tasks"`
+	// Frozen says whether the run's tasks matched TASKSET.sha256: true
+	// when they did, false when --unfrozen skipped the check, absent
+	// when the corpus has no freeze artefact (docs/12 row 15).
+	Frozen *bool `json:"frozen,omitempty"`
 }
 
 // TaskHash is one task's identity.

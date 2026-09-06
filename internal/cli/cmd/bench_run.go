@@ -44,6 +44,8 @@ func (a *App) benchRun(args []string) error {
 	noVerify := fs.Bool("no-verify", false, "skip verify-task before the run (tests only)")
 	keep := fs.Bool("keep", false, "keep the temporary workspaces")
 	noReport := fs.Bool("no-report", false, "do not write report.json and report.md")
+	prereg := fs.String("prereg", "", "pre-registration file to freeze into the archive as preregistration.md (docs/12 row 15)")
+	unfrozen := fs.Bool("unfrozen", false, "run against tasks that do not match TASKSET.sha256, recording task_set.frozen = false")
 	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
@@ -106,10 +108,22 @@ func (a *App) benchRun(args []string) error {
 		Tasks: tasks, Adapter: ad, K: *k, Out: outDir, Tier: *tier, Seed: *seed, Model: *model,
 		Prices: prices, SagaBinary: *sagaBin, Version: a.Version, Budget: *budget, Verify: !*noVerify, Keep: *keep, WallCapS: *wallCap, Log: a.Stderr,
 	}
+	if *prereg != "" {
+		opts.Prereg = a.abs(*prereg)
+	}
+	opts.Unfrozen = *unfrozen
 	report := func(dir string, res *run.Result, err error) error {
 		if res != nil && len(res.Rows) > 0 && !*noReport {
 			if rerr := a.writeReport(dir, false); rerr != nil && err == nil {
 				err = rerr
+			}
+		}
+		// The archive-root SHA256SUMS is written last, so it covers the
+		// report as well as the manifest, the rows and the frozen
+		// pre-registration (bench-spec 3.4).
+		if res != nil {
+			if serr := run.WriteArchiveSums(dir); serr != nil && err == nil {
+				err = serr
 			}
 		}
 		if res != nil {

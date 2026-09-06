@@ -123,6 +123,18 @@ func Compare(a, b *Archive, epsilon float64) (*Report, error) {
 	if sa.Harness != sb.Harness {
 		return nil, cli.Errorf(cli.ExitUsage, "compare: harness differs (%s vs %s)", sa.Harness, sb.Harness)
 	}
+	// docs/12 row 15: a pre-registered arm cannot be paired with an
+	// unregistered one. The pre-registration is what makes the primary a
+	// test rather than a search, and half a pairing that has one is a
+	// result nobody declared in advance.
+	pa, pb := a.Manifest.PreregistrationSHA256, b.Manifest.PreregistrationSHA256
+	if (pa == nil) != (pb == nil) {
+		with, without := armA, armB
+		if pa == nil {
+			with, without = armB, armA
+		}
+		return nil, cli.Errorf(cli.ExitUsage, "compare: arm %s is pre-registered and arm %s is not; re-run the unregistered arm with --prereg, or compare two unregistered arms", with, without)
+	}
 	cellsB := map[string]metrics.Cell{}
 	for _, c := range sb.cells {
 		cellsB[c.Task] = c
@@ -219,6 +231,12 @@ func Compare(a, b *Archive, epsilon float64) (*Report, error) {
 		r.Negative = append(r.Negative, map[string]any{"kind": "k_below_5", "k": k, "note": "K < 5: no claim is licensed (ADR 0001)"})
 	}
 	r.Negative = append(r.Negative, map[string]any{"kind": "component_unused", "note": "not evaluated: this runner records no component usage; treat every treatment arm as no-exposure until the trace carries component events"})
+	// Both arms pre-registered, but against different files: allowed, and
+	// said out loud, because the primary each arm declared may differ.
+	if pa != nil && pb != nil && *pa != *pb {
+		r.Warnings = append(r.Warnings, fmt.Sprintf(
+			"the arms cite different pre-registrations (%s: %s, %s: %s); the primary metric each declared may differ, so read the comparison as exploratory unless the two files agree on it", armA, *pa, armB, *pb))
+	}
 	r.Reproduce = []string{fmt.Sprintf("saga bench compare %s %s", a.Dir, b.Dir)}
 	return r, nil
 }

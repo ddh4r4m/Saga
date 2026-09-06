@@ -23,6 +23,7 @@
       "additionalProperties": false,
       "properties": {
         "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "frozen": {"$comment": "docs/12 row 15: true when the run's tasks matched TASKSET.sha256, false when --unfrozen skipped the check, absent when the corpus has no freeze artefact", "type": "boolean"},
         "tasks": {
           "type": "array",
           "items": {

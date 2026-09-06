@@ -15,6 +15,7 @@ import (
 	"github.com/ddh4r4m/saga/internal/bench/run"
 	"github.com/ddh4r4m/saga/internal/bench/task"
 	"github.com/ddh4r4m/saga/internal/canon"
+	"github.com/ddh4r4m/saga/internal/cli"
 	"github.com/ddh4r4m/saga/internal/schema"
 )
 
@@ -151,28 +152,38 @@ type Comparison struct {
 
 // Report is saga.bench.report/1.
 type Report struct {
-	Schema             string               `json:"schema"`
-	Manifest           string               `json:"manifest"`
-	Manifests          map[string]string    `json:"manifests,omitempty"`
-	Tier               string               `json:"tier"`
-	Created            *string              `json:"created"`
-	TaskSetSHA256      *string              `json:"task_set_sha256"`
-	K                  int                  `json:"k"`
-	BootstrapSeed      int64                `json:"bootstrap_seed"`
-	BootstrapResamples int                  `json:"bootstrap_resamples"`
-	Isolation          *string              `json:"isolation"`
-	TotalCostUSD       *float64             `json:"total_cost_usd"`
-	Arms               map[string]*ArmStats `json:"arms"`
-	Primary            *Comparison          `json:"primary"`
-	Secondary          []Comparison         `json:"secondary"`
-	PerSolved          map[string]PerSolved `json:"per_solved"`
-	Instability        map[string]any       `json:"instability"`
-	Negative           []map[string]any     `json:"negative"`
-	Exploratory        []map[string]any     `json:"exploratory"`
-	Exclusions         map[string]int       `json:"exclusions"`
-	Contamination      []map[string]any     `json:"contamination"`
-	DetectorPrecision  map[string]*float64  `json:"detector_precision"`
-	Reproduce          []string             `json:"reproduce"`
+	Schema        string            `json:"schema"`
+	Manifest      string            `json:"manifest"`
+	Manifests     map[string]string `json:"manifests,omitempty"`
+	Tier          string            `json:"tier"`
+	Created       *string           `json:"created"`
+	TaskSetSHA256 *string           `json:"task_set_sha256"`
+	// PreregistrationSHA256 is the manifest's, null when the run was not
+	// pre-registered (docs/12 row 15). TaskSetFrozen says whether the
+	// run's tasks matched TASKSET.sha256; absent when the corpus carries
+	// no freeze artefact.
+	PreregistrationSHA256 *string              `json:"preregistration_sha256"`
+	TaskSetFrozen         *bool                `json:"task_set_frozen,omitempty"`
+	K                     int                  `json:"k"`
+	BootstrapSeed         int64                `json:"bootstrap_seed"`
+	BootstrapResamples    int                  `json:"bootstrap_resamples"`
+	Isolation             *string              `json:"isolation"`
+	TotalCostUSD          *float64             `json:"total_cost_usd"`
+	Arms                  map[string]*ArmStats `json:"arms"`
+	Primary               *Comparison          `json:"primary"`
+	Secondary             []Comparison         `json:"secondary"`
+	PerSolved             map[string]PerSolved `json:"per_solved"`
+	Instability           map[string]any       `json:"instability"`
+	// Warnings are conditions a reader must see before the numbers: a
+	// pre-registration mismatch between paired arms, and nothing else
+	// yet. They are not findings and never change a metric.
+	Warnings          []string            `json:"warnings,omitempty"`
+	Negative          []map[string]any    `json:"negative"`
+	Exploratory       []map[string]any    `json:"exploratory"`
+	Exclusions        map[string]int      `json:"exclusions"`
+	Contamination     []map[string]any    `json:"contamination"`
+	DetectorPrecision map[string]*float64 `json:"detector_precision"`
+	Reproduce         []string            `json:"reproduce"`
 
 	armOrder []string
 	// armMeta is the manifest's arm entry (components, control blocks)
@@ -459,6 +470,7 @@ func newReport(m *run.Manifest, hash string) *Report {
 	ts := m.TaskSet.SHA256
 	return &Report{
 		Schema: Schema, Manifest: hash, Tier: m.Tier, Created: &created, TaskSetSHA256: &ts, K: m.K,
+		PreregistrationSHA256: m.PreregistrationSHA256, TaskSetFrozen: m.TaskSet.Frozen,
 		BootstrapSeed: m.BootstrapSeed, BootstrapResamples: metrics.Resamples, Isolation: &iso,
 		Arms: map[string]*ArmStats{}, Secondary: []Comparison{}, PerSolved: map[string]PerSolved{}, Instability: map[string]any{},
 		Negative: []map[string]any{}, Exploratory: []map[string]any{}, Exclusions: map[string]int{}, Contamination: []map[string]any{},
@@ -537,10 +549,17 @@ func (r *Report) Markdown() string {
 	for id, h := range r.Manifests {
 		w("- manifest %s: `%s`", id, h)
 	}
+	for _, warn := range r.Warnings {
+		w("- **warning**: %s", warn)
+	}
 	w("- tier: %s", r.Tier)
 	w("- created: %s", deref(r.Created))
 	w("- total cost: %s usd", fmtF(r.TotalCostUSD))
-	w("- pre-registration: none (no preregistration.md in this archive)")
+	if r.PreregistrationSHA256 != nil {
+		w("- pre-registration: %s (`%s`)", *r.PreregistrationSHA256, run.PreregName)
+	} else {
+		w("- pre-registration: none (no preregistration.md in this archive)")
+	}
 	w("")
 	w("## 2. Setup")
 	w("")
@@ -553,7 +572,7 @@ func (r *Report) Markdown() string {
 			w("- arm %s: components %s; control blocks %s", id, fmtList(meta.Components), fmtList(meta.BlocksInControl))
 		}
 	}
-	w("- task set: `%s`", deref(r.TaskSetSHA256))
+	w("- task set: `%s`%s", deref(r.TaskSetSHA256), frozenNote(r.TaskSetFrozen))
 	w("- isolation: %s", deref(r.Isolation))
 	w("- exclusions: %d infra", r.Exclusions["infra"])
 	w("- bootstrap: %d resamples of tasks, seed %d", r.BootstrapResamples, r.BootstrapSeed)
@@ -887,4 +906,32 @@ func overheadTable(r *Report, order []string) []string {
 	w("")
 	w("Per-event figures are over the arm's per-run p50 and p95, from the hook-latency sidecar of trace-spec 2.9; `safety` is the deny-only hook of guard-spec 8.4.1, which runs in every arm and is the only hook a bare arm has. `timed out` counts invocations the deadline abandoned, which fail open (docs/12 section 9). Injected tokens are the per-event estimates in the hook trace plus the contract sentence of a gate arm's staged prompt; a bare arm's 0 is a measurement, not an absence.")
 	return lines
+}
+
+// frozenNote states the freeze status beside the task-set hash, because
+// a run that skipped the check must not read as one that passed it
+// (docs/12 row 15).
+func frozenNote(frozen *bool) string {
+	switch {
+	case frozen == nil:
+		return " (no freeze artefact)"
+	case *frozen:
+		return " (frozen: matches " + run.FrozenName + ")"
+	default:
+		return " (**unfrozen**: the run did not match " + run.FrozenName + ")"
+	}
+}
+
+// BadgeTiers are the tiers a badge may cite. docs/12 commitment 4 and
+// bench-spec 7.3: a number from a smoke, user or dev run may appear in
+// its own report and nowhere else, because those tiers do not carry the
+// K, the arms or the pre-registration a claim needs.
+var BadgeTiers = map[string]bool{"publish": true}
+
+// BadgeTierOK refuses a badge from a tier that cannot license a claim.
+func BadgeTierOK(tier string) error {
+	if BadgeTiers[tier] {
+		return nil
+	}
+	return cli.Errorf(cli.ExitUsage, "badge: tier %q cannot be cited; only a publish-tier archive licenses a number outside its own report (docs/12 commitment 4, bench-spec 7.3)", tier)
 }

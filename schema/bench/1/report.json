@@ -1,7 +1,7 @@
 {
   "$comment": "saga.bench.report/1 (bench-spec section 9.4). A single-arm report carries primary = null; compare fills primary and secondary with paired deltas, each with a bootstrap CI and a Wilcoxon block.",
   "type": "object",
-  "required": ["schema", "manifest", "tier", "arms", "primary", "secondary", "per_solved", "instability", "negative", "exclusions", "contamination", "detector_precision", "reproduce"],
+  "required": ["schema", "manifest", "tier", "preregistration_sha256", "arms", "primary", "secondary", "per_solved", "instability", "negative", "exclusions", "contamination", "detector_precision", "reproduce"],
   "additionalProperties": false,
   "properties": {
     "schema": {"const": "saga.bench.report/1"},
@@ -10,6 +10,9 @@
     "tier": {"enum": ["smoke", "user", "dev", "publish"]},
     "created": {"type": ["string", "null"]},
     "task_set_sha256": {"type": ["string", "null"]},
+    "warnings": {"$comment": "conditions a reader must see before the numbers; never change a metric", "type": "array", "items": {"type": "string"}},
+    "preregistration_sha256": {"$comment": "docs/12 row 15: the manifest pre-registration hash, null when the run was not pre-registered", "type": ["string", "null"]},
+    "task_set_frozen": {"$comment": "docs/12 row 15: whether the run matched TASKSET.sha256; absent when the corpus has no freeze artefact", "type": "boolean"},
     "k": {"type": "integer"},
     "bootstrap_seed": {"type": "integer"},
     "bootstrap_resamples": {"type": "integer"},

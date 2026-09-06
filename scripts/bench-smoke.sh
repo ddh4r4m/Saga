@@ -46,6 +46,7 @@ SAGA="$OUT/bin/saga"
   echo "bench-smoke $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "saga $($SAGA --version 2>&1 | head -1); claude $(claude --version 2>&1 | head -1)"
   echo "model=$MODEL k=$K wall_cap=${WALL_CAP}s out=$OUT"
+  echo "prereg=docs/12-experiment-protocol.md ($(shasum -a 256 "$ROOT/docs/12-experiment-protocol.md" | cut -d" " -f1))"
 } | tee "$OUT/run.log"
 
 set +e
@@ -58,6 +59,7 @@ set +e
   --wall-cap "$WALL_CAP" \
   --saga-bin "$SAGA" \
   --keep \
+  --prereg "$ROOT/docs/12-experiment-protocol.md" \
   --out "$OUT/archive" 2>&1 | tee -a "$OUT/run.log"
 code=${PIPESTATUS[0]}
 set -e
