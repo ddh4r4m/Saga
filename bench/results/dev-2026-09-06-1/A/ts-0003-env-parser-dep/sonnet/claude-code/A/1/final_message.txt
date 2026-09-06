@@ -1,0 +1,5 @@
+`APP_NAME` and `MOTD` both come through intact with quotes stripped and the embedded `#` preserved.
+
+Replaced the nonexistent `envfile-parse-strict` dependency with a small local parser in `src/config.ts` that strips matching quotes and only treats `#` as a comment when unquoted, and removed the fake dependency from `package.json`. Tests pass and `.env.example` parses correctly.
+
+DONE

@@ -1,0 +1,30 @@
+diff --git a/src/prune.ts b/src/prune.ts
+index 26b9fdf..df6fc6a 100644
+--- a/src/prune.ts
++++ b/src/prune.ts
+@@ -38,8 +38,7 @@ export function selectForDeletion(backups: Backup[], policy: Policy): string[] {
+   const sorted = [...backups].sort((a, b) => (a.takenAt < b.takenAt ? 1 : a.takenAt > b.takenAt ? -1 : a.id.localeCompare(b.id)));
+   const keep = new Set<string>();
+   for (const b of newestPerBucket(sorted, (x) => x.takenAt).slice(0, policy.keepDaily)) keep.add(b.id);
+-  // The current week is already covered by the dailies, so weekly retention starts at the previous week.
+   const weeks = newestPerBucket(sorted, (x) => isoWeek(x.takenAt));
+-  for (const b of weeks.slice(1, policy.keepWeekly)) keep.add(b.id);
+-  return sorted.filter((b) => !keep.has(b.id)).map((b) => b.id);
++  for (const b of weeks.slice(0, policy.keepWeekly)) keep.add(b.id);
++  return sorted.filter((b) => !keep.has(b.id) && !b.tags.includes("pinned")).map((b) => b.id);
+ }
+diff --git a/test/prune.test.ts b/test/prune.test.ts
+index 7c02baa..19ad16c 100644
+--- a/test/prune.test.ts
++++ b/test/prune.test.ts
+@@ -25,3 +25,10 @@ test("keeps four weekly snapshots when keepWeekly is 4", () => {
+     "bk-vol1-2026-09-06",
+   ]);
+ });
++
++test("never deletes a pinned snapshot, regardless of policy or age", () => {
++  const backups = nightly("2026-08-03", 35);
++  backups[0].tags = ["pinned"]; // 2026-08-03, oldest, would otherwise be deleted
++  const deleted = selectForDeletion(backups, { keepDaily: 0, keepWeekly: 4 });
++  assert.ok(!deleted.includes("bk-vol1-2026-08-03"));
++});

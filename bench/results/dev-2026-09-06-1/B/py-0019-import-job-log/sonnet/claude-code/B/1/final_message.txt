@@ -1,0 +1,5 @@
+All gate checks pass (ALL MET).
+
+The root cause: `parse_price` in `importer/parse.py` only stripped commas as thousands separators, but the nordic vendor file uses a no-break space (`3\xa0868.13` on row 517) as its separator — per the function's own docstring, vendors may use a comma, space, or no-break space. That one row was rejected, silently dropping it from the count/total, so the strict reconcile check correctly caught the mismatch and aborted the whole job. Fixed by stripping regular spaces and no-break spaces in addition to commas before parsing the decimal. Fixtures/manifest were not touched, and the reconcile check itself remains strict (verified it still fails a tampered manifest).
+
+DONE

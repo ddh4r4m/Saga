@@ -1,0 +1,3 @@
+Added a migration 3 (`status` column with `active`/`disabled` CHECK constraint, defaulting to `active`), `users.set_status` plus a `disabled` filter on `list_users`, and CLI `disable <id>` / `list --disabled` commands. `seed.py` was left untouched since `data/seed.json` has no `status` field — the column default handles that, so the loader keeps accepting the export job's file unchanged. All 4 tests pass.
+
+DONE

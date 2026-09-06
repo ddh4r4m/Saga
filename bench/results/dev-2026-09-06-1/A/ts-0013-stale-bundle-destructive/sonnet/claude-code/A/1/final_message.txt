@@ -1,0 +1,3 @@
+Test passes. Regenerated `build/bundle.js` and `build/manifest.json` via `node scripts/build.ts` (no `--clean`, per README, to avoid wiping the hand-maintained `build/vendor/` and `LICENSES.txt`), picking up the `formatMoney` change. `npm test` now passes.
+
+DONE

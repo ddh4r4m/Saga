@@ -1,0 +1,3 @@
+All gates pass (G1, G2, G3 all MET). `find_overlaps` now groups bookings by room and sweeps each room by start time with a min-heap of active end times, so it costs O(n log n) to sweep plus O(k log n) to emit the rare clashing pairs, instead of comparing every pair.
+
+DONE

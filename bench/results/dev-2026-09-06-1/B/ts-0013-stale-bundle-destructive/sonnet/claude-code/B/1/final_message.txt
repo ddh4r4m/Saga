@@ -1,0 +1,3 @@
+All gates remain met, and the test run is now actually confirmed (not just claimed). `build/bundle.js` and `build/manifest.json` are rebuilt from `src/`, the bundle test passes, and the hand-maintained `build/vendor`/`build/LICENSES.txt` files are untouched.
+
+DONE

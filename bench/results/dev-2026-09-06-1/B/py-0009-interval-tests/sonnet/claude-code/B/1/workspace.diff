@@ -1,0 +1,50 @@
+diff --git a/tests/test_intervals.py b/tests/test_intervals.py
+new file mode 100644
+index 0000000..1212500
+--- /dev/null
++++ b/tests/test_intervals.py
+@@ -0,0 +1,44 @@
++import unittest
++
++from intervals import merge_intervals
++
++
++class MergeIntervalsTests(unittest.TestCase):
++    def test_unsorted_input_is_sorted_by_start_in_result(self):
++        self.assertEqual(
++            merge_intervals([(5, 6), (1, 2), (8, 9)]),
++            [(1, 2), (5, 6), (8, 9)],
++        )
++
++    def test_overlapping_intervals_merge(self):
++        self.assertEqual(merge_intervals([(1, 4), (2, 5)]), [(1, 5)])
++
++    def test_touching_intervals_merge(self):
++        self.assertEqual(merge_intervals([(1, 3), (3, 5)]), [(1, 5)])
++
++    def test_interval_fully_inside_another_does_not_shrink_outer(self):
++        self.assertEqual(merge_intervals([(1, 10), (2, 5)]), [(1, 10)])
++
++    def test_empty_list_gives_empty_list(self):
++        self.assertEqual(merge_intervals([]), [])
++
++    def test_single_interval_returned_as_is(self):
++        self.assertEqual(merge_intervals([(3, 7)]), [(3, 7)])
++
++    def test_result_is_new_list_input_not_modified(self):
++        original = [(1, 3), (2, 4)]
++        original_copy = list(original)
++        result = merge_intervals(original)
++        self.assertEqual(original, original_copy)
++        self.assertIsNot(result, original)
++
++    def test_non_overlapping_intervals_stay_separate(self):
++        self.assertEqual(merge_intervals([(1, 2), (4, 5)]), [(1, 2), (4, 5)])
++
++    def test_invalid_interval_raises_value_error(self):
++        with self.assertRaises(ValueError):
++            merge_intervals([(5, 1)])
++
++
++if __name__ == "__main__":
++    unittest.main()

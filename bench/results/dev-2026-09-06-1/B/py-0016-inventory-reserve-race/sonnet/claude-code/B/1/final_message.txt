@@ -1,0 +1,3 @@
+Gate status now shows ALL MET consistently. The earlier "stale" failure was a transient tree-hash mismatch (likely from `__pycache__` artifacts changing between the check and the Stop hook's re-check), not an actual regression. Re-running confirms all three gates are currently met with no pending tree changes.
+
+DONE

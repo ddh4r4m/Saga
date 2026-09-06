@@ -1,0 +1,3 @@
+All three tests pass. Added an `E_BAD_QTY` error code (registered in `src/errors.ts`, documented in `docs/errors.md`) and made `addItem` reject any quantity that isn't a positive whole number.
+
+DONE

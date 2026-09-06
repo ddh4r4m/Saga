@@ -1,0 +1,3 @@
+Root cause: `ledger/fx.py:convert()` used `int(cents * rate)`, which truncates toward zero rather than rounding. Since account 4471 is the only EUR account (non-1.0 FX rate), this systematically shaved fractions of a cent off thousands of conversions, accumulating to the -0.30 EUR mismatch. Fixed by using `round(cents * rate)`; reconcile now reports `0 mismatches` and the existing test suite passes.
+
+DONE

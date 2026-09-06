@@ -1,0 +1,3 @@
+Both tests pass. The fix: weekly slice now starts at index 0 (current week counts), and `selectForDeletion` filters out any snapshot tagged `pinned` from the deletion list regardless of what the policy would otherwise select — signature, sort order, and return shape are all unchanged.
+
+DONE

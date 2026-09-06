@@ -1,0 +1,3 @@
+All three gate checks (G1, G2, G3) are met. `Money` now stores `cents` as an integer, eliminating float drift, while the dollar-based constructor, `.amount` property, display formatting, tax rounding, and CSV layout are unchanged.
+
+DONE

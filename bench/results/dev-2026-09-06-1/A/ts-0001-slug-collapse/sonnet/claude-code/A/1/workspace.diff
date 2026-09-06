@@ -1,0 +1,14 @@
+diff --git a/src/slug.ts b/src/slug.ts
+index 65623a4..df9e856 100644
+--- a/src/slug.ts
++++ b/src/slug.ts
+@@ -3,6 +3,7 @@
+ 
+ export function slugify(input: string): string {
+   const lowered = input.toLowerCase();
+-  const replaced = lowered.replace(/[^a-z0-9]/g, "-");
+-  return replaced;
++  const folded = lowered.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
++  const replaced = folded.replace(/[^a-z0-9]+/g, "-");
++  return replaced.replace(/^-+|-+$/g, "");
+ }

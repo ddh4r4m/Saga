@@ -1,0 +1,3 @@
+All gates are met. The bug was in `src/shard.ts:16` — `hashKey(key) % shards` used JS's remainder operator, which returns negative results for negative hashes, contradicting the documented Python-style non-negative modulo semantics. This caused `shardFor` to occasionally return a negative shard index, failing the "index is always within range" test for ~half of random negative-hash keys. Fixed with `((hashKey(key) % shards) + shards) % shards`, verified against the fixture (no reassignment) and the G2 contract check.
+
+DONE

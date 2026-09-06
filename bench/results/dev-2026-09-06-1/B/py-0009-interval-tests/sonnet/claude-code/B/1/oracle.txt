@@ -1,0 +1,10 @@
+source-untouched PASS
+no-source-introspection PASS
+original-pass PASS
+mutant-endmax-killed PASS
+mutant-inplace-killed FAIL
+mutant-nosort-killed PASS
+mutant-novalidate-killed PASS
+mutant-touching-killed PASS
+--- exit 1
+--- integrity ok

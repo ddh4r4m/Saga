@@ -1,0 +1,5 @@
+Both examples produce the expected clean slugs, and the existing test passes.
+
+Fixed `slugify` in src/slug.ts:6-8 — it now NFD-normalizes and strips combining diacritics (folding accented letters to ASCII), collapses runs of non-alphanumeric characters to a single hyphen, and trims leading/trailing hyphens. Verified against the two failing examples and the existing test suite.
+
+DONE

@@ -1,0 +1,3 @@
+Test passes. `dedupe` in `contacts/merge.py` now compares emails case-insensitively and strips surrounding whitespace, keeping the first occurrence and preserving original order.
+
+DONE

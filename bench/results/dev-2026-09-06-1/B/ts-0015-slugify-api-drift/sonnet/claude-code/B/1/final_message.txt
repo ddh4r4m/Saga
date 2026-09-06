@@ -1,0 +1,3 @@
+All gate checks pass. Fixed `src/pages.ts` to call the vendored `slugify` with the new options API (`{ separator: "-", lower: true }`) instead of the old string-argument form, restoring hyphenated, lowercase slugs without touching the vendored package.
+
+DONE

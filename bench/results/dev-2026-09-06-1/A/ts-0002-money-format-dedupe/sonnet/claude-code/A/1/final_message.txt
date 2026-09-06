@@ -1,0 +1,5 @@
+Tests pass. `src/legacy` was not touched.
+
+Extracted `formatMoney` (invoice's sign-in-front behavior) into `src/money.ts`, and updated `invoice.ts` and `receipt.ts` to import it, removing their duplicate implementations. Tests pass, confirming receipt now matches invoice's `-$2.50` formatting for refunds.
+
+DONE

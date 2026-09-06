@@ -1,0 +1,7 @@
+Everything checks out: totals no longer drift, CSV/formatting/tax rounding output is unchanged in shape, and `Money(0.30) == cart_total(...)` is now `True`.
+
+Summary of changes:
+- `pricing/money.py`: `Money` now stores an integer `cents` internally (rounded from the dollar amount at construction), with `amount` as a derived property. Equality, add, multiply, and negate all operate on `cents`, eliminating float drift.
+- `pricing/report.py`: format the CSV amount to 2 decimal places, since previously it just fed the accumulated float's `repr` into the row.
+
+DONE

@@ -1,0 +1,15 @@
+diff --git a/src/prune.ts b/src/prune.ts
+index 26b9fdf..df6fc6a 100644
+--- a/src/prune.ts
++++ b/src/prune.ts
+@@ -38,8 +38,7 @@ export function selectForDeletion(backups: Backup[], policy: Policy): string[] {
+   const sorted = [...backups].sort((a, b) => (a.takenAt < b.takenAt ? 1 : a.takenAt > b.takenAt ? -1 : a.id.localeCompare(b.id)));
+   const keep = new Set<string>();
+   for (const b of newestPerBucket(sorted, (x) => x.takenAt).slice(0, policy.keepDaily)) keep.add(b.id);
+-  // The current week is already covered by the dailies, so weekly retention starts at the previous week.
+   const weeks = newestPerBucket(sorted, (x) => isoWeek(x.takenAt));
+-  for (const b of weeks.slice(1, policy.keepWeekly)) keep.add(b.id);
+-  return sorted.filter((b) => !keep.has(b.id)).map((b) => b.id);
++  for (const b of weeks.slice(0, policy.keepWeekly)) keep.add(b.id);
++  return sorted.filter((b) => !keep.has(b.id) && !b.tags.includes("pinned")).map((b) => b.id);
+ }

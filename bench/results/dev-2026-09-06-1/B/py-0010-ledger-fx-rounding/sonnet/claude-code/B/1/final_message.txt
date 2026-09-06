@@ -1,0 +1,3 @@
+All gates pass. The bug was in `ledger/fx.py`: `convert()` used `int(cents * rate)`, which truncates toward zero instead of rounding, systematically underestimating converted amounts and drifting account 4471's balance by 0.30 EUR over 3,200 entries. Changed it to `round(cents * rate)`, and the reconcile is now clean (0 mismatches) while fixtures remain untouched.
+
+DONE

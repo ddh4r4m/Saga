@@ -1,0 +1,53 @@
+diff --git a/overlaps/core.py b/overlaps/core.py
+index 89d84e0..ce4d25d 100644
+--- a/overlaps/core.py
++++ b/overlaps/core.py
+@@ -1,5 +1,6 @@
+ """Clash detection between bookings."""
+ 
++import heapq
+ from dataclasses import dataclass
+ 
+ 
+@@ -11,23 +12,31 @@ class Booking:
+     end: int  # exclusive
+ 
+ 
+-def overlaps(a: Booking, b: Booking) -> bool:
+-    return a.room == b.room and a.start < b.end and b.start < a.end
+-
+-
+ def find_overlaps(bookings: list[Booking]) -> list[tuple[str, str]]:
+     """Return every clashing pair as (id_a, id_b) with id_a < id_b, sorted.
+ 
+     Two bookings clash when they are in the same room and their half-open
+     intervals intersect. A booking fully inside a longer one clashes with it;
+     a booking that ends exactly when another starts does not.
++
++    Clashes only happen within a room, and are rare relative to n, so this
++    sweeps each room by start time with a min-heap of active end times
++    instead of comparing every pair: O(n log n) to sweep plus O(k log n) to
++    emit the k clashing pairs.
+     """
++    by_room: dict[str, list[Booking]] = {}
++    for b in bookings:
++        by_room.setdefault(b.room, []).append(b)
++
+     pairs: list[tuple[str, str]] = []
+-    for i in range(len(bookings)):
+-        a = bookings[i]
+-        for j in range(i + 1, len(bookings)):
+-            b = bookings[j]
+-            if overlaps(a, b):
+-                pairs.append((a.id, b.id) if a.id < b.id else (b.id, a.id))
++    for room_bookings in by_room.values():
++        room_bookings.sort(key=lambda b: b.start)
++        heap: list[tuple[int, str]] = []
++        for b in room_bookings:
++            while heap and heap[0][0] <= b.start:
++                heapq.heappop(heap)
++            for end, bid in heap:
++                pairs.append((bid, b.id) if bid < b.id else (b.id, bid))
++            heapq.heappush(heap, (b.end, b.id))
+     pairs.sort()
+     return pairs

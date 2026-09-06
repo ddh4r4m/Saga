@@ -1,0 +1,5 @@
+Cross-checked against the naive pairwise implementation across 20 random samples — results match exactly.
+
+`find_overlaps` in `overlaps/core.py` is now a sweep-line algorithm: bookings are sorted once by start time, and a per-room min-heap of active (end, booking) entries tracks what's still open, so each booking is only compared against genuinely overlapping bookings in its room instead of every other booking. This restores the n log n scaling `docs/perf.md` describes, all existing tests pass, and results are verified identical to the old O(n²) logic.
+
+DONE
