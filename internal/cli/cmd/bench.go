@@ -19,7 +19,7 @@ const benchUsage = `usage: saga bench <verify-task|run|report|reconcile|compare|
   run     --tasks <glob> --adapter <bare|replay|claude-code> [--k <n>] --out <dir>
           [--arm <id>] [--model <id>] [--seed <hex>] [--replay <patch>] [--budget <usd>]
           [--tier smoke|user|dev|publish] [--claude-bin <path>] [--saga-bin <path>]
-          [--prereg <file>] [--unfrozen]
+          [--prereg <file>] [--unfrozen] [--on-limit wait|stop]
   report  <run-dir> [--json]
   reconcile   <archive-dir> --workspaces <kept-root> [--json]
   compare <run-dir-a> <run-dir-b> [--epsilon <x>] [--json]

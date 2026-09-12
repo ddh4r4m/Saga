@@ -26,6 +26,7 @@ task_globs() {
 preflight() {  # label tasks k arms
   local label=$1 tasks=$2 k=$3 arms=$4
   TIER=${TIER:-user}
+  ON_LIMIT=${ON_LIMIT:-wait}
 
   bash "$ROOT/scripts/build-saga.sh" "$OUT/bin/saga"
   SAGA="$OUT/bin/saga"
@@ -51,6 +52,7 @@ preflight() {  # label tasks k arms
     echo "prereg:    sha256:$(shasum -a 256 "$ROOT/docs/12-experiment-protocol.md" | cut -c1-64)"
     echo "path:      $(printf '%s\n' "$approval" | sed -n 's/^path: //p')"
     echo "tier:      $TIER"
+    echo "on_limit:  $ON_LIMIT"
     echo "estimate:  $ESTIMATE usd (k=$k, $arms arms, model $MODEL)"
     echo "budget:    ${BUDGET_USD:-<unset>} usd"
     echo "out:       $OUT"

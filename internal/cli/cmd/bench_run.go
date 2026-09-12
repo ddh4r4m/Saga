@@ -47,6 +47,7 @@ func (a *App) benchRun(args []string) error {
 	benchGit := fs.String("bench-git", "", "commit the bench binary was built from, for manifest.bench_version.git (the binary carries no version stamp, so that its bytes and the corpus approvals bound to them survive a docs-only commit)")
 	prereg := fs.String("prereg", "", "pre-registration file to freeze into the archive as preregistration.md (docs/12 row 15)")
 	unfrozen := fs.Bool("unfrozen", false, "run against tasks that do not match TASKSET.sha256, recording task_set.frozen = false")
+	onLimit := fs.String("on-limit", "wait", "when the account's session window is exhausted: wait for the announced reset and retry the row once, or stop")
 	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
@@ -128,6 +129,11 @@ func (a *App) benchRun(args []string) error {
 		opts.Prereg = a.abs(*prereg)
 	}
 	opts.Unfrozen = *unfrozen
+	ol, err := adapter.ParseOnLimit(*onLimit)
+	if err != nil {
+		return cli.Errorf(cli.ExitUsage, "%v", err)
+	}
+	opts.OnLimit = ol
 	report := func(dir string, res *run.Result, err error) error {
 		if res != nil && len(res.Rows) > 0 && !*noReport {
 			if rerr := a.writeReport(dir, false); rerr != nil && err == nil {

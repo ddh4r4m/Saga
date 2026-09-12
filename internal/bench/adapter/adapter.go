@@ -72,6 +72,9 @@ type PrepareInput struct {
 	// the 2026-09-13 dev run: a batch of 20 out of the frozen 40 keyed a
 	// store of its own and found none of the owner's 202 records.
 	FrozenSetSHA256 string
+	// OnLimit is the run's policy for the account's session window,
+	// recorded in the disclosure.
+	OnLimit OnLimit
 	// RunTaskSetSHA256 is the hash over the tasks this invocation
 	// selected. It is disclosure only, never a store key: the archive
 	// carries both so a divergence is visible instead of silent.
@@ -155,6 +158,10 @@ type CollectOutput struct {
 	// abandon, infra; the runner overrides with timeout and cost cap.
 	Outcome       string
 	OutcomeReason string
+	// Limit is the harness limit line when the account's session window
+	// was exhausted, empty otherwise. The runner reads it to decide
+	// whether to wait for the reset and retry the row (bench-spec 4.5).
+	Limit string
 	// Abandon is the recognised ABANDON terminal when Outcome is
 	// "abandon" (DetectAbandon, identical in every arm).
 	Abandon *Abandon

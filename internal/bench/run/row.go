@@ -161,11 +161,15 @@ type Manifest struct {
 	AbandonLexiconSHA256 string `json:"abandon_lexicon_sha256,omitempty"`
 	// Interleaving names the execution order across arms; the rows'
 	// sequence numbers reconstruct it exactly (docs/12 row 4).
-	Interleaving string            `json:"interleaving,omitempty"`
-	Isolation    string            `json:"isolation"`
-	Images       map[string]string `json:"images"`
-	Host         Host              `json:"host"`
-	Budget       Budget            `json:"budget"`
+	Interleaving string `json:"interleaving,omitempty"`
+	// LimitWaits records every interruption by the account's session
+	// window and the resume that followed (bench-spec 4.5). Absent when
+	// the run was never interrupted.
+	LimitWaits []adapter.LimitWait `json:"limit_waits,omitempty"`
+	Isolation  string              `json:"isolation"`
+	Images     map[string]string   `json:"images"`
+	Host       Host                `json:"host"`
+	Budget     Budget              `json:"budget"`
 }
 
 // BenchVersion identifies the bench binary.

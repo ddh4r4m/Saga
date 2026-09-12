@@ -23,7 +23,8 @@
 # Environment knobs: OUT (archive root), MODEL (default sonnet), K
 # (default 2), WALL_CAP (seconds per run, default 300), TASKS, PREREG,
 # BUDGET_USD (passed to `bench run --budget`, which refuses when its own
-# estimate exceeds it), TIER (default user).
+# estimate exceeds it), TIER (default user), ON_LIMIT (wait or stop,
+# default wait).
 #
 # TIER must be named rather than defaulted for anything larger than a
 # dev run: the runner caps the `user` tier at 20 usd (bench-spec 4.4),
@@ -38,6 +39,7 @@ MODEL=${MODEL:-sonnet}
 K=${K:-2}
 WALL_CAP=${WALL_CAP:-300}
 TIER=${TIER:-user}
+ON_LIMIT=${ON_LIMIT:-wait}
 TASKS=${TASKS:-$ROOT/bench/tasks/ts-0001-slug-collapse,$ROOT/bench/tasks/ts-0005-retry-backoff,$ROOT/bench/tasks/py-0007-version-sort-impossible}
 
 AGENT_MARKER=""
@@ -96,6 +98,7 @@ set +e
   --arm A:bare --arm B:gate \
   --model "$MODEL" \
   --tier "$TIER" \
+  --on-limit "$ON_LIMIT" \
   --wall-cap "$WALL_CAP" \
   --saga-bin "$SAGA" \
   --bench-git "$(git -C "$ROOT" rev-parse --short HEAD)" \

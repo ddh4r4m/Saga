@@ -276,16 +276,28 @@
     "bench_path": {
       "$comment": "the PATH the bench composed for the agent and for the approval identity; never the caller's inherited PATH",
       "type": "array",
-      "items": {"type": "string"}
+      "items": {
+        "type": "string"
+      }
     },
     "approval_store": {
       "$comment": "ADR 0010: the corpus approval store a gate arm consumed; created_by_run is always false, because a run never approves",
       "type": "object",
       "additionalProperties": true
     },
-    "gate_config_present": {"$comment": "docs/12 dev-run finding 1: whether .saga/config.toml is at the base commit, which is where the gate reads it; false means the gate ran on its defaults", "type": "boolean"},
-    "gate_config_sha256": {"type": ["string", "null"]},
-    "gate_config_sha256_reason": {"type": "string"},
+    "gate_config_present": {
+      "$comment": "docs/12 dev-run finding 1: whether .saga/config.toml is at the base commit, which is where the gate reads it; false means the gate ran on its defaults",
+      "type": "boolean"
+    },
+    "gate_config_sha256": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "gate_config_sha256_reason": {
+      "type": "string"
+    },
     "hooks": {
       "type": "array",
       "items": {
@@ -351,6 +363,13 @@
         },
         "usd": {
           "type": "number"
+        },
+        "on_limit": {
+          "$comment": "bench-spec 4.5: the run's policy for the account's session window being exhausted",
+          "enum": [
+            "wait",
+            "stop"
+          ]
         }
       }
     },

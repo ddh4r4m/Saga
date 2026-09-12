@@ -82,7 +82,11 @@ type Options struct {
 	// Unfrozen runs against a task set that does not match TASKSET.sha256
 	// and records the fact in the manifest, rather than refusing.
 	Unfrozen bool
-	Log      io.Writer
+	// OnLimit is what to do when the harness reports the account's
+	// session window exhausted: wait for the announced reset and retry
+	// the row once (the default), or stop the run.
+	OnLimit adapter.OnLimit
+	Log     io.Writer
 	// corpusKey is the frozen corpus this run's gate arms take their
 	// approvals from, from run.CorpusKey. It is unexported and set by
 	// Run alone, so no caller can pass the per-run selection hash in its
@@ -182,6 +186,9 @@ func open(ctx context.Context, opts Options) (*session, error) {
 	}
 	if opts.Model == "" {
 		opts.Model = "default"
+	}
+	if opts.OnLimit == "" {
+		opts.OnLimit = adapter.OnLimitWait
 	}
 	if opts.Seed == "" {
 		b := make([]byte, 32)
@@ -346,11 +353,119 @@ func open(ctx context.Context, opts Options) (*session, error) {
 		opts.logf("workspaces kept under %s", tmpRoot)
 	}
 
-	return &session{opts: opts, m: m, hash: manifestHash, rowsFile: rowsFile, exclusions: exclusions, tmpRoot: tmpRoot, cap: cap, res: &Result{ManifestHash: manifestHash, Manifest: m}}, nil
+	return &session{opts: opts, m: m, hash: manifestHash, rowsFile: rowsFile, exclusions: exclusions, tmpRoot: tmpRoot, cap: cap, limitRetried: map[rowKey]bool{}, res: &Result{ManifestHash: manifestHash, Manifest: m}}, nil
 }
 
 // session is one open archive: manifest written, rows and exclusions
 // files open, workspaces root created.
+// harnessLimitLine reports whether a row is the account's session
+// window being exhausted rather than anything about the model, reading
+// the reason the adapter wrote.
+func harnessLimitLine(row *Row) (string, bool) {
+	if row.Outcome != "infra" || row.OutcomeReason == nil {
+		return "", false
+	}
+	const p = "harness-limit: "
+	if !strings.HasPrefix(*row.OutcomeReason, p) {
+		return "", false
+	}
+	return strings.TrimPrefix(*row.OutcomeReason, p), true
+}
+
+// nowFn and sleepUntilFn are the clock, replaced in tests so a wait for
+// a reset four hours away costs a test nothing.
+var (
+	nowFn        = time.Now
+	sleepUntilFn = func(ctx context.Context, at time.Time) error {
+		d := time.Until(at)
+		if d <= 0 {
+			return nil
+		}
+		t := time.NewTimer(d)
+		defer t.Stop()
+		select {
+		case <-t.C:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+)
+
+// waitOutLimit handles a row the account's session window ended. Under
+// `--on-limit wait` it keeps the abandoned attempt as attempt-1/, sleeps
+// until the announced reset (plus a grace, or a short fixed delay when
+// the reply names no time this machine can read), and runs the same
+// (task, arm, k) once more; the retry becomes the row. Under `stop`, and
+// when the retry is refused too, the run ends and the caller reports the
+// rows that were not run. It reports whether a retry replaced the row.
+//
+// The pilot of 2026-09-13 is why this exists: 132 of 200 rows were the
+// harness declining to run, graded as the model failing, and the archive
+// could not be repaired because a re-run cannot be paired across
+// manifests.
+func (s *session) waitOutLimit(ctx context.Context, t *task.Task, i int, line string, row *Row) (bool, error) {
+	opts := &s.opts
+	hitAt := nowFn()
+	if opts.OnLimit == adapter.OnLimitStop {
+		return false, cli.Errorf(cli.ExitRefusal, "run: harness limit at %s arm %s run %d (%s); --on-limit stop", t.ID, opts.Arm, i, line)
+	}
+	if s.limitRetried[rowKey{t.ID, i}] {
+		return false, cli.Errorf(cli.ExitRefusal, "run: harness limit again at %s arm %s run %d after waiting (%s)", t.ID, opts.Arm, i, line)
+	}
+	s.limitRetried[rowKey{t.ID, i}] = true
+
+	at, ok := adapter.LimitResetAt(line, hitAt)
+	if ok {
+		at = at.Add(adapter.LimitResetGrace)
+	} else {
+		// No readable reset. One short wait tells a transient reply from
+		// an exhausted window without guessing at a schedule.
+		at = hitAt.Add(adapter.LimitRetryDelay)
+	}
+	opts.logf("%s arm %s run %d/%d: harness limit (%s); waiting until %s", t.ID, opts.Arm, i, opts.K, line, at.Format(time.RFC3339))
+	if err := sleepUntilFn(ctx, at); err != nil {
+		return false, err
+	}
+
+	// The abandoned attempt is kept whole beside the row that replaces
+	// it: on the transition row it holds real work, and on every other it
+	// is the evidence that the window closed here.
+	dir := s.runDir(t, i)
+	stash := filepath.Join(dir, "..", fmt.Sprintf(".attempt-1-%d", i))
+	_ = os.RemoveAll(stash)
+	if err := os.Rename(dir, stash); err != nil {
+		opts.logf("%s arm %s run %d: could not keep the abandoned attempt: %v", t.ID, opts.Arm, i, err)
+	} else if err := os.MkdirAll(dir, 0o755); err != nil {
+		return false, err
+	} else if err := os.Rename(stash, filepath.Join(dir, "attempt-1")); err != nil {
+		return false, err
+	}
+	resumed := nowFn()
+	*s.seq++
+	*row = runOne(ctx, opts, s.m, s.hash, t, i, s.tmpRoot, *s.seq)
+	s.m.LimitWaits = append(s.m.LimitWaits, adapter.LimitWait{
+		Task: t.ID, Arm: opts.Arm, K: i,
+		HitAt: hitAt.UTC().Format(time.RFC3339), ResumedAt: resumed.UTC().Format(time.RFC3339),
+		Message: line,
+	})
+	if line2, again := harnessLimitLine(row); again {
+		return true, cli.Errorf(cli.ExitRefusal, "run: harness limit again at %s arm %s run %d after waiting (%s)", t.ID, opts.Arm, i, line2)
+	}
+	return true, nil
+}
+
+// rowKey names one (task, k) of this arm.
+type rowKey struct {
+	task string
+	i    int
+}
+
+// runDir is the archive directory of one row, the same path runOne uses.
+func (s *session) runDir(t *task.Task, i int) string {
+	return filepath.Join(s.opts.Out, t.ID, s.opts.Model, s.opts.Adapter.Name(), s.opts.Arm, fmt.Sprint(i))
+}
+
 type session struct {
 	opts       Options
 	m          *Manifest
@@ -363,6 +478,12 @@ type session struct {
 	// seq is the invocation's execution counter, shared by every arm's
 	// session so the rows record the interleaving (docs/12 row 4).
 	seq *int
+	// limitRetried names the rows already resumed once after a harness
+	// limit; a second refusal on the same row ends the run.
+	limitRetried map[rowKey]bool
+	// limitErr is the refusal that ends the run once the current row has
+	// been written, so the archive keeps every row that did run.
+	limitErr error
 }
 
 // run executes run i of task t and appends the row.
@@ -377,10 +498,26 @@ func (s *session) run(ctx context.Context, t *task.Task, i int) {
 		res.NotRun++
 		return
 	}
+	// A harness limit that outlived its retry ends the scheduling, but
+	// only after the row that hit it has been written: the archive keeps
+	// every row that did run and the caller names the rest.
+	if s.limitErr != nil {
+		res.NotRun++
+		return
+	}
 	*s.seq++
 	row := runOne(ctx, opts, s.m, s.hash, t, i, s.tmpRoot, *s.seq)
 	if row.CostUSD != nil {
 		res.SpentUSD += *row.CostUSD
+	}
+	if line, hit := harnessLimitLine(&row); hit {
+		retried, err := s.waitOutLimit(ctx, t, i, line, &row)
+		if err != nil {
+			s.limitErr = err
+		}
+		if retried && row.CostUSD != nil {
+			res.SpentUSD += *row.CostUSD
+		}
 	}
 	line, _ := json.Marshal(row)
 	s.rowsFile.Write(append(line, '\n'))
@@ -407,6 +544,9 @@ func (s *session) close() (*Result, error) {
 	os.WriteFile(filepath.Join(opts.Out, "status.json"), append(sj, '\n'), 0o644)
 	if res.CapHit {
 		return res, cli.Errorf(cli.ExitRefusal, "run: cost cap %.2f usd hit after %.2f; %d runs not run (partial archive retained)", s.cap, spent, res.NotRun)
+	}
+	if s.limitErr != nil {
+		return res, cli.Errorf(cli.ExitRefusal, "%s; %d runs not run (partial archive retained)", strings.TrimPrefix(s.limitErr.Error(), "saga: "), res.NotRun)
 	}
 	return res, nil
 }
@@ -569,7 +709,7 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 	if err := os.WriteFile(promptPath, []byte(prompt), 0o644); err != nil {
 		return infra("prompt", err)
 	}
-	prep, err := opts.Adapter.Prepare(ctx, &adapter.PrepareInput{Task: t, Workspace: ws, ConfigDir: cfg, Arm: opts.Arm, Components: opts.Components, Blocks: []string{}, Seed: seed, Limits: limits, SagaBinary: opts.SagaBinary, Prompt: prompt, FrozenSetSHA256: opts.corpusKey, RunTaskSetSHA256: m.TaskSet.SHA256})
+	prep, err := opts.Adapter.Prepare(ctx, &adapter.PrepareInput{Task: t, Workspace: ws, ConfigDir: cfg, Arm: opts.Arm, Components: opts.Components, Blocks: []string{}, Seed: seed, Limits: limits, SagaBinary: opts.SagaBinary, Prompt: prompt, FrozenSetSHA256: opts.corpusKey, RunTaskSetSHA256: m.TaskSet.SHA256, OnLimit: opts.OnLimit})
 	if err != nil {
 		// A gate whose corpus approval is missing is infra, not a result:
 		// the owner has not approved this task set for this binary, so

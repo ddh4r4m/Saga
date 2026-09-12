@@ -391,6 +391,12 @@ func (c *ClaudeCode) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOut
 		return nil, err
 	}
 	d := NewDisclosure("claude-code", in.Limits, blocks)
+	// The policy this run carried for the account's session window, so a
+	// reader of a resumed archive knows the waits were intended
+	// (bench-spec 4.5).
+	if lim, ok := d["limits"].(map[string]any); ok && in.OnLimit != "" {
+		lim["on_limit"] = string(in.OnLimit)
+	}
 	h := d.Block("harness")
 	Set(h, "version", version, "")
 	if p, err := exec.LookPath(c.binary()); err == nil {
@@ -1144,6 +1150,16 @@ func (c *ClaudeCode) Collect(ctx context.Context, in *CollectInput) (*CollectOut
 	case sr.IsError:
 		out.OutcomeReason = "result subtype " + sr.Subtype
 	}
+	// The account's session window, checked last because it overrides
+	// every classification above: the reply arrives with subtype
+	// "success" and is_error true, so it reached `completed` with the
+	// oracle red and was graded as a failed run 132 times in the pilot of
+	// 2026-09-13. A limit reply says nothing about the model.
+	if ok, line := IsHarnessLimit(sr.FinalMessage); ok {
+		out.Outcome = "infra"
+		out.OutcomeReason = "harness-limit: " + line
+		out.Limit = line
+	}
 	// ABANDON terminal (gate-spec section 2, docs/12 section 2.2): the
 	// staged contract's ABANDON: statement when the arm has one, else the
 	// NOT-DONE last line; the same detector in every arm.
@@ -1255,7 +1271,12 @@ func IsHarnessFailure(subtype string, isError bool) bool {
 	case "error_max_turns", "error_max_budget_usd", "":
 		return false
 	}
-	return isError && strings.HasPrefix(subtype, "error_")
+	// `is_error` is not required: the pilot of 2026-09-13 showed the
+	// harness setting subtype and is_error independently (a limit reply
+	// carries subtype "success" with is_error true), so an error_ subtype
+	// is taken at its word whichever way the flag falls. The turn and
+	// budget caps stay outcomes, because docs/12 pre-registers them.
+	return strings.HasPrefix(subtype, "error_")
 }
 
 // firstChars caps a diagnostic on a rune boundary.

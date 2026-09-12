@@ -489,7 +489,13 @@ func TestHarnessFailureIsInfra(t *testing.T) {
 		{"error_max_budget_usd", true, false}, // likewise
 		{"success", false, false},
 		{"", false, false},
-		{"error_during_execution", false, false}, // not flagged an error
+		// An error_ subtype is taken at its word whichever way is_error
+		// falls. Until 2026-09-13 this row wanted false, on the reasoning
+		// that an unflagged result is a normal one; the pilot of that day
+		// showed the two fields moving independently in the other
+		// direction, a limit reply carrying subtype "success" with
+		// is_error true, so the flag is not the authority the row assumed.
+		{"error_during_execution", false, true},
 	} {
 		if got := IsHarnessFailure(c.subtype, c.isError); got != c.want {
 			t.Errorf("subtype %q isError %v: %v, want %v", c.subtype, c.isError, got, c.want)
