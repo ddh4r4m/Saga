@@ -14,7 +14,8 @@
 #   BUDGET_USD=60 bash scripts/bench-pilot.sh
 #
 # Knobs: BUDGET_USD (required), OUT, and nothing else. The settings are
-# pre-registered; change them in docs/12 and here together or not at all.
+# pre-registered, the tier among them; change them in docs/12 and here
+# together or not at all.
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -28,9 +29,16 @@ TASKS=$(task_globs 1-20)
 K=5
 MODEL=claude-opus-5
 WALL_CAP=0
+# docs/12 commitment 4 pre-registers the pilot's tier as `dev`. It has to
+# be passed: the runner defaults to `user` and refuses a `user` run above
+# 20 usd, which is what stopped the first launch of 2026-09-13 after both
+# launcher guards had passed. It is pinned rather than defaulted, so an
+# environment variable cannot quietly run the pilot at a tier the
+# pre-registration did not name.
+TIER=dev
 
 preflight "bench-pilot" "$TASKS" "$K" 2
 
-OUT="$OUT" MODEL="$MODEL" K="$K" WALL_CAP="$WALL_CAP" TASKS="$TASKS" \
+OUT="$OUT" MODEL="$MODEL" K="$K" WALL_CAP="$WALL_CAP" TASKS="$TASKS" TIER="$TIER" \
   BUDGET_USD="$BUDGET_USD" PREREG="$ROOT/docs/12-experiment-protocol.md" \
   bash "$ROOT/scripts/bench-smoke.sh"

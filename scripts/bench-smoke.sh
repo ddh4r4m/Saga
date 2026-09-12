@@ -23,7 +23,13 @@
 # Environment knobs: OUT (archive root), MODEL (default sonnet), K
 # (default 2), WALL_CAP (seconds per run, default 300), TASKS, PREREG,
 # BUDGET_USD (passed to `bench run --budget`, which refuses when its own
-# estimate exceeds it).
+# estimate exceeds it), TIER (default user).
+#
+# TIER must be named rather than defaulted for anything larger than a
+# dev run: the runner caps the `user` tier at 20 usd (bench-spec 4.4),
+# and the first pilot launch of 2026-09-13 passed the approval check and
+# the budget guard with BUDGET_USD=65 and was then refused by the runner
+# with `the user tier caps at 20 usd`, exit 3, before any spend.
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -31,6 +37,7 @@ OUT=${OUT:-/tmp/saga-bench-smoke-$(date +%Y%m%d-%H%M%S)}
 MODEL=${MODEL:-sonnet}
 K=${K:-2}
 WALL_CAP=${WALL_CAP:-300}
+TIER=${TIER:-user}
 TASKS=${TASKS:-$ROOT/bench/tasks/ts-0001-slug-collapse,$ROOT/bench/tasks/ts-0005-retry-backoff,$ROOT/bench/tasks/py-0007-version-sort-impossible}
 
 AGENT_MARKER=""
@@ -77,7 +84,7 @@ fi
 {
   echo "bench-smoke $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "saga $($SAGA --version 2>&1 | head -1); claude $(claude --version 2>&1 | head -1)"
-  echo "model=$MODEL k=$K wall_cap=${WALL_CAP}s out=$OUT"
+  echo "model=$MODEL k=$K tier=$TIER wall_cap=${WALL_CAP}s out=$OUT"
   echo "prereg=docs/12-experiment-protocol.md ($(shasum -a 256 "$ROOT/docs/12-experiment-protocol.md" | cut -d" " -f1))"
 } | tee "$OUT/run.log"
 
@@ -88,6 +95,7 @@ set +e
   --k "$K" \
   --arm A:bare --arm B:gate \
   --model "$MODEL" \
+  --tier "$TIER" \
   --wall-cap "$WALL_CAP" \
   --saga-bin "$SAGA" \
   --bench-git "$(git -C "$ROOT" rev-parse --short HEAD)" \

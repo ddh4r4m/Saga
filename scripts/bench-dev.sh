@@ -20,9 +20,13 @@ TASKS=$(task_globs "${1:-1-20}")
 K=1
 MODEL=sonnet
 WALL_CAP=0
+# A dev run stays on the `user` tier: its budget is well under the 20 usd
+# cap and nothing it produces is pre-registered. It is overridable,
+# unlike the pilot's, precisely because nothing here is pre-registered.
+TIER=${TIER:-user}
 
 preflight "bench-dev" "$TASKS" "$K" 2
 
-OUT="$OUT" MODEL="$MODEL" K="$K" WALL_CAP="$WALL_CAP" TASKS="$TASKS" \
+OUT="$OUT" MODEL="$MODEL" K="$K" WALL_CAP="$WALL_CAP" TASKS="$TASKS" TIER="$TIER" \
   BUDGET_USD="$BUDGET_USD" PREREG="$ROOT/docs/12-experiment-protocol.md" \
   bash "$ROOT/scripts/bench-smoke.sh"

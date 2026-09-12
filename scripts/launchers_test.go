@@ -152,3 +152,74 @@ func tail(s string) string {
 	}
 	return strings.Join(lines, "\n")
 }
+
+// TestLaunchersNameTheirTier: the first pilot launch of 2026-09-13
+// passed the approval check and the budget guard and was then refused
+// inside `bench run` with "the user tier caps at 20 usd", because no
+// launcher passed --tier and the runner defaults to `user`. docs/12
+// commitment 4 pre-registers the pilot as `dev`. The tier is asserted
+// through the provenance head, which is the pasteable record of what a
+// run was, and which would have shown `tier: user` on that launch.
+//
+// The argv `bench run` actually receives is not observable from a test:
+// the wrapper builds the real binary and refuses at the preflight, and
+// reaching the run line needs a corpus approved for those bytes, which
+// is the owner's act. The head and the refusal below are what a test
+// can hold.
+func TestLaunchersNameTheirTier(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short: builds the binary")
+	}
+	needTools(t)
+	pilot, _ := runLauncher(t, "bench-pilot.sh", []string{"BUDGET_USD=65"})
+	if !strings.Contains(pilot, "tier:      dev") {
+		t.Errorf("the pilot head does not name the pre-registered tier:\n%s", tail(pilot))
+	}
+	dev, _ := runLauncher(t, "bench-dev.sh", []string{"BUDGET_USD=8"}, "1-20")
+	if !strings.Contains(dev, "tier:      user") {
+		t.Errorf("the dev head does not name its tier:\n%s", tail(dev))
+	}
+	// TIER reaches the dev wrapper, which pre-registers nothing.
+	over, _ := runLauncher(t, "bench-dev.sh", []string{"BUDGET_USD=8", "TIER=publish"}, "1-20")
+	if !strings.Contains(over, "tier:      publish") {
+		t.Errorf("TIER did not reach the dev head:\n%s", tail(over))
+	}
+	// It does not reach the pilot, which does pre-register its tier: an
+	// environment variable must not be able to run the pilot at a tier
+	// docs/12 did not name.
+	pinned, _ := runLauncher(t, "bench-pilot.sh", []string{"BUDGET_USD=65", "TIER=publish"})
+	if !strings.Contains(pinned, "tier:      dev") {
+		t.Errorf("TIER overrode the pre-registered pilot tier:\n%s", tail(pinned))
+	}
+}
+
+// TestPreflightAppliesTheTierCap: the runner caps the `user` tier at 20
+// usd (bench-spec 4.4) and the launcher used to know nothing about it,
+// so a pilot-sized budget passed both launcher guards and died inside
+// `bench run`. The preflight now applies the same cap, with the same
+// words, alongside its other refusals.
+func TestPreflightAppliesTheTierCap(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short: builds the binary")
+	}
+	needTools(t)
+	out, code := runLauncher(t, "bench-dev.sh", []string{"BUDGET_USD=65"}, "1-20")
+	if !strings.Contains(out, "the user tier caps at 20 usd") {
+		t.Errorf("a 65 usd budget on the user tier was not refused by the launcher:\n%s", tail(out))
+	}
+	if !strings.Contains(out, "TIER=dev") {
+		t.Errorf("the refusal does not say how to proceed:\n%s", tail(out))
+	}
+	if code == 0 {
+		t.Error("the launcher must refuse rather than hand the problem to the runner")
+	}
+	if !strings.Contains(out, "nothing has been spent") {
+		t.Errorf("output:\n%s", tail(out))
+	}
+	// And the same budget on the pre-registered pilot tier passes this
+	// particular guard: the pilot is refused for the corpus, not the cap.
+	pilot, _ := runLauncher(t, "bench-pilot.sh", []string{"BUDGET_USD=65"})
+	if strings.Contains(pilot, "the user tier caps at 20 usd") {
+		t.Errorf("the dev-tier pilot was refused by the user cap:\n%s", tail(pilot))
+	}
+}

@@ -18,9 +18,14 @@ task_globs() {
 # on every problem it finds rather than on the first: an operator who
 # has both an unapproved corpus and no budget should learn both in one
 # go, not one per attempt. Nothing is spent by any of it. Sets SAGA and
-# ESTIMATE.
+# ESTIMATE. TIER is read, defaulted to user, and checked against the
+# runner's own cap, because a guard the launcher does not apply is one
+# the operator meets separately and later: the first pilot launch of
+# 2026-09-13 passed both checks here and was then refused inside
+# `bench run` with `the user tier caps at 20 usd`.
 preflight() {  # label tasks k arms
   local label=$1 tasks=$2 k=$3 arms=$4
+  TIER=${TIER:-user}
 
   bash "$ROOT/scripts/build-saga.sh" "$OUT/bin/saga"
   SAGA="$OUT/bin/saga"
@@ -45,6 +50,7 @@ preflight() {  # label tasks k arms
     echo "task set:  $(grep '^set ' "$ROOT/bench/tasks/TASKSET.sha256" | cut -d' ' -f2)"
     echo "prereg:    sha256:$(shasum -a 256 "$ROOT/docs/12-experiment-protocol.md" | cut -c1-64)"
     echo "path:      $(printf '%s\n' "$approval" | sed -n 's/^path: //p')"
+    echo "tier:      $TIER"
     echo "estimate:  $ESTIMATE usd (k=$k, $arms arms, model $MODEL)"
     echo "budget:    ${BUDGET_USD:-<unset>} usd"
     echo "out:       $OUT"
@@ -68,6 +74,12 @@ preflight() {  # label tasks k arms
   elif awk -v b="$BUDGET_USD" -v e="$ESTIMATE" 'BEGIN{exit !(b < e)}'; then
     [ "$refused" -eq 0 ] && refused=3
     echo "$label: BUDGET_USD=$BUDGET_USD is below the estimate $ESTIMATE" >&2
+  elif [ "$TIER" = "user" ] && awk -v b="$BUDGET_USD" 'BEGIN{exit !(b > 20)}'; then
+    # The runner's own cap (bench-spec 4.4), applied here so it joins the
+    # other refusals in one go instead of arriving separately from inside
+    # `bench run` after the launcher has said everything is fine.
+    [ "$refused" -eq 0 ] && refused=3
+    echo "$label: the user tier caps at 20 usd (section 4.4); BUDGET_USD=$BUDGET_USD needs TIER=dev" >&2
   fi
   if [ "$refused" -ne 0 ]; then
     echo "$label: nothing has been spent." >&2

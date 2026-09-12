@@ -177,7 +177,7 @@ Each run executes in a fresh isolation unit. Nothing survives between runs excep
 | Isolation | How | When allowed |
 |---|---|---|
 | `container` (default) | OCI container from `env.image`, task repo checked out at `ref`, `setup.sh` run, then snapshot. Agent runs in a container started from the snapshot. Egress: model API hosts only, plus registry if `network = "registry-only"`. | All tiers |
-| `worktree` | `git worktree add` into a temp dir; `.saga/`, harness config dirs and package caches are re-created empty. | `smoke` and `user` tiers only; manifest marks `isolation = "worktree"` and the badge is refused. |
+| `worktree` | `git worktree add` into a temp dir; `.saga/`, harness config dirs and package caches are re-created empty. | `smoke` and `user` tiers, and `dev` when the pre-registration records the worktree substitute for containers with its safety hook (docs/12 §10 rows 5 and 6; amended 2026-09-13, the first pilot launch, since the row had said `smoke` and `user` only while docs/12 had taken the substitute for the `dev` pilot since 2026-09-05); never `publish`. Manifest marks `isolation = "worktree"` and the badge is refused. |
 
 **No shared caches unless under test.** Package-manager caches, `node_modules`, compiled artefacts and harness session stores are baked into the image at build time or absent. If a component under test *is* a cache (`saga shape` result cache), it appears only in the treatment arm and its directory is bind-mounted read-only-empty in control.
 
