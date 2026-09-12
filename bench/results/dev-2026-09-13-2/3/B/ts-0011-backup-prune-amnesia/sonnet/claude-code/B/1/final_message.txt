@@ -1,0 +1,5 @@
+All gates (G1, G2, G3) are MET. The remaining `Rn uncovered` lines are just background/context sentences with no associated gate, not failures.
+
+Fixed the weekly retention off-by-one in `src/prune.ts:41-44` (the 1.7 regression that started the weekly slice at index 1 instead of 0) and added a filter so snapshots tagged `pinned` are never returned for deletion, regardless of policy. Signature and helpers untouched, test file untouched, all green.
+
+DONE

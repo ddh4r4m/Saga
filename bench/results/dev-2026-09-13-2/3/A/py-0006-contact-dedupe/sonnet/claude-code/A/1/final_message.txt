@@ -1,0 +1,3 @@
+Implemented `dedupe` in `contacts/merge.py`, matching by email normalized with `.strip().lower()` to ignore case and padding, keeping first occurrence order. Test passes.
+
+DONE

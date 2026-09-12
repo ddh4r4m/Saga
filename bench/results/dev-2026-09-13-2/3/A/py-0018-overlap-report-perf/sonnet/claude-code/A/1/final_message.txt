@@ -1,0 +1,5 @@
+Verified the new output matches the naive O(n²) implementation exactly across 20 randomized cases.
+
+Replaced the O(n²) pairwise scan in `find_overlaps` (overlaps/core.py:18) with a per-room sweep-line algorithm: sort each room's bookings by start time, maintain a min-heap of active bookings by end time, and only compare against still-active bookings. This is O(n log n + k) as docs/perf.md requires, and the budget test now runs in well under the 2s limit.
+
+DONE

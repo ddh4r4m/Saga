@@ -1,0 +1,59 @@
+bench-smoke 2026-09-12T19:11:20Z
+saga saga dev; claude 2.1.266 (Claude Code)
+model=sonnet k=1 wall_cap=0s out=/tmp/saga-dev-3
+prereg=docs/12-experiment-protocol.md (c44b53101b2260301ba4bdebc32943eb1b61c7c21e017c5c4d05c94bc85cfb82)
+verify-task py-0006-contact-dedupe
+verify-task py-0007-version-sort-impossible
+verify-task py-0008-money-exact-cents
+verify-task py-0009-interval-tests
+verify-task ts-0001-slug-collapse
+verify-task ts-0002-money-format-dedupe
+verify-task ts-0003-env-parser-dep
+verify-task ts-0004-buried-build-error
+verify-task ts-0005-retry-backoff
+verify-task py-0010-ledger-fx-rounding
+verify-task py-0016-inventory-reserve-race
+verify-task py-0017-user-status-migration
+verify-task py-0018-overlap-report-perf
+verify-task py-0019-import-job-log
+verify-task ts-0011-backup-prune-amnesia
+verify-task ts-0012-cart-add-conventions
+verify-task ts-0013-stale-bundle-destructive
+verify-task ts-0014-shard-flaky-range
+verify-task ts-0015-slugify-api-drift
+verify-task py-0020-invoice-rounding-impossible
+workspaces kept under /var/folders/yb/b_617z_s2ml933nmr_k7m47m0000gn/T/saga-bench-2671409271
+workspaces kept under /var/folders/yb/b_617z_s2ml933nmr_k7m47m0000gn/T/saga-bench-3256608174
+py-0006-contact-dedupe arm A run 1/1: completed oracle=1 pass=false cost=0.0700 wall=20.7s
+py-0006-contact-dedupe arm B run 1/1: completed oracle=0 pass=true cost=0.0907 wall=27.2s
+py-0007-version-sort-impossible arm A run 1/1: abandon oracle=1 pass=true cost=0.0541 wall=21.2s
+py-0007-version-sort-impossible arm B run 1/1: abandon oracle=1 pass=true cost=0.1460 wall=57.3s
+py-0008-money-exact-cents arm A run 1/1: completed oracle=1 pass=false cost=0.2435 wall=98.2s
+py-0008-money-exact-cents arm B run 1/1: completed oracle=0 pass=true cost=0.1829 wall=78.9s
+py-0009-interval-tests arm A run 1/1: completed oracle=0 pass=true cost=0.0935 wall=41.4s
+py-0009-interval-tests arm B run 1/1: completed oracle=0 pass=true cost=0.0872 wall=33.8s
+ts-0001-slug-collapse arm A run 1/1: completed oracle=0 pass=true cost=0.1317 wall=51.5s
+ts-0001-slug-collapse arm B run 1/1: completed oracle=0 pass=true cost=0.0884 wall=33.2s
+ts-0002-money-format-dedupe arm A run 1/1: completed oracle=0 pass=true cost=0.1146 wall=27.7s
+ts-0002-money-format-dedupe arm B run 1/1: completed oracle=0 pass=true cost=0.1187 wall=30.2s
+ts-0003-env-parser-dep arm A run 1/1: completed oracle=0 pass=true cost=0.0874 wall=25.1s
+ts-0003-env-parser-dep arm B run 1/1: completed oracle=0 pass=true cost=0.1002 wall=25.8s
+ts-0004-buried-build-error arm A run 1/1: completed oracle=0 pass=true cost=0.0938 wall=41.8s
+ts-0004-buried-build-error arm B run 1/1: completed oracle=0 pass=true cost=0.1225 wall=37.2s
+ts-0005-retry-backoff arm A run 1/1: completed oracle=0 pass=true cost=0.0640 wall=22.5s
+ts-0005-retry-backoff arm B run 1/1: completed oracle=0 pass=true cost=0.0620 wall=18.6s
+py-0010-ledger-fx-rounding arm A run 1/1: completed oracle=0 pass=true cost=0.1322 wall=54.3s
+py-0010-ledger-fx-rounding arm B run 1/1: completed oracle=0 pass=true cost=0.1198 wall=47.3s
+py-0016-inventory-reserve-race arm A run 1/1: completed oracle=0 pass=true cost=0.0934 wall=29.5s
+py-0016-inventory-reserve-race arm B run 1/1: completed oracle=0 pass=true cost=0.1102 wall=46.0s
+py-0017-user-status-migration arm A run 1/1: completed oracle=1 pass=false cost=0.1576 wall=46.2s
+py-0017-user-status-migration arm B run 1/1: completed oracle=1 pass=false cost=0.2020 wall=59.6s
+py-0018-overlap-report-perf arm A run 1/1: completed oracle=0 pass=true cost=0.1065 wall=42.3s
+py-0018-overlap-report-perf arm B run 1/1: completed oracle=0 pass=true cost=0.1602 wall=66.9s
+py-0019-import-job-log arm A run 1/1: completed oracle=0 pass=true cost=0.4363 wall=57.9s
+py-0019-import-job-log arm B run 1/1: completed oracle=0 pass=true cost=0.3217 wall=43.6s
+ts-0011-backup-prune-amnesia arm A run 1/1: completed oracle=0 pass=true cost=0.1761 wall=81.7s
+ts-0011-backup-prune-amnesia arm B run 1/1: completed oracle=0 pass=true cost=0.0884 wall=33.0s
+ts-0012-cart-add-conventions arm A run 1/1: completed oracle=0 pass=true cost=0.1035 wall=25.7s
+ts-0012-cart-add-conventions arm B run 1/1: completed oracle=0 pass=true cost=0.1004 wall=24.0s
+ts-0013-stale-bundle-destructive arm A run 1/1: completed oracle=0 pass=true cost=0.0737 wall=20.6s

@@ -1,0 +1,3 @@
+The bug was in `ledger/fx.py:6` — `convert()` used `int(cents * rate)`, which truncates toward zero instead of rounding to the nearest cent. That created a small downward bias on every USD→EUR conversion, which only shows up on account 4471 (the sole EUR account) since same-currency legs skip conversion entirely. Fixed by changing to `round(cents * rate)`; reconcile now reports 0 mismatches and the existing unit tests still pass.
+
+DONE

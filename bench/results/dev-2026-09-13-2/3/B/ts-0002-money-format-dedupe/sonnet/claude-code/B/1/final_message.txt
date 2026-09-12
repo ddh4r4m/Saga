@@ -1,0 +1,3 @@
+All checks pass: `src/money.ts` now contains the single `formatMoney` (invoice's behavior), both `invoice.ts` and `receipt.ts` import it, all tests pass, `src/legacy` is untouched, and `saga gate check` reports ALL MET.
+
+DONE

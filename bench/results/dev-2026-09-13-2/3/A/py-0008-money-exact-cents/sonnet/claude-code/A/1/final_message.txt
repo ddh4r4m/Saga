@@ -1,0 +1,3 @@
+`Money` now stores an integer `cents` value internally (set once in `__init__` via `round(amount * 100)`), with all arithmetic (`__add__`, `__mul__`, `__neg__`) operating on that integer and equality/hash keyed off it too — eliminating float drift. The public `amount` float attribute is kept for compatibility and is always derived from `cents / 100`, so `format.py` and `tax.py` needed no changes. `report.py`'s CSV output now formats with `:.2f` since raw float `str()` was dropping trailing zeros (e.g. `0.3` instead of `0.30`) — this was already a latent bug per the pre-existing failing test, not something I introduced.
+
+DONE

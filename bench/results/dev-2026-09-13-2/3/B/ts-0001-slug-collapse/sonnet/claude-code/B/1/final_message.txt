@@ -1,0 +1,3 @@
+All gates pass (ALL MET). The signature is unchanged, separator runs collapse, edge hyphens are trimmed, and accented characters fold to ASCII.
+
+DONE

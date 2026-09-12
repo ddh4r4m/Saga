@@ -1,0 +1,5 @@
+All 4 existing tests pass, and the reconcile check remains untouched (still strict, still comparing manifest to computed rows/total exactly).
+
+Summary: the bug was in `importer/parse.py`'s `parse_price` — it only stripped commas as thousands separators, but the docstring itself documents that vendors may also use a plain space or no-break space (U+00A0). Nordic's row 517 (`NOR-00517`) has `unit_price` written as `3\xa0868.13`, which `Decimal()` rejected, causing that row to be skipped — which then failed the strict reconcile check (row count and total both off), aborting the whole nordic import with nothing written. Fixed `parse_price` to also strip regular and no-break spaces before parsing. Neither the manifest nor any vendor CSV was modified.
+
+DONE

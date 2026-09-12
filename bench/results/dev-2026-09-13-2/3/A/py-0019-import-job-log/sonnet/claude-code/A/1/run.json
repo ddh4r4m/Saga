@@ -1,0 +1,231 @@
+{
+  "schema": "saga.bench.run/1",
+  "manifest": "sha256:cec705f7419a5b9aa779ec868c6d3ad463e408f103d41a99bc74afa331287b6e",
+  "task": "py-0019-import-job-log",
+  "model": "claude-sonnet-5",
+  "harness": "claude-code",
+  "arm": "A",
+  "i": 1,
+  "sequence": 27,
+  "seed": "4a65e06ff5da49163c2be5df7ef6319bd991b96f3d97a84f48ca09ea67208e45",
+  "outcome": "completed",
+  "outcome_reason": null,
+  "abandon_reason_class": null,
+  "pins": {
+    "schema": "saga.trace.pins/1",
+    "harness": {
+      "binary_sha256": "sha256:553d1b9e9e7068b275c0a783c7e139ff6503096f286e674c8c919379fb0eca62",
+      "binary_sha256_reason": null,
+      "hooks_hash": "sha256:75ffb1aae6ccef00c0680065b528abd2dcd2c574734c287c7628095d4eb2406a",
+      "name": "claude-code",
+      "settings_hash": "sha256:db525b65628c83bf8db87c28402f73ef2a37544b7148cbb9050e184e0bdd5183",
+      "version": "2.1.266",
+      "version_reason": null
+    },
+    "model": {
+      "fingerprint": null,
+      "fingerprint_reason": "anthropic does not expose one",
+      "requested": "sonnet",
+      "requested_reason": null,
+      "served": "claude-sonnet-5",
+      "served_reason": null
+    },
+    "effort": {
+      "source": null,
+      "source_hash": null,
+      "value": null,
+      "value_reason": "not in stream-json; hook input carries effort.level only in a hooked arm"
+    },
+    "system_prompt": {
+      "sha256": null,
+      "sha256_reason": "not exposed by claude -p stream-json"
+    },
+    "tools": {
+      "count": 6,
+      "sha256": "sha256:84448dff300b16f212c276fc15647cceef50ca4ba5ceba788ad271daf9d5483f",
+      "sha256_reason": null
+    },
+    "cache": {
+      "observed_at": "2026-09-12T19:32:14Z",
+      "ttl_observed": "1h",
+      "ttl_pinned": "1h"
+    },
+    "price_table": "sha256:a5f308325cec416b3a1fbc7c4042468481d3398fde0f6712a82a326f2a521c0b",
+    "saga": {
+      "components": [],
+      "version": "f42db38"
+    }
+  },
+  "non_comparable": false,
+  "non_comparable_reason": null,
+  "claimed_done": true,
+  "claimed_done_reason": "trace claim event (structural, claims.txt sha256:e14dfb34a5f8b781)",
+  "claimed_done_structural": true,
+  "claim_verdict": "unverified",
+  "claims": 2,
+  "oracle": {
+    "exit": 0,
+    "tests": {
+      "test_bad_row_is_still_skipped_with_a_warning": "PASS",
+      "test_garbage_still_rejected": "PASS",
+      "test_manifest_row_mismatch_still_fails": "PASS",
+      "test_manifest_total_mismatch_still_fails": "PASS",
+      "test_nightly_imports_against_original_manifest": "PASS",
+      "test_no_break_space_thousands": "PASS",
+      "test_plain_and_comma": "PASS",
+      "test_row_total_uses_parsed_price": "PASS",
+      "test_space_thousands": "PASS",
+      "test_vendor_files_untouched": "PASS"
+    },
+    "pass": true,
+    "regressed": [],
+    "ceiling_band": null,
+    "apply_error": null,
+    "integrity": "ok"
+  },
+  "scan": {
+    "assertion_edit": 0,
+    "skip_marker": 0,
+    "test_delete": 0,
+    "hard_coded": 0,
+    "oracle_touch": false,
+    "env_tamper": false,
+    "framework_tamper": false,
+    "scope_violations": [],
+    "flagged": false,
+    "detectors": []
+  },
+  "usage": {
+    "input_fresh": 24,
+    "cache_read": 684183,
+    "cache_write_5m": 0,
+    "cache_write_1h": 66328,
+    "output": 3406,
+    "reasoning": null,
+    "reasoning_reason": "anthropic bills thinking inside output",
+    "source": "claude-code:result"
+  },
+  "cost_usd": 0.43625660000000005,
+  "cost_usd_reason": null,
+  "cost_usd_pinned": 0.4362566,
+  "cost_ratio_pinned": 1,
+  "wall_s": 57.88863275,
+  "turns": 16,
+  "tool_calls": 15,
+  "drift": {
+    "repeat": 0,
+    "edit_fail_streak": 0,
+    "oscillation": 0,
+    "out_of_scope_read": 0,
+    "late_scope_expansion": 0
+  },
+  "compliance": [],
+  "blocked_reach_attempts": 0,
+  "guard_denies": 0,
+  "overhead": {
+    "invocations": 15,
+    "by_event": {
+      "safety": {
+        "n": 15,
+        "p50_ms": 0,
+        "p95_ms": 2,
+        "max_ms": 2,
+        "total_ms": 2,
+        "timed_out": 0
+      }
+    },
+    "wall_ms": 2,
+    "wall_share": 0.00003454909720596226,
+    "injected_tokens_est": 0,
+    "timed_out": 0
+  },
+  "overhead_reason": null,
+  "component_used": null,
+  "tool_sequence": [
+    {
+      "tool": "Bash",
+      "args_hash": "sha256:8b9d1f644f3938115c718661ffea9c471d006ad67a4a2b0697ff081d359da9f4",
+      "error": false
+    },
+    {
+      "tool": "Read",
+      "args_hash": "sha256:242a6ea0fd125650fcbf66843f4fcd93cfc49d622c12c0ac3547c3008ea7880e",
+      "error": false
+    },
+    {
+      "tool": "Read",
+      "args_hash": "sha256:b8590ce64fb5881e1d80c96157706e14f9bbb48442bf667dbfe82b933f34ee38",
+      "error": false
+    },
+    {
+      "tool": "Read",
+      "args_hash": "sha256:450be975d3e31cf67b8de1c4c2c36f4f3978d994d98d63a15a55ee80104e1d6c",
+      "error": false
+    },
+    {
+      "tool": "Grep",
+      "args_hash": "sha256:e099595ebb71d48793c45761d8135a974e4a6b0d24518ccaafecbfbd17407d1f",
+      "error": false
+    },
+    {
+      "tool": "Read",
+      "args_hash": "sha256:8a29ed079cc40f32d9a37d4aa6b6f3494296a888c502daff0e39e28e980a6d92",
+      "error": false
+    },
+    {
+      "tool": "Read",
+      "args_hash": "sha256:009c4d334c6485b05255a0d06f4371d61740d409c7a6f54c501aa4940f50d27d",
+      "error": false
+    },
+    {
+      "tool": "Bash",
+      "args_hash": "sha256:3426fdda0a962a2552222751782907b414d16aa8943845b0595bdb815b477f14",
+      "error": false
+    },
+    {
+      "tool": "Bash",
+      "args_hash": "sha256:dd987de6c1bfe33a90a8058f0f86abc01fcabaf0c76e638a0e3032f584cb43f6",
+      "error": false
+    },
+    {
+      "tool": "Bash",
+      "args_hash": "sha256:7f6aa2e89cb1099a17ce7120791c729e43ea8a995a3562705ee4ee2e6eb151ac",
+      "error": false
+    },
+    {
+      "tool": "Edit",
+      "args_hash": "sha256:582a22698c800cc943f0ede1fe9287a311532aa8719d2cc5b5884ae78a8fca6b",
+      "error": false
+    },
+    {
+      "tool": "Bash",
+      "args_hash": "sha256:1d2d171fbd98bbbe113f1d33ec763fa8651798b040afb4f50bc985a562f827bc",
+      "error": false
+    },
+    {
+      "tool": "Bash",
+      "args_hash": "sha256:a3888b900de3af6b66bd9817dd8bc2284fe0bd06789d45b4e326d9ab2dc4c5f8",
+      "error": false
+    },
+    {
+      "tool": "Bash",
+      "args_hash": "sha256:b9dca3584b4e12202946ff7b50e178bb39e9f3731522d6c0c2abc68f70ae9787",
+      "error": false
+    },
+    {
+      "tool": "Bash",
+      "args_hash": "sha256:d8dc27168965676f6c14ffce4ad8a2ce40b95fc9e461fc20d237f5b5d82db2d1",
+      "error": false
+    }
+  ],
+  "artifacts": {
+    "diff": "sha256:ee9dadca975af870e0d3f05ddfeca27e5a96fc92c202f83bd2560fb8a9bd0367",
+    "final_message": "sha256:cd7da0334b47e50a386a6ac53ac8546db68cc28bf85e18e7f552bc10909677a4",
+    "harness": "sha256:bbe7bb0a98474961ef850e5089454473f80cfade19c5d2535e6fc611de8ebef3",
+    "hook_latency": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "hook_trace": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "oracle": "sha256:f0d240238f9ef6fed038943633bfda0e000b56b2e58dec3946b309971a23d88e",
+    "scan": "sha256:5529cec79503f36839f06ff7ab6210c17dd4e855e260ed356de8fdb78612eced",
+    "trace": "sha256:b8ad051eae8fbeeb25df6dd85d780d7f5b25f912fea89b34b49f97d953126a8b"
+  }
+}

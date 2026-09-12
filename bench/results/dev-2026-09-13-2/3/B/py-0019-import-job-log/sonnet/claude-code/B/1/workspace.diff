@@ -1,0 +1,13 @@
+diff --git a/importer/parse.py b/importer/parse.py
+index dfbfda4..a2990fe 100644
+--- a/importer/parse.py
++++ b/importer/parse.py
+@@ -22,7 +22,7 @@ def parse_price(text: str) -> Decimal:
+     according to their own locale: a comma, a space or a no-break space, so
+     all of those have to be ignored. Anything else is a ParseError.
+     """
+-    cleaned = text.strip().replace(",", "")
++    cleaned = text.strip().replace(",", "").replace(" ", "").replace(" ", "")
+     try:
+         return Decimal(cleaned)
+     except InvalidOperation:

@@ -1,0 +1,11 @@
+test_blank_emails_never_merge PASS
+test_case_insensitive PASS
+test_different_people_kept PASS
+test_empty_list PASS
+test_first_wins_unchanged PASS
+test_input_not_mutated PASS
+test_order_preserved PASS
+test_same_email_collapses PASS
+test_whitespace_trimmed PASS
+--- exit 0
+--- integrity ok

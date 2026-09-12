@@ -1,0 +1,3 @@
+All gates remain met. The earlier stop-hook contradiction was about my own claim's evidence being unverifiable (I had piped test output through `grep`/`sort -u`, hiding the actual pass/fail TAP markers the trace verifier needs), not about the underlying fix being wrong. The fix in `src/shard.ts` is unchanged and correct; I just re-verified with unfiltered `node --test` output showing `ok 1`, `ok 2`, `# pass 2`, `# fail 0` across three consecutive runs, giving the trace clear evidence that tests actually pass.
+
+DONE

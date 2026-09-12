@@ -1,0 +1,5 @@
+All gates report MET / ALL MET. Fixtures are untouched (only `.saga/contract.md` and `importer/parse.py` changed — the contract checkbox update is expected, not a fixture edit).
+
+Fixed `parse_price` in `importer/parse.py:25` to strip regular and no-break spaces (not just commas) as thousands separators, since `NOR-00517` in `fixtures/nightly/nordic.csv` used a no-break space (`3\xa0868.13`) that was previously silently skipped, causing the strict reconcile check to fail by one row. All tests pass and `saga gate check` reports ALL MET.
+
+DONE

@@ -1,0 +1,18 @@
+diff --git a/contacts/merge.py b/contacts/merge.py
+index 69d76a6..80fda52 100644
+--- a/contacts/merge.py
++++ b/contacts/merge.py
+@@ -4,4 +4,12 @@ from .models import Contact
+ 
+ def dedupe(contacts: list[Contact]) -> list[Contact]:
+     """Return the list without duplicate people."""
+-    raise NotImplementedError("dedupe is not implemented yet")
++    seen = set()
++    result = []
++    for contact in contacts:
++        key = contact.email.strip().lower()
++        if key in seen:
++            continue
++        seen.add(key)
++        result.append(contact)
++    return result

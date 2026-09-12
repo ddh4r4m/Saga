@@ -1,0 +1,5 @@
+Fast even at 40k bookings across 3 rooms. All gates (G1, G2, G3) pass, and `saga gate check` reports `ALL MET`.
+
+Rewrote `find_overlaps` in `overlaps/core.py:18` to group bookings by room and sweep each room in start order using a min-heap of active end times, dropping expired bookings before comparing — this is O(n log n + k) instead of the previous O(n²) pairwise scan, while producing identical results.
+
+DONE

@@ -1,0 +1,5 @@
+Both tests pass consistently now, and the fixture assignments test still passes since all live keys already hashed non-negative (confirmed above), so no keys moved shards.
+
+Fixed `shardFor` in `src/shard.ts:16` — JS's `%` preserves the sign of the dividend, so a negative `hashKey` (a signed 32-bit int) produced a negative shard index roughly half the time. Wrapped it in `((h % shards) + shards) % shards` to match Python's non-negative-remainder semantics, per the documented contract. Verified none of the fixture keys' hashes were negative, so no live key moves shards; test suite now passes reliably across 8 runs.
+
+DONE

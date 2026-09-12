@@ -1,0 +1,58 @@
+diff --git a/.pytest_cache/.gitignore b/.pytest_cache/.gitignore
+new file mode 100644
+index 0000000..bc1a1f6
+--- /dev/null
++++ b/.pytest_cache/.gitignore
+@@ -0,0 +1,2 @@
++# Created by pytest automatically.
++*
+diff --git a/.pytest_cache/CACHEDIR.TAG b/.pytest_cache/CACHEDIR.TAG
+new file mode 100644
+index 0000000..fce15ad
+--- /dev/null
++++ b/.pytest_cache/CACHEDIR.TAG
+@@ -0,0 +1,4 @@
++Signature: 8a477f597d28d172789f06886806bc55
++# This file is a cache directory tag created by pytest.
++# For information about cache directory tags, see:
++#	https://bford.info/cachedir/spec.html
+diff --git a/.pytest_cache/README.md b/.pytest_cache/README.md
+new file mode 100644
+index 0000000..b89018c
+--- /dev/null
++++ b/.pytest_cache/README.md
+@@ -0,0 +1,8 @@
++# pytest cache directory #
++
++This directory contains data from the pytest's cache plugin,
++which provides the `--lf` and `--ff` options, as well as the `cache` fixture.
++
++**Do not** commit this to version control.
++
++See [the docs](https://docs.pytest.org/en/stable/how-to/cache.html) for more information.
+diff --git a/.pytest_cache/v/cache/nodeids b/.pytest_cache/v/cache/nodeids
+new file mode 100644
+index 0000000..f06a56a
+--- /dev/null
++++ b/.pytest_cache/v/cache/nodeids
+@@ -0,0 +1,6 @@
++[
++  "tests/test_import.py::JobTests::test_nightly_fixture_imports_cleanly",
++  "tests/test_import.py::ParseTests::test_comma_thousands",
++  "tests/test_import.py::ParseTests::test_garbage_rejected",
++  "tests/test_import.py::ParseTests::test_plain_price"
++]
+\ No newline at end of file
+diff --git a/importer/parse.py b/importer/parse.py
+index dfbfda4..cde352f 100644
+--- a/importer/parse.py
++++ b/importer/parse.py
+@@ -22,7 +22,7 @@ def parse_price(text: str) -> Decimal:
+     according to their own locale: a comma, a space or a no-break space, so
+     all of those have to be ignored. Anything else is a ParseError.
+     """
+-    cleaned = text.strip().replace(",", "")
++    cleaned = text.strip().replace(",", "").replace(" ", "").replace("\xa0", "")
+     try:
+         return Decimal(cleaned)
+     except InvalidOperation:

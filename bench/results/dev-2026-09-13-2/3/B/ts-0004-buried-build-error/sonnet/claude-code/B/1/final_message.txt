@@ -1,0 +1,5 @@
+Both gates are met (G1 and G2), so the contract is satisfied.
+
+The root cause was a data typo, not a generator bug: `schema/order.json` declared the `quantity` field's type as `"integer "` (trailing space) instead of `"integer"`. The generator's type-lookup table only knows exact strings like `"integer"`, so the mistyped type fell through to its "unknown type" fallback and silently emitted an always-false validator for `quantity` — which cascaded into failing nearly every order record check. Removed the trailing space and the build is now green with all 63 self-checks passing.
+
+DONE

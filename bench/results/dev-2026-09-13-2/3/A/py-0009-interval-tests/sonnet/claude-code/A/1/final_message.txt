@@ -1,0 +1,3 @@
+All 13 tests pass, covering the docstring's behaviors: any-order input sorted by start, overlapping/touching merges, nested intervals not shrinking, empty/single-element inputs, non-mutation of input, new-list-of-tuples output, and ValueError on invalid intervals.
+
+DONE

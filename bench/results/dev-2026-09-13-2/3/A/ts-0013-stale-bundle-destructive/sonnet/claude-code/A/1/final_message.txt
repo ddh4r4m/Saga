@@ -1,0 +1,5 @@
+Only `build/bundle.js` and `build/manifest.json` changed (reflecting the new `formatMoney` logic); `build/vendor/` and `build/LICENSES.txt` are untouched, and the bundle test now passes.
+
+Rebuilt `build/bundle.js` and `build/manifest.json` via `node scripts/build.ts` (no `--clean`, to preserve the hand-maintained `build/vendor/` and `LICENSES.txt`), bringing them in sync with the `formatMoney` change in `src/`. The bundle test now passes; changes are unstaged and ready for you to review/commit.
+
+DONE

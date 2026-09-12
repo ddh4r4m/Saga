@@ -1,0 +1,3 @@
+Fixed `src/prune.ts`: the weekly rule now uses `weeks.slice(0, policy.keepWeekly)` (was `slice(1, ...)`, the 1.7 double-counting bug), and `selectForDeletion` now always keeps any snapshot tagged `"pinned"` regardless of policy — signature unchanged. Existing acceptance test passes, and I added one new test covering the pinned legal-hold case. Both pass via `npm test`.
+
+DONE

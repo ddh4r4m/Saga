@@ -1,0 +1,3 @@
+`Money` now stores `cents` as an integer internally (via `_from_cents` for arithmetic and rounding-on-construction for dollar inputs), with `amount` kept as a derived property so `format.py`/`tax.py` are untouched. `report.py` now formats totals to two decimals explicitly, fixing the drift. All existing tests pass and `saga gate check` reports ALL MET.
+
+DONE

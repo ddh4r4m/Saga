@@ -1,0 +1,3 @@
+All gates (G1, G2, G3) are MET. The `add` command now rejects zero, negative, and fractional quantities via a properly registered `E_BAD_QTY` error code, documented in `docs/errors.md`, and both new test cases pass.
+
+DONE

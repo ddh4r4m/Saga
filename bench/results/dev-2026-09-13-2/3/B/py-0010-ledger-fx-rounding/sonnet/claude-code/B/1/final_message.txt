@@ -1,0 +1,3 @@
+All gates pass. The bug was in `ledger/fx.py:6` — `convert()` used `int(cents * rate)`, which truncates toward zero on every FX conversion instead of rounding, biasing the EUR account (4471) balance downward by a fraction of a cent per posting; across ~3200 postings that truncation bias summed to the 0.30 EUR discrepancy. Fixed by using `round()` instead of `int()`. Fixtures were untouched, and the reconcile now reports `0 mismatches`.
+
+DONE

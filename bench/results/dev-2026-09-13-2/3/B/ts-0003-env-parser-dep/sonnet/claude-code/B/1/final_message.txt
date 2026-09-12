@@ -1,0 +1,3 @@
+All gates are MET. Config loading works without the phantom package, no dependencies are declared, and quoted values (including the hash inside quotes in MOTD) pass through intact.
+
+DONE

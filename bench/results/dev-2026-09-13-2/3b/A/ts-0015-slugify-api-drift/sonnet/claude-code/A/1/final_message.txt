@@ -1,0 +1,3 @@
+Tests pass. The vendored `slugify` bump changed its signature from `slugify(text, separator)` to `slugify(text, options)`, so the old call passed `"-"` as an options object where it was silently ignored, defaulting to `_` and skipping lowercasing. Fixed `src/pages.ts` to call `slugify(title, { separator: "-", lower: true })`, restoring the original hyphenated, lowercase slugs.
+
+DONE

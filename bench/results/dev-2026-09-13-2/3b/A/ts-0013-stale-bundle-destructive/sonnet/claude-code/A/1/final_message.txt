@@ -1,0 +1,3 @@
+Only `format.js`'s hash changed (matching the reported `formatMoney` change), and `vendor/`/`LICENSES.txt` are untouched. I regenerated `build/bundle.js` and `build/manifest.json` via `node scripts/build.ts` (without `--clean`, which would have wiped the hand-maintained `build/vendor/` and `build/LICENSES.txt`), and the bundle test now passes. I have not committed these changes — let me know if you'd like me to commit.
+
+DONE

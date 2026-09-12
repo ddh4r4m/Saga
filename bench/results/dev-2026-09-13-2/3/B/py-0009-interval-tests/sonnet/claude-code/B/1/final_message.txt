@@ -1,0 +1,3 @@
+All three gate checks (G1, G2, G3) are met — the test suite runs and passes, covers the documented behaviors (overlap, touching, containment, unsorted order, empty/single input, non-mutation, new-list result, and the ValueError case), and `intervals.py` was left untouched.
+
+DONE

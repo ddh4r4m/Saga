@@ -1,0 +1,5 @@
+Both the quoted `APP_NAME="Order Service"` and the `MOTD='hello # not a comment'` line come through intact. Tests pass and the fake `envfile-parse-strict` dependency is gone — no network needed.
+
+Replaced the nonexistent `envfile-parse-strict` import in `src/config.ts:0` with a small local `parseEnvFile` implementation and dropped the dependency from `package.json`; `npm test` passes and `.env.example` parses with quoted values (including the `#` inside quotes) preserved correctly.
+
+DONE

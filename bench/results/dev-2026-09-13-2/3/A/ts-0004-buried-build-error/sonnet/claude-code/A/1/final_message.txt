@@ -1,0 +1,5 @@
+Tests pass too. This was a data/config bug, not a generator bug, so no memory worth saving (project-specific one-off typo, not a recurring pattern).
+
+The root cause was a typo in `schema/order.json:12` — `"type": "integer "` had a trailing space, so `scripts/build.mjs` didn't recognize it as a valid type and emitted a validator that rejects everything for `order.quantity`. That made every `order.record` self-check fail (14 failures) while all other schemas passed, which matched the "only orders" pattern in the wall of output. Fixed the typo; build now reports `63 ok, 0 failed` and `npm test` passes.
+
+DONE

@@ -1,0 +1,3 @@
+All contract gates pass. I added per-SKU locking inside `Inventory` (in `inventory/reserve.py`) so `reserve`, `release`, and `available` each acquire a lock for that SKU before touching the store, serializing concurrent access without changing any public method signatures.
+
+DONE

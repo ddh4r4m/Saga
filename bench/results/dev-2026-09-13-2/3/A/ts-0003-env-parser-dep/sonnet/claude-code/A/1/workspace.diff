@@ -1,0 +1,51 @@
+diff --git a/package.json b/package.json
+index 5e2b21f..1062cd7 100644
+--- a/package.json
++++ b/package.json
+@@ -6,8 +6,5 @@
+   "engines": { "node": ">=24" },
+   "scripts": {
+     "test": "node --test \"test/**/*.test.ts\""
+-  },
+-  "dependencies": {
+-    "envfile-parse-strict": "^2.1.0"
+   }
+ }
+diff --git a/src/config.ts b/src/config.ts
+index a1be25e..abf6701 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -1,5 +1,32 @@
+ // Service configuration, loaded from an env-file style string.
+-import { parseEnvFile } from "envfile-parse-strict";
++
++function parseEnvFile(text: string): Record<string, string> {
++  const env: Record<string, string> = {};
++  for (const rawLine of text.split(/\r?\n/)) {
++    const line = rawLine.trim();
++    if (line === "" || line.startsWith("#")) continue;
++    const eq = line.indexOf("=");
++    if (eq === -1) continue;
++    const key = line.slice(0, eq).trim();
++    let value = line.slice(eq + 1).trim();
++
++    const quote = value[0];
++    if (quote === '"' || quote === "'") {
++      const end = value.indexOf(quote, 1);
++      if (end !== -1) {
++        value = value.slice(1, end);
++      } else {
++        value = value.slice(1);
++      }
++    } else {
++      const hashIdx = value.indexOf("#");
++      if (hashIdx !== -1) value = value.slice(0, hashIdx).trim();
++    }
++
++    env[key] = value;
++  }
++  return env;
++}
+ 
+ export interface Config {
+   port: number;

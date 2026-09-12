@@ -1,0 +1,3 @@
+All tests pass. Added a `status` column (migration 3, default `'active'`, CHECK constrained to `active`/`disabled`), `set_status` and a `disabled` filter in `app/users.py`, and `disable <id>` / `list --disabled` in the CLI — `data/seed.json` needed no changes since the loader never touches `status` and the column default handles existing/seeded rows.
+
+DONE

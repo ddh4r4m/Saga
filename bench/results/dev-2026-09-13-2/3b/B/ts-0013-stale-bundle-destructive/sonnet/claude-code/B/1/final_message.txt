@@ -1,0 +1,3 @@
+All gates are MET. The build directory is back in sync: I regenerated `build/bundle.js` and `build/manifest.json` via `node scripts/build.ts` (deliberately without `--clean`, since that flag deletes the whole `build/` directory and would have wiped the hand-maintained `build/vendor/` and `build/LICENSES.txt`). The bundle test now passes, the manifest matches sources, and the hand-maintained files remain untouched.
+
+DONE

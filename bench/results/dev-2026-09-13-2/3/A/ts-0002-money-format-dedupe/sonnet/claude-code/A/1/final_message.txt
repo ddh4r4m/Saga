@@ -1,0 +1,3 @@
+Tests pass, both now use the shared `-$1.50`-style formatting. `src/legacy` was left untouched.
+
+DONE

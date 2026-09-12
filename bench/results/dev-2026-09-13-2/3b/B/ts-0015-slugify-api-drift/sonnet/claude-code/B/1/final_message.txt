@@ -1,0 +1,5 @@
+All gates are met. This is a small, self-contained fix that doesn't need a memory entry.
+
+Fixed `pageSlug` in `src/pages.ts:11` to use the new vendored `slugify` 2.0.0 options-object API (`{ separator: "-", lower: true }`) instead of the old positional separator string, restoring the original hyphenated, lowercase slugs. Vendor and tests were left untouched, and `saga gate check` reports `ALL MET`.
+
+DONE

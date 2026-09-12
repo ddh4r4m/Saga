@@ -1,0 +1,5 @@
+All tests pass. Since this is a small, generally-applicable bug fix, no memory updates are needed.
+
+Added a per-SKU lock in `Inventory` (`inventory/reserve.py`) that serializes the read-check-write sequence in `reserve`/`release`/`available`, fixing the oversell race while keeping the public API unchanged. All 3 tests in `tests/test_reserve.py` now pass.
+
+DONE
