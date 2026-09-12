@@ -191,3 +191,33 @@ func WriteArchiveSums(dir string) error {
 	}
 	return os.WriteFile(filepath.Join(dir, "SHA256SUMS"), []byte(b.String()), 0o644)
 }
+
+// CorpusKey is the one place a corpus approval store's name is decided
+// (ADR 0010 decision 2): the `set` line of the freeze artefact beside
+// the tasks, which is the hash over the whole frozen corpus and not
+// over the tasks one invocation happens to select.
+//
+// Both producers call it. They did not, and that was the defect of the
+// 2026-09-13 dev run: `approve-corpus` keyed the store on the freeze
+// file's set line (40 tasks, fc22a4d4...) while `Run` keyed it on the
+// manifest's hash over the 20 tasks the batch selected (ec52d09a...),
+// so the owner's 202 records were written into one directory and every
+// arm B run read an empty other one and ended infra with
+// `not pre-approved`. A subset run is legitimate (Check says so); it is
+// still the same frozen corpus, and the approvals are the corpus's.
+func CorpusKey(tasks []*task.Task) (string, error) {
+	frozen, err := FindFrozen(tasks)
+	if err != nil {
+		return "", err
+	}
+	if frozen == nil {
+		return "", cli.Errorf(cli.ExitUsage, "no %s beside the tasks; freeze the set first with `saga bench taskset --write`", FrozenName)
+	}
+	if err := frozen.Check(tasks); err != nil {
+		return "", err
+	}
+	if frozen.Set == "" {
+		return "", cli.Errorf(cli.ExitUsage, "%s carries no `set` line; re-freeze with `saga bench taskset --write`", frozen.Path)
+	}
+	return frozen.Set, nil
+}

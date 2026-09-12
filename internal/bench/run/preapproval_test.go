@@ -2,7 +2,10 @@ package run
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -84,12 +87,17 @@ func TestPrepareConsumesCorpusApprovalNeverCreatesIt(t *testing.T) {
 			Task: tk, Workspace: ws, ConfigDir: cfg, Components: []string{"gate"},
 			Prompt: adapter.StagedPrompt(tk.Prompt(), []string{"gate"}),
 			Blocks: []string{}, Limits: adapter.Limits{WallS: 60, MaxTurns: 5, USD: 1},
-			TaskSetSHA256: set,
+			FrozenSetSHA256: set,
 		})
 		return err
 	}
 
-	// Empty store: refused, and the reason names the gate and the way out.
+	// A store that exists and holds nothing: refused, and the reason
+	// names the gate and the way out. (No store at all is a different
+	// refusal, checked below.)
+	if err := os.MkdirAll(store, 0o700); err != nil {
+		t.Fatal(err)
+	}
 	err = prepare(t)
 	if err == nil {
 		t.Fatal("a gate arm prepared against an empty corpus store")
@@ -107,6 +115,21 @@ func TestPrepareConsumesCorpusApprovalNeverCreatesIt(t *testing.T) {
 	// And it did not approve itself: the store is still empty.
 	if entries, _ := os.ReadDir(store); len(entries) != 0 {
 		t.Errorf("Prepare wrote %d records into the corpus store; a run must never approve", len(entries))
+	}
+
+	// And with no store at all the refusal says that, rather than
+	// creating one: a run that created its store turned a wrong key into
+	// an empty directory that reads like an unapproved corpus
+	// (2026-09-13).
+	if err := os.RemoveAll(store); err != nil {
+		t.Fatal(err)
+	}
+	err = prepare(t)
+	if !errors.As(err, &na) || !strings.Contains(na.Error(), "no corpus approval store") {
+		t.Errorf("with no store the refusal was %v", err)
+	}
+	if _, err := os.Stat(store); err == nil {
+		t.Error("Prepare created the corpus approval store; only the owner's approval may")
 	}
 
 	// The owner approves once, and then the same Prepare proceeds.
@@ -168,6 +191,10 @@ func TestApproveCorpusFillsTheStoreAndIsIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// `approve-corpus` creates the store; here the test stands in for it.
+	if err := os.MkdirAll(store, 0o700); err != nil {
+		t.Fatal(err)
+	}
 	sagaBin := approveCapableSaga(t)
 
 	approve := func(t *testing.T, check bool) *adapter.ApproveCorpusResult {
@@ -217,5 +244,195 @@ func TestApproveCorpusFillsTheStoreAndIsIdempotent(t *testing.T) {
 	}
 	if res := approve(t, true); len(res.Missing) != 0 {
 		t.Errorf("--check still reports %v after approving", res.Missing)
+	}
+}
+
+// TestCorpusKeyIsTheFrozenSetNotTheSelection pins the defect of the
+// 2026-09-13 dev run directly: the corpus store is named after the
+// frozen corpus, so a run over a subset of it consumes the same
+// approvals. `approve-corpus` keyed the store on the freeze file's set
+// line while the runner keyed it on the manifest's hash over the tasks
+// the batch selected, and the owner's 202 records sat in a directory no
+// run ever opened.
+func TestCorpusKeyIsTheFrozenSetNotTheSelection(t *testing.T) {
+	all := loadTasks(t, corpusIDs(t)...)
+	if len(all) < 2 {
+		t.Skip("the corpus has fewer than two tasks")
+	}
+	frozen, err := FindFrozen(all)
+	if err != nil || frozen == nil {
+		t.Skipf("no freeze artefact beside the corpus: %v", err)
+	}
+
+	whole, err := CorpusKey(all)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if whole != frozen.Set {
+		t.Fatalf("CorpusKey over the whole corpus is %s, the freeze file says %s", whole, frozen.Set)
+	}
+	subset := all[:1]
+	got, err := CorpusKey(subset)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != whole {
+		t.Errorf("a run over %d of %d tasks keys the store on %s, not on the frozen set %s", len(subset), len(all), got, whole)
+	}
+	// And it is not the hash the manifest carries for the selection,
+	// which is the value that was passed before.
+	if got == selectionHash(t, subset) {
+		t.Errorf("CorpusKey returned the selection hash; that is the bug, not the fix")
+	}
+}
+
+// selectionHash is the manifest's task_set.sha256 for a set of tasks,
+// recomputed the way Run does, so the test compares the two real
+// producers rather than two spellings of one.
+func selectionHash(t *testing.T, tasks []*task.Task) string {
+	t.Helper()
+	h := sha256.New()
+	for _, tk := range tasks {
+		c, err := tk.ContentHash()
+		if err != nil {
+			t.Fatal(err)
+		}
+		fmt.Fprintf(h, "%s %s\n", tk.ID, c)
+	}
+	return "sha256:" + hex.EncodeToString(h.Sum(nil))
+}
+
+// corpusIDs lists the task directories the freeze file names, so the
+// test reads the real corpus rather than a fixture of its own.
+func corpusIDs(t *testing.T) []string {
+	t.Helper()
+	entries, err := os.ReadDir(filepath.Join("..", "..", "..", "bench", "tasks"))
+	if err != nil {
+		t.Skipf("no corpus: %v", err)
+	}
+	var ids []string
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join("..", "..", "..", "bench", "tasks", e.Name(), "task.toml")); err != nil {
+			continue
+		}
+		ids = append(ids, e.Name())
+	}
+	return ids
+}
+
+// TestApproveCorpusAndPrepareNameOneStore is the end-to-end the brief
+// asks for: the owner approves through `approve-corpus`, then a gate
+// arm's Prepare against that store proceeds (the stub saga exits 1, a
+// red baseline) and never exits 4. The second half is the failure as it
+// happened: keyed on the selection hash instead, the same Prepare is
+// refused, so the test would fail on the old wiring.
+func TestApproveCorpusAndPrepareNameOneStore(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
+	needRunners(t)
+	t.Setenv("SAGA_HOME", t.TempDir())
+	tasks := loadTasks(t, "ts-0001-slug-collapse")
+	tk := tasks[0]
+	sagaBin := approveCapableSaga(t)
+
+	key, err := CorpusKey(tasks)
+	if err != nil {
+		t.Skipf("no frozen corpus: %v", err)
+	}
+	store, err := adapter.CorpusStoreDir(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(store, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	// The owner's act, through the same call the command makes.
+	root := t.TempDir()
+	c := &adapter.ClaudeCode{Binary: "/nonexistent/claude", Version: "test", SagaBinary: sagaBin}
+	if _, err := c.ApproveCorpus(context.Background(), &adapter.ApproveCorpusInput{
+		Task: tk, Workspace: filepath.Join(root, "aws"), ConfigDir: mkdir(t, root, "acfg"), CorpusStore: store,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if entries, _ := os.ReadDir(store); len(entries) == 0 {
+		t.Fatal("approve-corpus wrote no record")
+	}
+
+	prepare := func(t *testing.T, setHash string) error {
+		t.Helper()
+		base := t.TempDir()
+		ws := filepath.Join(base, "ws")
+		if err := task.Stage(context.Background(), tk, ws); err != nil {
+			t.Fatal(err)
+		}
+		pc := &adapter.ClaudeCode{Binary: "/nonexistent/claude", Version: "test", SagaBinary: sagaBin}
+		_, err := pc.Prepare(context.Background(), &adapter.PrepareInput{
+			Task: tk, Workspace: ws, ConfigDir: mkdir(t, base, "cfg"), Components: []string{"gate"},
+			Prompt: adapter.StagedPrompt(tk.Prompt(), []string{"gate"}),
+			Blocks: []string{}, Limits: adapter.Limits{WallS: 60, MaxTurns: 5, USD: 1},
+			FrozenSetSHA256: setHash, RunTaskSetSHA256: selectionHash(t, tasks),
+		})
+		return err
+	}
+
+	if err := prepare(t, key); err != nil {
+		t.Fatalf("a gate arm keyed on the frozen set was refused: %v", err)
+	}
+	err = prepare(t, selectionHash(t, tasks))
+	var na *adapter.NotPreApproved
+	if !errors.As(err, &na) {
+		t.Fatalf("keyed on the selection hash the arm was not refused: %v", err)
+	}
+	if !strings.Contains(na.Error(), "not pre-approved") {
+		t.Errorf("reason %q", na.Error())
+	}
+	// The refusal names the corpus it looked for, which is what the dev
+	// run's rows could not say.
+	if !strings.Contains(na.Error(), "task set sha256:") {
+		t.Errorf("the refusal does not name the task set it wanted: %q", na.Error())
+	}
+}
+
+func mkdir(t *testing.T, parts ...string) string {
+	t.Helper()
+	p := filepath.Join(parts...)
+	if err := os.MkdirAll(p, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+// TestRunKeysTheCorpusStoreOnTheFrozenSet pins the wiring: `open` puts
+// the frozen corpus key on the options a gate arm's Prepare reads, and
+// it is not the manifest's own task_set.sha256 when the run takes a
+// subset.
+func TestRunKeysTheCorpusStoreOnTheFrozenSet(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
+	needRunners(t)
+	tasks := loadTasks(t, "ts-0001-slug-collapse")
+	want, err := CorpusKey(tasks)
+	if err != nil {
+		t.Skipf("no frozen corpus: %v", err)
+	}
+	s, err := open(context.Background(), Options{
+		Tasks: tasks, Adapter: &adapter.Replay{Patch: "gold"}, K: 1, Arm: "B",
+		Components: []string{"gate"}, Out: filepath.Join(t.TempDir(), "runs"),
+		Seed: strings.Repeat("ab", 32),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.opts.corpusKey != want {
+		t.Errorf("the runner keys the corpus store on %q, the freeze file says %q", s.opts.corpusKey, want)
+	}
+	if s.opts.corpusKey == s.m.TaskSet.SHA256 {
+		t.Errorf("the runner is still keying on the selection hash %s", s.m.TaskSet.SHA256)
 	}
 }

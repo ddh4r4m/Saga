@@ -178,7 +178,14 @@ func TestClaudePrepareDisclosure(t *testing.T) {
 	// SAGA_HOME keeps the stable bin dir and the corpus store off the
 	// real home (ADR 0010).
 	t.Setenv("SAGA_HOME", filepath.Join(root, "saga-home"))
-	out2, err := c2.Prepare(context.Background(), &PrepareInput{Task: tk, Workspace: ws2, ConfigDir: cfg2, Components: []string{"gate"}, Prompt: staged, Limits: Limits{WallS: 720, MaxTurns: 200, USD: 0.45}, Blocks: []string{}, TaskSetSHA256: testTaskSet})
+	// Prepare consumes the store and no longer creates it (2026-09-13),
+	// so the test stands in for the owner's approval.
+	if store, err := CorpusStoreDir(testTaskSet); err == nil {
+		if err := os.MkdirAll(store, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	out2, err := c2.Prepare(context.Background(), &PrepareInput{Task: tk, Workspace: ws2, ConfigDir: cfg2, Components: []string{"gate"}, Prompt: staged, Limits: Limits{WallS: 720, MaxTurns: 200, USD: 0.45}, Blocks: []string{}, FrozenSetSHA256: testTaskSet})
 	if err != nil {
 		t.Fatal(err)
 	}

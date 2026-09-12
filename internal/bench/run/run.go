@@ -83,6 +83,12 @@ type Options struct {
 	// and records the fact in the manifest, rather than refusing.
 	Unfrozen bool
 	Log      io.Writer
+	// corpusKey is the frozen corpus this run's gate arms take their
+	// approvals from, from run.CorpusKey. It is unexported and set by
+	// Run alone, so no caller can pass the per-run selection hash in its
+	// place, which is what made every arm B run of the 2026-09-13 dev run
+	// read an empty store.
+	corpusKey string
 }
 
 // ArmSpec is one parsed `--arm` value: `<id>` or `<id>:bare` is the
@@ -209,6 +215,17 @@ func open(ctx context.Context, opts Options) (*session, error) {
 	if !opts.Unfrozen {
 		if err := frozen.Check(opts.Tasks); err != nil {
 			return nil, err
+		}
+		// The corpus a gate arm's approvals belong to. `approve-corpus`
+		// calls this same function, so the two cannot name different
+		// stores again; only a gate arm needs one, and an --unfrozen run
+		// has no corpus to be approved against and is left without one.
+		if adapter.HasComponent(opts.Components, "gate") {
+			key, err := CorpusKey(opts.Tasks)
+			if err != nil {
+				return nil, err
+			}
+			opts.corpusKey = key
 		}
 	}
 
@@ -552,7 +569,7 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 	if err := os.WriteFile(promptPath, []byte(prompt), 0o644); err != nil {
 		return infra("prompt", err)
 	}
-	prep, err := opts.Adapter.Prepare(ctx, &adapter.PrepareInput{Task: t, Workspace: ws, ConfigDir: cfg, Arm: opts.Arm, Components: opts.Components, Blocks: []string{}, Seed: seed, Limits: limits, SagaBinary: opts.SagaBinary, Prompt: prompt, TaskSetSHA256: m.TaskSet.SHA256})
+	prep, err := opts.Adapter.Prepare(ctx, &adapter.PrepareInput{Task: t, Workspace: ws, ConfigDir: cfg, Arm: opts.Arm, Components: opts.Components, Blocks: []string{}, Seed: seed, Limits: limits, SagaBinary: opts.SagaBinary, Prompt: prompt, FrozenSetSHA256: opts.corpusKey, RunTaskSetSHA256: m.TaskSet.SHA256})
 	if err != nil {
 		// A gate whose corpus approval is missing is infra, not a result:
 		// the owner has not approved this task set for this binary, so

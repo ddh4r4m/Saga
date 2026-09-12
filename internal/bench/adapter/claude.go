@@ -481,7 +481,7 @@ func (c *ClaudeCode) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOut
 		// The corpus approval store this arm consumed, and who approved
 		// each gate: a report can then say that no run approved anything
 		// (ADR 0010 decision 5).
-		d["approval_store"] = c.approvalStoreBlock(in.TaskSetSHA256)
+		d["approval_store"] = c.approvalStoreBlock(in.FrozenSetSHA256, in.RunTaskSetSHA256)
 		sha, present := GateConfigAtBase(ctx, in.Workspace)
 		d["gate_config_present"] = present
 		if present {
@@ -665,17 +665,22 @@ func (c *ClaudeCode) stageGateFiles(ctx context.Context, in *PrepareInput) error
 	// manifest. Either way it is never empty for a gate arm, and never
 	// the operator's own ~/.saga/approved.
 	if c.CorpusStore == "" {
-		if in.TaskSetSHA256 == "" {
+		if in.FrozenSetSHA256 == "" {
 			return fmt.Errorf("gate arm: no task-set hash, so no corpus approval store (ADR 0010)")
 		}
-		corpus, err := CorpusStoreDir(in.TaskSetSHA256)
+		corpus, err := CorpusStoreDir(in.FrozenSetSHA256)
 		if err != nil {
 			return err
 		}
 		c.CorpusStore = corpus
 	}
-	if err := os.MkdirAll(c.CorpusStore, 0o700); err != nil {
-		return err
+	// A run never creates the store. `approve-corpus` does, because it is
+	// the thing that approves; Prepare creating it turned a wrong key
+	// into an empty directory that looked like a legitimate store with
+	// nothing in it, which is how the 2026-09-13 dev run spent an arm
+	// before anyone saw that the key was wrong at all.
+	if fi, err := os.Stat(c.CorpusStore); err != nil || !fi.IsDir() {
+		return &NotPreApproved{Store: c.CorpusStore, Key: in.FrozenSetSHA256, MissingStore: true}
 	}
 
 	// The stable directory of ADR 0010 decision 1, not a per-run one: the
@@ -777,7 +782,7 @@ func (c *ClaudeCode) baselineCheck(ctx context.Context, in *PrepareInput) error 
 	case 1, 5:
 		return nil
 	case int(cli.ExitApproval):
-		return &NotPreApproved{Gates: approvalMissing(out.Bytes()), Store: c.CorpusStore}
+		return &NotPreApproved{Gates: approvalMissing(out.Bytes()), Store: c.CorpusStore, Key: in.FrozenSetSHA256}
 	default:
 		return fmt.Errorf("baseline check exited %d: %s", code, strings.TrimSpace(errb.String()))
 	}
@@ -790,14 +795,40 @@ func (c *ClaudeCode) baselineCheck(ctx context.Context, in *PrepareInput) error 
 type NotPreApproved struct {
 	Gates []string
 	Store string
+	// Key is the frozen task set the store is named after. It is in the
+	// message because the 2026-09-13 dev run failed on the key and not on
+	// the records, and nothing it wrote said which corpus it had looked
+	// for.
+	Key string
+	// MissingStore is the store directory not being there at all, which
+	// is a different fact from a store without this gate's record.
+	MissingStore bool
 }
 
 func (e *NotPreApproved) Error() string {
+	where := ""
+	if e.Key != "" {
+		where = ", task set " + shortHash(e.Key)
+	}
+	if e.MissingStore {
+		return "not pre-approved: no corpus approval store" + where + " (run `saga bench approve-corpus` from your terminal)"
+	}
 	ids := strings.Join(e.Gates, " ")
 	if ids == "" {
 		ids = "unknown"
 	}
-	return "not pre-approved: " + ids + " (run `saga bench approve-corpus` from your terminal)"
+	return "not pre-approved: " + ids + where + " (run `saga bench approve-corpus` from your terminal)"
+}
+
+// shortHash is the first 16 hex of a sha256 string, the way the bench
+// names a task set in prose. The path of the store is never in a
+// message a run archives: it names the operator's home directory.
+func shortHash(h string) string {
+	h = strings.TrimPrefix(h, "sha256:")
+	if len(h) > 16 {
+		h = h[:16]
+	}
+	return "sha256:" + h
 }
 
 // approvalMissing reads the gate ids the check reported as unapproved,
@@ -1328,8 +1359,16 @@ func (c *ClaudeCode) ApproveCorpus(ctx context.Context, in *ApproveCorpusInput) 
 // which frozen task set it belongs to, a hash of the directory path
 // (never the path, which names the operator's home), and the approvals
 // found there, by whom and when. A run writes none of these.
-func (c *ClaudeCode) approvalStoreBlock(taskSet string) map[string]any {
-	out := map[string]any{"kind": "corpus", "taskset_sha256": taskSet, "created_by_run": false}
+func (c *ClaudeCode) approvalStoreBlock(frozenSet, runSet string) map[string]any {
+	// Both hashes, side by side. They differ whenever the run takes a
+	// subset of the frozen corpus, which is legitimate; the approvals
+	// belong to the corpus, not to the selection. Keying the store on the
+	// selection instead is the 2026-09-13 dev run defect, and a reader of
+	// the archive can now see at a glance which one named the store.
+	out := map[string]any{
+		"kind": "corpus", "taskset_sha256": frozenSet, "created_by_run": false,
+		"run_taskset_sha256": runSet,
+	}
 	if c.CorpusStore == "" {
 		out["dir_sha256"] = nil
 		out["dir_sha256_reason"] = "no corpus store for this arm"

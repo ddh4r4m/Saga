@@ -134,3 +134,57 @@ func TestCorpusStoreIsOutsideEveryWorkspaceAnd0700(t *testing.T) {
 		t.Errorf("a run pointed at the operator's personal approval store:\n%s", env)
 	}
 }
+
+// TestApproveCorpusCheckKeysOnTheFrozenSetLikeTheRun is the preflight
+// half of the 2026-09-13 defect: `bench-smoke`'s `--check` must name the
+// same store the run will open. It does now because both call
+// run.CorpusKey; before, `--check` read the freeze file's set line and
+// the run hashed the tasks it had selected, so a batch of 20 out of the
+// frozen 40 passed the preflight and then found an empty store.
+func TestApproveCorpusCheckKeysOnTheFrozenSetLikeTheRun(t *testing.T) {
+	needCorpusTools(t)
+	repo, _ := filepath.Abs(filepath.Join("..", "..", ".."))
+	root := t.TempDir()
+	corpus := filepath.Join(root, "tasks")
+	if err := os.MkdirAll(corpus, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"ts-0001-slug-collapse", "py-0006-contact-dedupe"} {
+		src := filepath.Join(repo, "bench", "tasks", id)
+		if _, err := os.Stat(src); err != nil {
+			t.Skipf("task %s not present: %v", id, err)
+		}
+		if out, err := execCopy(src, corpus); err != nil {
+			t.Fatalf("copy %s: %v %s", id, err, out)
+		}
+	}
+	all := filepath.Join(corpus, "*")
+	one := filepath.Join(corpus, "ts-0001-slug-collapse")
+	if _, errs, code := runIn(t, repo, "", "bench", "taskset", all, "--write", filepath.Join(corpus, run.FrozenName)); code != cli.ExitOK {
+		t.Fatalf("taskset: %v %s", code, errs)
+	}
+	t.Setenv("SAGA_HOME", filepath.Join(root, "home"))
+
+	frozen, err := run.ReadFrozen(filepath.Join(corpus, run.FrozenName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := short16(frozen.Set)
+
+	// The preflight over one task of the two.
+	out, _, _ := runIn(t, repo, "", "bench", "approve-corpus", "--check", one)
+	if !strings.Contains(out, "task set "+want) {
+		t.Errorf("--check over a subset names %q; the frozen set is %s", lastLine(out), want)
+	}
+	// And over the whole set, the same name: the key does not move with
+	// the selection.
+	outAll, _, _ := runIn(t, repo, "", "bench", "approve-corpus", "--check", all)
+	if !strings.Contains(outAll, "task set "+want) {
+		t.Errorf("--check over the whole set names %q; the frozen set is %s", lastLine(outAll), want)
+	}
+}
+
+func lastLine(s string) string {
+	lines := strings.Split(strings.TrimSpace(s), "\n")
+	return lines[len(lines)-1]
+}

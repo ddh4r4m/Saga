@@ -52,26 +52,26 @@ func (a *App) benchApproveCorpus(args []string) error {
 	}
 	// The store is keyed by the frozen task set, so a corpus edit
 	// invalidates the approvals by construction rather than by anyone
-	// remembering to clear them.
-	frozen, err := run.FindFrozen(tasks)
+	// remembering to clear them. `run.CorpusKey` is the only place that
+	// name is decided, and the runner calls the same function: keying
+	// the two sides separately is what sent the 2026-09-13 dev run's
+	// approvals to one store and its lookups to another.
+	setHash, err := run.CorpusKey(tasks)
 	if err != nil {
 		return err
 	}
-	if frozen == nil {
-		return cli.Errorf(cli.ExitUsage, "approve-corpus: no %s beside the tasks; freeze the set first with `saga bench taskset --write`", run.FrozenName)
-	}
-	if err := frozen.Check(tasks); err != nil {
-		return err
-	}
-	if frozen.Set == "" {
-		return cli.Errorf(cli.ExitUsage, "approve-corpus: %s carries no `set` line", frozen.Path)
-	}
-	store, err := adapter.CorpusStoreDir(frozen.Set)
+	store, err := adapter.CorpusStoreDir(setHash)
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(store, 0o700); err != nil {
-		return cli.Wrap(cli.ExitEnvironment, "corpus store", err)
+	// Only approving creates the store. A --check that created it would
+	// leave an empty directory behind that a later run mistakes for a
+	// store with nothing approved in it yet, which is the shape the
+	// 2026-09-13 failure took.
+	if !*check {
+		if err := os.MkdirAll(store, 0o700); err != nil {
+			return cli.Wrap(cli.ExitEnvironment, "corpus store", err)
+		}
 	}
 	binHash := adapter.FileSHA256(*sagaBin)
 	if binHash == "" {
@@ -85,6 +85,16 @@ func (a *App) benchApproveCorpus(args []string) error {
 	probe := &adapter.ClaudeCode{SagaBinary: *sagaBin}
 	fmt.Fprintf(a.Stdout, "path: %s\n", strings.Join(probe.BenchPath(""), string(os.PathListSeparator)))
 
+	// With no store at all, no task can be covered and the reason is the
+	// same for every one of them, so the forty workspace stagings that
+	// would learn it forty times are skipped. The report is not: the
+	// caller is a launcher's preflight, and the list of task ids is how
+	// an operator sees which batch is about to run.
+	noStore := false
+	if fi, err := os.Stat(store); *check && (err != nil || !fi.IsDir()) {
+		noStore = true
+	}
+
 	ctx, cancel := signalContext()
 	defer cancel()
 
@@ -97,6 +107,11 @@ func (a *App) benchApproveCorpus(args []string) error {
 	covered := 0
 	var problems []string
 	for _, t := range tasks {
+		if noStore {
+			problems = append(problems, t.ID)
+			fmt.Fprintf(a.Stdout, "%s not approved: no corpus approval store for task set %s\n", t.ID, short16(setHash))
+			continue
+		}
 		c := &adapter.ClaudeCode{Binary: "/nonexistent/claude", Version: "approve-corpus", SagaBinary: *sagaBin}
 		ws := filepath.Join(scratch, t.ID, "ws")
 		cfg := filepath.Join(scratch, t.ID, "cfg")
@@ -130,7 +145,7 @@ func (a *App) benchApproveCorpus(args []string) error {
 	if *check {
 		verb = "covered"
 	}
-	fmt.Fprintf(a.Stdout, "%s %d of %d tasks for binary %s, task set %s\n", verb, covered, len(tasks), short16(binHash), short16(frozen.Set))
+	fmt.Fprintf(a.Stdout, "%s %d of %d tasks for binary %s, task set %s\n", verb, covered, len(tasks), short16(binHash), short16(setHash))
 	if len(problems) > 0 {
 		return cli.Errorf(cli.ExitApproval, "approve-corpus: %d of %d tasks lack approval: %s", len(problems), len(tasks), strings.Join(problems, " "))
 	}
