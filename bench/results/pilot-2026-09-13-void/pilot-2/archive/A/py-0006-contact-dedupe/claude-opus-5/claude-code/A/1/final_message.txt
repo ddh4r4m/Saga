@@ -1,0 +1,9 @@
+`dedupe` is implemented in `contacts/merge.py:11`:
+
+- Matches on email, comparing `email.strip().lower()` so padding and capitalisation differences don't block a match.
+- Keeps the first occurrence and preserves input order.
+- The existing test passes, and a manual check confirms case-only, padding-only, and combined variants collapse.
+
+One judgment call worth your review: entries with a blank/whitespace-only email have no key to match on, so I keep each rather than collapsing them all into one person. If your feeds guarantee an email on every row this never triggers; if you'd rather blanks collapse together, it's a one-line change (drop the `if key` guards).
+
+DONE

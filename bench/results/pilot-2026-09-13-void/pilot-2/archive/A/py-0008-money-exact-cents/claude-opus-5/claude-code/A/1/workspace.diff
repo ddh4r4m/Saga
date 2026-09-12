@@ -1,0 +1,74 @@
+diff --git a/pricing/money.py b/pricing/money.py
+index f586e26..f02f22d 100644
+--- a/pricing/money.py
++++ b/pricing/money.py
+@@ -1,19 +1,51 @@
+-"""Money value object."""
++"""Money value object.
++
++The amount is held exactly, as a whole number of cents, so that adding and
++multiplying money never drifts the way binary floats do. Dollars are a derived
++view used for display and for rate arithmetic such as tax.
++"""
+ from dataclasses import dataclass
++from decimal import Decimal, ROUND_HALF_UP
++
+ 
++def _to_cents(amount: float | int | str | Decimal) -> int:
++    """Round a dollar amount to the nearest cent, halves away from zero."""
++    exact = Decimal(str(amount)) * 100
++    return int(exact.quantize(Decimal(1), rounding=ROUND_HALF_UP))
+ 
+-@dataclass(frozen=True)
++
++@dataclass(frozen=True, init=False)
+ class Money:
+-    amount: float
++    cents: int
++
++    def __init__(self, amount: float | int | str | Decimal = 0) -> None:
++        """`amount` is in dollars, e.g. ``Money(0.10)`` is one dime."""
++        object.__setattr__(self, "cents", _to_cents(amount))
++
++    @classmethod
++    def from_cents(cls, cents: int) -> "Money":
++        money = cls.__new__(cls)
++        object.__setattr__(money, "cents", int(cents))
++        return money
++
++    @property
++    def amount(self) -> float:
++        """Dollar value as a float, for display and rate arithmetic."""
++        return self.cents / 100
++
++    @property
++    def dollars(self) -> Decimal:
++        """Dollar value without float error, for exact formatting."""
++        return Decimal(self.cents).scaleb(-2)
+ 
+     def __add__(self, other: "Money") -> "Money":
+-        return Money(self.amount + other.amount)
++        return Money.from_cents(self.cents + other.cents)
+ 
+     def __mul__(self, qty: int) -> "Money":
+-        return Money(self.amount * qty)
++        return Money.from_cents(round(self.cents * qty))
+ 
+     def __neg__(self) -> "Money":
+-        return Money(-self.amount)
++        return Money.from_cents(-self.cents)
+ 
+ 
+-ZERO = Money(0.0)
++ZERO = Money.from_cents(0)
+diff --git a/pricing/report.py b/pricing/report.py
+index 4545891..a6a5259 100644
+--- a/pricing/report.py
++++ b/pricing/report.py
+@@ -5,5 +5,5 @@ from .cart import Line, line_total
+ def to_csv(lines: list[Line]) -> str:
+     rows = ["name,qty,total"]
+     for name, price, qty in lines:
+-        rows.append(f"{name},{qty},{line_total(price, qty).amount}")
++        rows.append(f"{name},{qty},{line_total(price, qty).dollars:.2f}")
+     return "\n".join(rows) + "\n"

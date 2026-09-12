@@ -1,0 +1,6 @@
+`formatMoney` now lives in `src/money.ts` with the invoice's behaviour (sign before the `$`, grouped whole part from the absolute value), and both `src/invoice.ts` and `src/receipt.ts` import it; their local copies are gone. `src/legacy/report.ts` is untouched.
+
+- `node --test`: 2 tests, 0 failures — the receipt now prints `-$1.50` for the refund.
+- `saga gate check`: **ALL MET** (G1, G2, G3). G1 and G3 are flagged UNPROVEN, which is about missing baseline/red proofs recorded before my changes, not about the checks themselves failing. The two `uncovered (heuristic)` lines for R1/R2 are the request's problem statement, which the gates cover.
+
+DONE

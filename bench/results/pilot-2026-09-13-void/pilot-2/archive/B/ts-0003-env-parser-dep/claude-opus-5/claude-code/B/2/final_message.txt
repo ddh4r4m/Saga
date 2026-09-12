@@ -1,0 +1,25 @@
+Done. `.saga/contract.md` shows as modified because `saga gate check` ticks its own boxes.
+
+## What changed
+
+**`src/config.ts`** — replaced the `envfile-parse-strict` import with an exported `parseEnvFile` implemented in-repo (no new files, no dependency, nothing to fetch). It handles:
+
+- blank lines, `#` comment lines, and an optional `export ` prefix
+- single- and double-quoted values, kept verbatim between the quotes — so `MOTD='hello # not a comment'` survives with its hash
+- backslash escapes (`\n`, `\"`, …) inside double quotes only; single quotes stay literal
+- inline comments after a value, but only when the `#` opens the value or follows whitespace, so `TOKEN=abc#123` keeps its hash
+- quoted values that span lines
+- errors on a missing `=`, an invalid key name, an unterminated quote, or junk after a closing quote
+
+**`package.json`** — dropped the `dependencies` block entirely.
+
+**`test/config.test.ts`** — kept the existing test and added nine covering `.env.example` end to end, defaults, PORT validation, comment/whitespace stripping, both quote styles, escapes, multi-line values, and the error cases.
+
+## Verification
+
+- `node --test --test-reporter=tap "test/**/*.test.ts"` → `# pass 10`, `# fail 0`
+- `saga gate check` → **ALL MET** (G1, G2, G3). G1 and G3 are annotated `UNPROVEN: baseline missed` — no red baseline was recorded before the fix, so the gate can confirm they pass now but can't prove they failed before. R1/R2 are flagged `uncovered (heuristic)`; they restate the bug report itself and are what G1 covers.
+
+One note on scope: I did not touch `.env.example` or `.github/**`, which the contract lists as out of bounds.
+
+DONE

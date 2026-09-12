@@ -1,0 +1,3 @@
+oracle-ran FAIL
+--- exit 1
+--- integrity ok

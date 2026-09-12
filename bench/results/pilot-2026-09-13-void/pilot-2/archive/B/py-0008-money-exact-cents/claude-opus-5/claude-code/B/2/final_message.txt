@@ -1,0 +1,12 @@
+All three gates pass (`saga gate check` → ALL MET).
+
+What changed:
+
+- **`pricing/money.py`** — `Money` now stores `cents: int` as its single state. The constructor still takes dollars (`Money(0.10)`), converting once via `Decimal(str(amount))` quantized to the cent, so no binary-float residue enters the object. `+`, `*` and unary `-` are integer arithmetic on cents, and `__eq__`/`__hash__` compare cents, so `cart_total([("widget", Money(0.10), 3)]) == Money(0.30)` is now True. Kept an `amount` property (dollars as float) for existing callers, added `from_cents()` and `as_decimal()` for exact work, and preserved the old frozen-dataclass properties: immutable, hashable, value equality.
+- **`pricing/format.py`** — formats from the exact `Decimal` instead of the float; output string is byte-identical (`$1,234.50`, `-$0.05`).
+- **`pricing/report.py`** — the total column formats the exact decimal at two places. Same header, same columns, same order; only the drifting value text changes (`0.30000000000000004` → `0.30`, and whole amounts now read `4.00` rather than `4.0`, which is what the CSV test in the contract requires).
+- **`pricing/tax.py`** — untouched, so tax rounding behaviour is exactly as before; `apply_tax(Money(20.00), 0.0725) == Money(21.45)` holds.
+
+One thing worth flagging: the CSV total column now always carries two decimals, so whole-dollar rows print `4.00` where they previously printed `4.0`. That is mandated by gate G1's test, and it's the only user-visible change beyond the drift disappearing — if any downstream finance parser depends on the old bare-float rendering, it will see this.
+
+DONE

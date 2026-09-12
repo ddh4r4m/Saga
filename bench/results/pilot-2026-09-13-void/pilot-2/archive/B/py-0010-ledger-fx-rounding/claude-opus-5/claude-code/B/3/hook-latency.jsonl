@@ -1,0 +1,3 @@
+{"schema":"saga.trace.hooklatency/1","ts":"2026-09-12T21:42:55.509Z","session":"5e7c5bd2-e8e5-417a-93d3-a885b9885c1c","event":"SessionStart","total_ms":2,"steps":{"gate":0,"trace":2,"trace:finalize":0},"decision":"allow","timed_out":false}
+{"schema":"saga.trace.hooklatency/1","ts":"2026-09-12T21:42:55.539Z","session":"5e7c5bd2-e8e5-417a-93d3-a885b9885c1c","event":"UserPromptSubmit","total_ms":1,"steps":{"gate":0,"trace":1,"trace:finalize":0},"decision":"allow","timed_out":false}
+{"schema":"saga.trace.hooklatency/1","ts":"2026-09-12T21:42:56.177Z","session":"5e7c5bd2-e8e5-417a-93d3-a885b9885c1c","event":"SessionEnd","total_ms":3,"steps":{"gate":0,"trace":2,"trace:finalize":0},"decision":"allow","timed_out":false}

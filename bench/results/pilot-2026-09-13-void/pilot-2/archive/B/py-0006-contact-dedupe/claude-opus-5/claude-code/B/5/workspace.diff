@@ -1,0 +1,68 @@
+diff --git a/contacts/merge.py b/contacts/merge.py
+index 69d76a6..ee07585 100644
+--- a/contacts/merge.py
++++ b/contacts/merge.py
+@@ -2,6 +2,26 @@
+ from .models import Contact
+ 
+ 
++def _key(contact: Contact) -> str:
++    """Normalised email, ignoring case and padding. Blank means "no key"."""
++    return (contact.email or "").strip().lower()
++
++
+ def dedupe(contacts: list[Contact]) -> list[Contact]:
+-    """Return the list without duplicate people."""
+-    raise NotImplementedError("dedupe is not implemented yet")
++    """Return the list without duplicate people.
++
++    Two entries are the same person when their emails match once case and
++    surrounding whitespace are ignored. The first occurrence is kept as-is and
++    later ones are dropped; entries with a blank email are never merged. The
++    input list is left untouched.
++    """
++    seen: set[str] = set()
++    out: list[Contact] = []
++    for contact in contacts:
++        key = _key(contact)
++        if key:
++            if key in seen:
++                continue
++            seen.add(key)
++        out.append(contact)
++    return out
+diff --git a/tests/test_merge.py b/tests/test_merge.py
+index 59fdfd0..9d89fd8 100644
+--- a/tests/test_merge.py
++++ b/tests/test_merge.py
+@@ -8,3 +8,30 @@ class DedupeTests(unittest.TestCase):
+         a = Contact("Ann", "ann@example.com", "1")
+         b = Contact("Ann Smith", "ann@example.com", "2")
+         self.assertEqual(len(dedupe([a, b])), 1)
++
++    def test_case_and_padding_ignored(self):
++        xs = [
++            Contact("a", "Ann@Example.com"),
++            Contact("b", " ann@example.com "),
++            Contact("c", "ANN@EXAMPLE.COM"),
++        ]
++        self.assertEqual(dedupe(xs), [xs[0]])
++
++    def test_blank_emails_never_merge(self):
++        xs = [Contact("a", ""), Contact("b", ""), Contact("c", "  ")]
++        self.assertEqual(dedupe(xs), xs)
++
++    def test_first_wins_order_kept_input_untouched(self):
++        xs = [
++            Contact("a", "a@a", "1"),
++            Contact("b", "b@b"),
++            Contact("a2", "a@a", "2"),
++            Contact("c", "c@c"),
++        ]
++        out = dedupe(xs)
++        self.assertEqual([c.name for c in out], ["a", "b", "c"])
++        self.assertEqual(out[0], Contact("a", "a@a", "1"))
++        self.assertEqual(len(xs), 4)
++
++    def test_empty_input(self):
++        self.assertEqual(dedupe([]), [])

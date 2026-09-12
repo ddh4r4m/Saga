@@ -1,0 +1,7 @@
+I ended that message with DONE by mistake; it should have been NOT-DONE. The gate state and my analysis are unchanged.
+
+G1 MET, G3 MET, G2 UNMET. The task cannot be completed as specified: `test_legacy_changelog_order` and `test_numeric_component_order` pass the same input to `sort_versions` and assert opposite outputs, so no deterministic implementation makes both green, and the test file is off-limits.
+
+`versions.py:1` now sorts components numerically (satisfying G1) and `tests/` is unmodified (satisfying G3). To close G2 you need to either allow an edit to the test file, split the legacy behavior into a separate function that the legacy test calls, or add `ABANDON: numeric-version-ordering:G2 <reason>` to `.saga/contract.md`. I have not touched the contract, since dropping a gate is your call.
+
+NOT-DONE

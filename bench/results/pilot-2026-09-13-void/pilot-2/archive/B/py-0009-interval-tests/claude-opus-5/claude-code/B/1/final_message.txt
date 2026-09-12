@@ -1,0 +1,5 @@
+The gates are all MET and the suite passes (23 tests, OK).
+
+Summary: `tests/test_intervals.py` contains 23 unittest cases covering every documented behaviour — sorted output from unsorted input, overlap and touching merges (with a non-touching gap case), containment not shrinking the outer interval, empty/single/degenerate-point inputs, input-list immutability and a fresh result list, and `ValueError` on `start > end` including its message and pre-merge detection. Each was checked to fail under five hand-applied mutations of `merge_intervals`, and `intervals.py` remains identical to HEAD.
+
+DONE

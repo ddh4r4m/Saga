@@ -1,0 +1,13 @@
+Both renderers now agree: `-$1.50` for the refund, with thousands grouping.
+
+**What changed:**
+- `src/money.ts` (new) — exports `formatMoney`, the invoice's implementation verbatim: sign in front of `$`, absolute value formatted with `en-US` grouping.
+- `src/invoice.ts` — local copy deleted, imports from `./money.ts`. Output byte-identical to before.
+- `src/receipt.ts` — local copy deleted, imports from `./money.ts`.
+- `src/legacy/report.ts` — untouched; it keeps its own `fmt` so the finance export stays frozen.
+
+Worth noting the receipt's old copy had a second defect beyond sign placement: `Math.floor(cents / 100)` rounds *down* for negatives, so `-150` became whole `-2` and frac `50` → `$-2.50` — off by a dollar, not just misplaced punctuation. Using the invoice's `Math.abs` fixes both at once.
+
+`npm test` passes (2/2), including the previously failing receipt refund test.
+
+DONE

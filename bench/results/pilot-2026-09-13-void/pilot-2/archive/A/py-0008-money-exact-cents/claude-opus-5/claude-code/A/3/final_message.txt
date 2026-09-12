@@ -1,0 +1,19 @@
+`Money` now stores an integer cent count instead of a float dollar amount.
+
+**What changed**
+
+- `pricing/money.py:22` — the field is `cents: int`. `Money(0.10)` still takes a dollar amount (so callers and tests are unaffected) but converts once at construction; `Money.from_cents()` builds directly from cents. `__add__`/`__mul__`/`__neg__` are now integer arithmetic, so they can't drift. Still a frozen, hashable, comparable value object.
+- Dollars→cents conversion widens a float to its *exact* binary value and rounds half-to-even — deliberately the same rule `round(amount, 2)` and `:.2f` applied before, so no amount changes its cent value.
+- `pricing/format.py` — `format_money` builds `$1,234.56` from `divmod(cents, 100)`, no float involved. Added `format_amount` for the bare `0.30` form the CSV needs.
+- `pricing/tax.py:7` — unchanged rounding: still `round(dollars * (1 + rate), 2)`, just reading dollars off the integer cents.
+- `pricing/report.py:8` — same header and columns; the total column uses `format_amount` instead of interpolating a raw float.
+
+**Verification**
+
+- Both existing tests pass (they were failing before: `Money(amount=0.30000000000000004) != Money(amount=0.3)` and the CSV drift).
+- Display and tax output are byte-identical to the pre-change code across 60 hand-picked cases (diffed) plus 400,000 randomized ones — 0 mismatches, including negatives, thousands grouping, and sub-cent inputs like `0.125` and `0.005`.
+- Drift is gone: three dimes total to exactly `Money(0.30)`; 30,000 dimes give exactly `300000` cents; `Money(0.10) + Money(0.20) == Money(0.30)`.
+
+One user-visible consequence worth naming, since it's the point of the fix: the CSV total column is now always two decimals. Previously it was Python's float repr, so it printed `0.30000000000000004` for the drift case and `1234560.0` for a whole-dollar total. The column position, header, and plain-number style (no `$`, no grouping) are unchanged, matching the `test_csv_has_two_decimals` expectation.
+
+DONE

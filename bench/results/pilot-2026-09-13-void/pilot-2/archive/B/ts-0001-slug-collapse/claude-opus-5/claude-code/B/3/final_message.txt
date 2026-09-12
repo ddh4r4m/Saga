@@ -1,0 +1,16 @@
+Fixed `src/slug.ts:4`:
+
+- **Accent folding** — `normalize("NFD")` decomposes `é` into `e` + combining mark, then `/\p{M}/gu` drops the marks, leaving the plain ASCII letter.
+- **Collapsing** — the non-alphanumeric replacement is now `+`-quantified (`/[^a-z0-9]+/g`), so a run of separators becomes one hyphen instead of one hyphen each.
+- **Edge trimming** — a final `/^-+|-+$/g` strip.
+
+The signature is unchanged. Added two tests to `test/slug.test.ts` covering edge trimming and accent folding, alongside the existing collapse test.
+
+Verification:
+- `node --test` — 3 pass, 0 fail.
+- `saga gate check` — G1, G2, G3 all MET, `ALL MET`. G3 reports `UNPROVEN: declared none`, which is the contract's own pre-existing `RED: none` declaration, not a failure.
+- Reported cases now yield `hello-world` and `cafe-au-lait`; `"---"` and `""` both give `""`.
+
+`package.json` was left untouched, per the contract's OUT scope. One note: the gate check flags R1 as "uncovered (heuristic)" — that's just the symptom sentence of the request having no gate of its own; its two examples are exactly what G1 and G2 assert, and both pass.
+
+DONE

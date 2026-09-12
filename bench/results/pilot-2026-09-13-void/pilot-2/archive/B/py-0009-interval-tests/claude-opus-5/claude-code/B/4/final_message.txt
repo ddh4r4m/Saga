@@ -1,0 +1,17 @@
+Added `tests/test_intervals.py` with 22 tests, one group per docstring behaviour:
+
+- **ordering** — unsorted input merged correctly; result sorted by start
+- **overlap & touch** — `(1,3)+(3,5) → (1,5)`; gap of one stays separate; transitive chains in any order
+- **containment** — inner interval doesn't shrink the outer, in either input order, including several nested ones
+- **empty / single** — `[] → []`; one interval returned as is, including degenerate `(4,4)`
+- **no aliasing** — input list unchanged, result is a new list of tuples, mutating the result doesn't touch the input
+- **validation** — `ValueError` when `start > end`, raised before any merging, with the offending pair in the message; `start == end` is valid
+
+`intervals.py` is unmodified (`git status` shows only the new test file).
+
+Verification:
+- `python3 -m unittest discover -v -s tests -t .` → `Ran 22 tests ... OK`
+- `saga gate check` → `ALL MET`, exit 0 (G1, G2, G3 all MET). G2 and G3 are flagged `UNPROVEN` — "no operator" and "baseline missed" — which is about saga's own red-proof bookkeeping, not a test failure; the contract's `IN: tests/**` scope doesn't let me amend the contract to declare an operator.
+- Since G2 carries `RED: mutation`, I checked mutation resistance myself in a temp copy of the repo: eight mutants (strict-`<` instead of `<=`, dropping `max()`, dropping the sort, reverse sort, in-place sort of the input, dropping validation, returning the input list, `+1` merge window) were all killed by the suite.
+
+DONE

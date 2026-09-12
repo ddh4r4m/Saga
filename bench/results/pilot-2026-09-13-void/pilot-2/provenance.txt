@@ -1,0 +1,10 @@
+bench-pilot 2026-09-12T20:19:25Z
+commit:    1193154
+binary:    sha256:9fcaeaeb9d7d7f21afa695ba8de71461e0edab044590db7f175610bb137da008
+task set:  sha256:fc22a4d4e333155c972173462beeb09e8bab56e6fd4045bd897676ad80feb521
+prereg:    sha256:d5adae7036d74e33f1476b9a906e3a434b37be34be1b2179e892208f1cac67fc
+path:      SAGA_MASK_HOME/.saga/bench/bin/9fcaeaeb9d7d7f21:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin
+tier:      dev
+estimate:  48.50 usd (k=5, 2 arms, model claude-opus-5)
+budget:    65 usd
+out:       /tmp/saga-pilot-2

@@ -1,0 +1,33 @@
+diff --git a/contacts/merge.py b/contacts/merge.py
+index 69d76a6..c25b6d3 100644
+--- a/contacts/merge.py
++++ b/contacts/merge.py
+@@ -2,6 +2,26 @@
+ from .models import Contact
+ 
+ 
++def _email_key(contact: Contact) -> str:
++    """Normalised email: feeds disagree on case and pad with spaces."""
++    return contact.email.strip().lower()
++
++
+ def dedupe(contacts: list[Contact]) -> list[Contact]:
+-    """Return the list without duplicate people."""
+-    raise NotImplementedError("dedupe is not implemented yet")
++    """Return the list without duplicate people.
++
++    Two entries are the same person when their emails match once case and
++    surrounding whitespace are ignored. The first occurrence is kept as-is and
++    later ones are dropped; input order is preserved and the input list is left
++    untouched. Entries with a blank email are never merged with anything.
++    """
++    seen: set[str] = set()
++    result: list[Contact] = []
++    for contact in contacts:
++        key = _email_key(contact)
++        if key:
++            if key in seen:
++                continue
++            seen.add(key)
++        result.append(contact)
++    return result

@@ -1,0 +1,15 @@
+`Money` now stores an exact integer cent count instead of a float dollar amount.
+
+**Changes**
+
+- `pricing/money.py:14` — `Money` is still a frozen dataclass, but the field is `cents: int`. The constructor is unchanged from the caller's side (`Money(0.10)` is ten cents); it converts dollars to cents once via `Decimal`, so the float never survives into storage. `__add__`/`__mul__`/`__neg__` work on integers through the new `Money.from_cents`, so totals can't drift. Two accessors: `dollars` (float, for rate arithmetic) and `as_decimal()` (exact, for display/export).
+- `pricing/tax.py:7` — same `round(dollars * (1 + rate), 2)` expression as before, just reading `.dollars`, so tax rounding is bit-for-bit the old behavior.
+- `pricing/format.py:7` — formats the exact `Decimal`; same `$1,234.56` / `-$1.50` output.
+- `pricing/report.py:8` — same `name,qty,total` layout, total now printed to two decimals (`widget,3,0.30`).
+- `tests/test_cart.py` — added cent-storage, 1000-dime no-drift, format, and tax-rounding regressions.
+
+**Verification.** The two pre-existing tests failed before this change (`Money(amount=0.30000000000000004) != Money(amount=0.3)` and `widget,3,0.30000000000000004`); all 6 tests pass now. I also diffed the new implementation against the old float code over ~4000 random cent-valued amounts × 5 tax rates: display strings and tax results match exactly in every case.
+
+**One behavior difference worth flagging.** Inputs with sub-cent precision now round half-up to the nearest cent instead of inheriting a float artifact: `Money(2.675)` formats as `$2.68` where the old code gave `$2.67` (binary 2.675 sits just below the true value). Half-cent amounts are unrepresentable as cents by definition, so some choice had to be made here; nothing in the tax path is affected, since tax still rounds to 2 decimals before constructing `Money`.
+
+DONE

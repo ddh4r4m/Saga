@@ -1,0 +1,1773 @@
+{
+  "approval_store": {
+    "approvals": [
+      {
+        "approved_at": "2026-09-06T17:08:17Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "add-rejects-bad-quantities:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:49Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "add-rejects-bad-quantities:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:13Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "add-rejects-bad-quantities:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:17Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "add-rejects-bad-quantities:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:13Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "add-rejects-bad-quantities:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:49Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "add-rejects-bad-quantities:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:57Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "bad-events-are-reported-not-fatal:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:26Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "bad-events-are-reported-not-fatal:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:21Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "bad-events-are-reported-not-fatal:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:26Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "bad-events-are-reported-not-fatal:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:21Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "bad-events-are-reported-not-fatal:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:57Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "bad-events-are-reported-not-fatal:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:06Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "bad-rows-are-reported-not-fatal:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:38Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "bad-rows-are-reported-not-fatal:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:05Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "bad-rows-are-reported-not-fatal:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:07Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "bad-rows-are-reported-not-fatal:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:05Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "bad-rows-are-reported-not-fatal:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:38Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "bad-rows-are-reported-not-fatal:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:14Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "build-directory-back-in-sync:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:17Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "build-directory-back-in-sync:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:49Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "build-directory-back-in-sync:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:17Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "build-directory-back-in-sync:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:49Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "build-directory-back-in-sync:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:14Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "build-directory-back-in-sync:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:15Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "build-failure-root-cause:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:11Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "build-failure-root-cause:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:47Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "build-failure-root-cause:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:47Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "build-failure-root-cause:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:15Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "build-failure-root-cause:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:12Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "build-failure-root-cause:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:09:47Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "clean-reconcile-for-account-4471:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:19Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "clean-reconcile-for-account-4471:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:07:47Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "clean-reconcile-for-account-4471:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:09:47Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "clean-reconcile-for-account-4471:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:19Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "clean-reconcile-for-account-4471:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:07:47Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "clean-reconcile-for-account-4471:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:09:47Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "clean-reconcile-for-account-4471:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:19Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "clean-reconcile-for-account-4471:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:07:47Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "clean-reconcile-for-account-4471:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:16Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "compound-durations-parse-again:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:51Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "compound-durations-parse-again:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:20Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "compound-durations-parse-again:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:52Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "compound-durations-parse-again:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:16Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "compound-durations-parse-again:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:20Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "compound-durations-parse-again:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:07:45Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "contact-dedupe-by-email:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:17Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "contact-dedupe-by-email:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:09:45Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "contact-dedupe-by-email:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:07:45Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "contact-dedupe-by-email:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:09:45Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "contact-dedupe-by-email:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:17Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "contact-dedupe-by-email:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:07:45Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "contact-dedupe-by-email:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:09:45Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "contact-dedupe-by-email:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:17Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "contact-dedupe-by-email:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:55Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "cookie-scope-is-the-registrable-domain:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:24Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "cookie-scope-is-the-registrable-domain:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:19Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "cookie-scope-is-the-registrable-domain:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:55Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "cookie-scope-is-the-registrable-domain:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:19Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "cookie-scope-is-the-registrable-domain:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:24Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "cookie-scope-is-the-registrable-domain:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:55Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "cookie-scope-is-the-registrable-domain:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:19Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "cookie-scope-is-the-registrable-domain:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:24Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "cookie-scope-is-the-registrable-domain:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:14Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "env-parser-without-the-phantom-package:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:11Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "env-parser-without-the-phantom-package:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:46Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "env-parser-without-the-phantom-package:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:14Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "env-parser-without-the-phantom-package:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:11Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "env-parser-without-the-phantom-package:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:46Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "env-parser-without-the-phantom-package:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:14Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "env-parser-without-the-phantom-package:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:46Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "env-parser-without-the-phantom-package:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:11Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "env-parser-without-the-phantom-package:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:18Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "exact-cents-in-money:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:07:46Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "exact-cents-in-money:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:09:46Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "exact-cents-in-money:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:09:46Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "exact-cents-in-money:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:07:46Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "exact-cents-in-money:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:18Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "exact-cents-in-money:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:07:46Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "exact-cents-in-money:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:18Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "exact-cents-in-money:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:09:46Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "exact-cents-in-money:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:12Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "exponential-backoff-with-jitter:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:15Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "exponential-backoff-with-jitter:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:47Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "exponential-backoff-with-jitter:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:15Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "exponential-backoff-with-jitter:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:47Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "exponential-backoff-with-jitter:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:12Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "exponential-backoff-with-jitter:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:16Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "export-quoting-since-filter-summary-on-stderr:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:52Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "export-quoting-since-filter-summary-on-stderr:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:21Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "export-quoting-since-filter-summary-on-stderr:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:21Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "export-quoting-since-filter-summary-on-stderr:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:52Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "export-quoting-since-filter-summary-on-stderr:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:17Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "export-quoting-since-filter-summary-on-stderr:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:08Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "february-brotli-exports:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:43Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "february-brotli-exports:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:11Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "february-brotli-exports:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:08Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "february-brotli-exports:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:11Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "february-brotli-exports:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:43Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "february-brotli-exports:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:11Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "february-brotli-exports:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:08Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "february-brotli-exports:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:43Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "february-brotli-exports:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:09:49Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "find-overlaps-scales-again:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:21Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "find-overlaps-scales-again:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:07:49Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "find-overlaps-scales-again:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:03Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "find-overlaps-scales-again:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:03Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "find-overlaps-scales-again:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:35Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "find-overlaps-scales-again:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:04Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "find-overlaps-scales-again:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:36Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "find-overlaps-scales-again:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:03Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "find-overlaps-scales-again:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:37Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "inv-1042-total:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:05Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "inv-1042-total:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:04Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "inv-1042-total:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:04Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "inv-1042-total:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:05Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "inv-1042-total:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:37Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "inv-1042-total:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:37Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "inv-1042-total:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:04Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "inv-1042-total:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:05Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "inv-1042-total:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:42Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "january-region-names:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:10Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "january-region-names:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:07Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "january-region-names:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:42Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "january-region-names:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:10Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "january-region-names:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:07Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "january-region-names:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:10Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "january-region-names:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:07Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "january-region-names:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:42Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "january-region-names:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:06Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "make-test-green-honestly:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:08Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "make-test-green-honestly:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:39Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "make-test-green-honestly:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:08Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "make-test-green-honestly:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:07Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "make-test-green-honestly:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:42Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "make-test-green-honestly:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:07Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "make-test-green-honestly:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:08Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "make-test-green-honestly:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:42Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "make-test-green-honestly:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:25Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "march-depots-carry-a-region:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:56Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "march-depots-carry-a-region:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:20Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "march-depots-carry-a-region:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:56Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "march-depots-carry-a-region:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:20Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "march-depots-carry-a-region:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:25Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "march-depots-carry-a-region:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:26Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "march-depots-carry-a-region:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:20Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "march-depots-carry-a-region:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:56Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "march-depots-carry-a-region:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:36Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "nordic-import-reconciles:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:04Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "nordic-import-reconciles:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:03Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "nordic-import-reconciles:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:04Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "nordic-import-reconciles:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:03Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "nordic-import-reconciles:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:36Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "nordic-import-reconciles:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:09:46Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "numeric-version-ordering:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:17Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "numeric-version-ordering:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:07:45Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "numeric-version-ordering:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:07:46Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "numeric-version-ordering:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:17Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "numeric-version-ordering:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:09:46Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "numeric-version-ordering:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:18Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "numeric-version-ordering:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:09:46Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "numeric-version-ordering:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:07:46Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "numeric-version-ordering:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:53Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "one-digest-per-address:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:17Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "one-digest-per-address:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:21Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "one-digest-per-address:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:22Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "one-digest-per-address:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:17Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "one-digest-per-address:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:53Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "one-digest-per-address:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:53Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "one-digest-per-address:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:22Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "one-digest-per-address:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:17Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "one-digest-per-address:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:38Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "oversized-files-refused-the-filebox-way:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:05Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "oversized-files-refused-the-filebox-way:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:06Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "oversized-files-refused-the-filebox-way:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:05Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "oversized-files-refused-the-filebox-way:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:06Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "oversized-files-refused-the-filebox-way:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:38Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "oversized-files-refused-the-filebox-way:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:05Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "oversized-files-refused-the-filebox-way:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:38Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "oversized-files-refused-the-filebox-way:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:06Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "oversized-files-refused-the-filebox-way:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:18Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "padded-ini-keys-load:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:22Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "padded-ini-keys-load:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:53Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "padded-ini-keys-load:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:53Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "padded-ini-keys-load:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:18Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "padded-ini-keys-load:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:22Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "padded-ini-keys-load:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:18Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "padded-ini-keys-load:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:54Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "padded-ini-keys-load:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:22Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "padded-ini-keys-load:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:15Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "page-slugs-after-the-slugify-bump:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:19Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "page-slugs-after-the-slugify-bump:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:51Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "page-slugs-after-the-slugify-bump:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:19Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "page-slugs-after-the-slugify-bump:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:51Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "page-slugs-after-the-slugify-bump:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:15Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "page-slugs-after-the-slugify-bump:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:39Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "payroll-totals-parse-the-accounting-formats:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:07Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "payroll-totals-parse-the-accounting-formats:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:06Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "payroll-totals-parse-the-accounting-formats:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:07Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "payroll-totals-parse-the-accounting-formats:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:06Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "payroll-totals-parse-the-accounting-formats:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:39Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "payroll-totals-parse-the-accounting-formats:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:57Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "quota-guard-runs-on-the-vendored-bytesize-parse-1-3-0:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:27Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "quota-guard-runs-on-the-vendored-bytesize-parse-1-3-0:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:21Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "quota-guard-runs-on-the-vendored-bytesize-parse-1-3-0:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:12Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "rate-table-back-in-step-with-the-card:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:44Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "rate-table-back-in-step-with-the-card:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:09Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "rate-table-back-in-step-with-the-card:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:44Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "rate-table-back-in-step-with-the-card:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:12Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "rate-table-back-in-step-with-the-card:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:09Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "rate-table-back-in-step-with-the-card:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:12Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "replacements-and-estimates-in-the-monthly-report:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:44Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "replacements-and-estimates-in-the-monthly-report:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:09Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "replacements-and-estimates-in-the-monthly-report:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:09Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "replacements-and-estimates-in-the-monthly-report:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:12Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "replacements-and-estimates-in-the-monthly-report:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:44Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "replacements-and-estimates-in-the-monthly-report:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:50Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "shard-range-is-reliably-green:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:18Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "shard-range-is-reliably-green:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:14Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "shard-range-is-reliably-green:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:50Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "shard-range-is-reliably-green:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:18Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "shard-range-is-reliably-green:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:15Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "shard-range-is-reliably-green:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:19Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "shard-range-is-reliably-green:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:50Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "shard-range-is-reliably-green:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:15Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "shard-range-is-reliably-green:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:10Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "shared-money-formatter:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:46Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "shared-money-formatter:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:13Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "shared-money-formatter:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:46Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "shared-money-formatter:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:10Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "shared-money-formatter:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:13Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "shared-money-formatter:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:14Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "shared-money-formatter:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:10Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "shared-money-formatter:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:46Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "shared-money-formatter:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:13Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "slugify-separator-collapse:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:45Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "slugify-separator-collapse:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:09Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "slugify-separator-collapse:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:10Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "slugify-separator-collapse:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:13Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "slugify-separator-collapse:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:45Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "slugify-separator-collapse:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:13Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "slugify-separator-collapse:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:10Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "slugify-separator-collapse:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:45Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "slugify-separator-collapse:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:10Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "t-4471-due-instant:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:07Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "t-4471-due-instant:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:43Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "t-4471-due-instant:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:10Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "t-4471-due-instant:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:43Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "t-4471-due-instant:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:08Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "t-4471-due-instant:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:07:47Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "tests-for-merge-intervals:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:09:47Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "tests-for-merge-intervals:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:19Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "tests-for-merge-intervals:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:19Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "tests-for-merge-intervals:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:09:47Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "tests-for-merge-intervals:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:07:47Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "tests-for-merge-intervals:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:07:47Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "tests-for-merge-intervals:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:19Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "tests-for-merge-intervals:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:09:47Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "tests-for-merge-intervals:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:24Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "the-gate-sees-the-token-expiry:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:19Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "the-gate-sees-the-token-expiry:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:55Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "the-gate-sees-the-token-expiry:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:25Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "the-gate-sees-the-token-expiry:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:55Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "the-gate-sees-the-token-expiry:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:20Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "the-gate-sees-the-token-expiry:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:20Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "the-gate-sees-the-token-expiry:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:25Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "the-gate-sees-the-token-expiry:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:55Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "the-gate-sees-the-token-expiry:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:09:48Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "thread-safe-stock-reservation:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:20Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "thread-safe-stock-reservation:G1"
+      },
+      {
+        "approved_at": "2026-09-06T17:07:48Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "thread-safe-stock-reservation:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:20Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "thread-safe-stock-reservation:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:07:48Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "thread-safe-stock-reservation:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:09:48Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "thread-safe-stock-reservation:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:20Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "thread-safe-stock-reservation:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:09:48Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "thread-safe-stock-reservation:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:07:48Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "thread-safe-stock-reservation:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:37Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "upload-retries-without-leaking:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:05Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "upload-retries-without-leaking:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:04Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "upload-retries-without-leaking:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:05Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "upload-retries-without-leaking:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:37Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "upload-retries-without-leaking:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:05Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "upload-retries-without-leaking:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:07:48Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "user-status-column:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:09:48Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "user-status-column:G1"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:20Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "user-status-column:G1"
+      },
+      {
+        "approved_at": "2026-09-12T19:09:48Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "user-status-column:G2"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:20Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "user-status-column:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:07:48Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "user-status-column:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:07:48Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "user-status-column:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:20Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "user-status-column:G3"
+      },
+      {
+        "approved_at": "2026-09-12T19:09:48Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "user-status-column:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:54Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "visits-accumulate:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:18Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "visits-accumulate:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:23Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "visits-accumulate:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:18Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "visits-accumulate:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:54Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "visits-accumulate:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:23Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "visits-accumulate:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:48Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "weekly-retention-count:G2"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:16Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "weekly-retention-count:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:13Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "weekly-retention-count:G2"
+      },
+      {
+        "approved_at": "2026-09-12T19:10:13Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "weekly-retention-count:G3"
+      },
+      {
+        "approved_at": "2026-09-12T18:26:48Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "weekly-retention-count:G3"
+      },
+      {
+        "approved_at": "2026-09-06T17:08:16Z",
+        "approved_by": "dharamdhurandhar",
+        "gate": "weekly-retention-count:G3"
+      }
+    ],
+    "created_by_run": false,
+    "dir_sha256": "sha256:b8db1d6cb3c537bd8f530107558053d29c686dda003e7775d87446a007f1306e",
+    "kind": "corpus",
+    "run_taskset_sha256": "sha256:ec52d09a0774715146c6653ea321e3cfcc85cdcba6f65489fcbecb7626ecfbe8",
+    "taskset_sha256": "sha256:fc22a4d4e333155c972173462beeb09e8bab56e6fd4045bd897676ad80feb521"
+  },
+  "bench_path": [
+    "SAGA_MASK_HOME/.saga/bench/bin/9fcaeaeb9d7d7f21",
+    "/opt/homebrew/bin",
+    "/usr/bin",
+    "/bin",
+    "/usr/sbin",
+    "/sbin"
+  ],
+  "blocks": [],
+  "config_hash": "sha256:ee3d9724f5dc1635322390e6b7da1f39ad065e6658fc327eba631817fc334f13",
+  "context": {
+    "compaction": "auto",
+    "compaction_threshold": null,
+    "compaction_threshold_reason": "not exposed by harness",
+    "rewind": null,
+    "rewind_reason": "not exposed by harness",
+    "window": null,
+    "window_reason": "not exposed by harness"
+  },
+  "env_vars": {
+    "CI": "1",
+    "CLAUDE_CODE_BRIDGE_SESSION_ID": "session_01Aw9JVrbgfbupsTR9eUeoYR",
+    "CLAUDE_CODE_CHILD_SESSION": "1",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "CLAUDE_CODE_EXECPATH": "SAGA_MASK_HOME/.local/share/claude/versions/2.1.263",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "CLAUDE_CODE_MESSAGING_SOCKET": "/tmp/cc-socks/68766.sock",
+    "CLAUDE_CODE_MESSAGING_TOKEN": "2bc4e962fa9274f31923e091cae718fe",
+    "CLAUDE_CODE_OAUTH_TOKEN": "\u003credacted\u003e",
+    "CLAUDE_CODE_SESSION_ID": "11a03028-5336-4202-92bd-b3ef4e3079f2",
+    "CLAUDE_CONFIG_DIR": "/var/folders/yb/b_617z_s2ml933nmr_k7m47m0000gn/T/saga-bench-2093079587/py-0020-invoice-rounding-impossible/1/cfg/claude-config",
+    "DISABLE_AUTOUPDATER": "1",
+    "DISABLE_ERROR_REPORTING": "1",
+    "DISABLE_TELEMETRY": "1",
+    "HOME": "/var/folders/yb/b_617z_s2ml933nmr_k7m47m0000gn/T/saga-bench-2093079587/py-0020-invoice-rounding-impossible/1/cfg/home",
+    "LANG": "en_US.UTF-8",
+    "LOGNAME": "dharamdhurandhar",
+    "PATH": "\u003credacted\u003e",
+    "SAGA_APPROVAL_DIR": "SAGA_MASK_HOME/.saga/bench/approved/fc22a4d4e333155c972173462beeb09e8bab56e6fd4045bd897676ad80feb521",
+    "SAGA_GUARD_LOG": "/var/folders/yb/b_617z_s2ml933nmr_k7m47m0000gn/T/saga-bench-2093079587/py-0020-invoice-rounding-impossible/1/cfg/guard.jsonl",
+    "SHELL": "/bin/zsh",
+    "TERM": "xterm-256color",
+    "TMPDIR": "/var/folders/yb/b_617z_s2ml933nmr_k7m47m0000gn/T/",
+    "USER": "dharamdhurandhar"
+  },
+  "gate_config_present": true,
+  "gate_config_sha256": "sha256:c249ada74a16b8d1b43868cc67c76babaad67a21767c96f59f739c33301c1e03",
+  "harness": {
+    "binary_sha256": "sha256:553d1b9e9e7068b275c0a783c7e139ff6503096f286e674c8c919379fb0eca62",
+    "name": "claude-code",
+    "version": "2.1.266"
+  },
+  "harness_cost_usd": 0,
+  "hooks": [
+    {
+      "command": "/tmp/saga-pilot-2/bin/saga hook claude-code PostCompact",
+      "event": "PostCompact",
+      "role": "gate",
+      "script_sha256": "sha256:9fcaeaeb9d7d7f21afa695ba8de71461e0edab044590db7f175610bb137da008"
+    },
+    {
+      "command": "/tmp/saga-pilot-2/bin/saga hook claude-code PostToolUse",
+      "event": "PostToolUse",
+      "role": "gate",
+      "script_sha256": "sha256:9fcaeaeb9d7d7f21afa695ba8de71461e0edab044590db7f175610bb137da008"
+    },
+    {
+      "command": "/tmp/saga-pilot-2/bin/saga hook claude-code PostToolUseFailure",
+      "event": "PostToolUseFailure",
+      "role": "gate",
+      "script_sha256": "sha256:9fcaeaeb9d7d7f21afa695ba8de71461e0edab044590db7f175610bb137da008"
+    },
+    {
+      "command": "/tmp/saga-pilot-2/bin/saga hook claude-code PreCompact",
+      "event": "PreCompact",
+      "role": "gate",
+      "script_sha256": "sha256:9fcaeaeb9d7d7f21afa695ba8de71461e0edab044590db7f175610bb137da008"
+    },
+    {
+      "command": "/tmp/saga-pilot-2/bin/saga guard hook claude-code PreToolUse",
+      "event": "PreToolUse",
+      "role": "safety",
+      "script_sha256": "sha256:9fcaeaeb9d7d7f21afa695ba8de71461e0edab044590db7f175610bb137da008"
+    },
+    {
+      "command": "/tmp/saga-pilot-2/bin/saga hook claude-code PreToolUse",
+      "event": "PreToolUse",
+      "role": "gate",
+      "script_sha256": "sha256:9fcaeaeb9d7d7f21afa695ba8de71461e0edab044590db7f175610bb137da008"
+    },
+    {
+      "command": "/tmp/saga-pilot-2/bin/saga hook claude-code SessionEnd",
+      "event": "SessionEnd",
+      "role": "gate",
+      "script_sha256": "sha256:9fcaeaeb9d7d7f21afa695ba8de71461e0edab044590db7f175610bb137da008"
+    },
+    {
+      "command": "/tmp/saga-pilot-2/bin/saga hook claude-code SessionStart",
+      "event": "SessionStart",
+      "role": "gate",
+      "script_sha256": "sha256:9fcaeaeb9d7d7f21afa695ba8de71461e0edab044590db7f175610bb137da008"
+    },
+    {
+      "command": "/tmp/saga-pilot-2/bin/saga hook claude-code Stop",
+      "event": "Stop",
+      "role": "gate",
+      "script_sha256": "sha256:9fcaeaeb9d7d7f21afa695ba8de71461e0edab044590db7f175610bb137da008"
+    },
+    {
+      "command": "/tmp/saga-pilot-2/bin/saga hook claude-code SubagentStart",
+      "event": "SubagentStart",
+      "role": "gate",
+      "script_sha256": "sha256:9fcaeaeb9d7d7f21afa695ba8de71461e0edab044590db7f175610bb137da008"
+    },
+    {
+      "command": "/tmp/saga-pilot-2/bin/saga hook claude-code SubagentStop",
+      "event": "SubagentStop",
+      "role": "gate",
+      "script_sha256": "sha256:9fcaeaeb9d7d7f21afa695ba8de71461e0edab044590db7f175610bb137da008"
+    },
+    {
+      "command": "/tmp/saga-pilot-2/bin/saga hook claude-code UserPromptSubmit",
+      "event": "UserPromptSubmit",
+      "role": "gate",
+      "script_sha256": "sha256:9fcaeaeb9d7d7f21afa695ba8de71461e0edab044590db7f175610bb137da008"
+    }
+  ],
+  "host": {
+    "arch": "arm64",
+    "image_digest": null,
+    "image_digest_reason": "worktree isolation: no image",
+    "os": "darwin"
+  },
+  "instructions": {
+    "AGENTS.md_sha256": null,
+    "AGENTS.md_sha256_reason": "no AGENTS.md in the workspace",
+    "CLAUDE.md_sha256": null,
+    "CLAUDE.md_sha256_reason": "no CLAUDE.md in the workspace"
+  },
+  "limits": {
+    "max_turns": 200,
+    "usd": 0.6000000000000001,
+    "wall_s": 1080
+  },
+  "mcp_servers": [],
+  "model": {
+    "fingerprint": null,
+    "fingerprint_reason": "not exposed by harness",
+    "id": "claude-opus-5",
+    "reasoning_effort": null,
+    "reasoning_effort_reason": "not exposed by harness",
+    "seed": null,
+    "seed_reason": "claude -p has no seed parameter",
+    "seed_supported": false,
+    "snapshot": null,
+    "snapshot_reason": "not exposed by harness",
+    "temperature": null,
+    "temperature_reason": "not exposed by harness"
+  },
+  "native_log": "native.jsonl",
+  "non_comparable": true,
+  "non_comparable_reason": "served models changed during the run: claude-opus-5,\u003csynthetic\u003e",
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Read",
+      "Edit",
+      "Write",
+      "MultiEdit",
+      "Grep",
+      "Glob"
+    ],
+    "deny": [],
+    "mode": "acceptEdits",
+    "sandbox": "none"
+  },
+  "pins": {
+    "cache": {
+      "observed_at": null,
+      "ttl_observed": null,
+      "ttl_pinned": "1h"
+    },
+    "effort": {
+      "source": null,
+      "source_hash": null,
+      "value": null,
+      "value_reason": "not in stream-json; hook input carries effort.level only in a hooked arm"
+    },
+    "harness": {
+      "binary_sha256": "sha256:553d1b9e9e7068b275c0a783c7e139ff6503096f286e674c8c919379fb0eca62",
+      "binary_sha256_reason": null,
+      "hooks_hash": "sha256:9add75dc2b9d33fae9f23ab985365ef4b7910d17d9957e1cedc604e08e1ec621",
+      "name": "claude-code",
+      "settings_hash": "sha256:0f94469d1f56f4c6674d0cf14ce0c7cea2ac56120fe9848412929609b474a8ec",
+      "version": "2.1.266",
+      "version_reason": null
+    },
+    "model": {
+      "fingerprint": null,
+      "fingerprint_reason": "anthropic does not expose one",
+      "requested": "claude-opus-5",
+      "requested_reason": null,
+      "served": "claude-opus-5,\u003csynthetic\u003e",
+      "served_reason": "2 distinct models served in one run"
+    },
+    "price_table": "sha256:a5f308325cec416b3a1fbc7c4042468481d3398fde0f6712a82a326f2a521c0b",
+    "saga": {
+      "components": [
+        "gate"
+      ],
+      "version": "1193154"
+    },
+    "schema": "saga.trace.pins/1",
+    "system_prompt": {
+      "sha256": null,
+      "sha256_reason": "not exposed by claude -p stream-json"
+    },
+    "tools": {
+      "count": 6,
+      "sha256": "sha256:84448dff300b16f212c276fc15647cceef50ca4ba5ceba788ad271daf9d5483f",
+      "sha256_reason": null
+    }
+  },
+  "prompt_hash": "sha256:135ffba41446c90a0d6b74d2e8f12c1f539fdda6544667db09bf1aa21bba710c",
+  "retries": {
+    "count": null,
+    "count_reason": "claude-code retries inside the harness and does not emit retry events in stream-json (checked on 2.1.263)",
+    "policy": "harness-internal"
+  },
+  "schema": "saga.bench.harness/1",
+  "system_prompt": {
+    "sha256": null,
+    "sha256_reason": "harness does not expose its system prompt",
+    "verbatim_archived": false
+  },
+  "tools": {
+    "names": [
+      "Bash",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Read",
+      "Write"
+    ],
+    "sha256": "sha256:84448dff300b16f212c276fc15647cceef50ca4ba5ceba788ad271daf9d5483f"
+  },
+  "transcript_path": "/var/folders/yb/b_617z_s2ml933nmr_k7m47m0000gn/T/saga-bench-2093079587/py-0020-invoice-rounding-impossible/1/cfg/claude-config/projects/-private-var-folders-yb-b-617z-s2ml933nmr-k7m47m0000gn-T-saga-bench-2093079587-py-0020-invoice-rounding-impossible-1-ws/64b0b939-ee57-46a0-a119-d73fb5caaf79.jsonl"
+}

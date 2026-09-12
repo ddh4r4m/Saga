@@ -1,0 +1,109 @@
+diff --git a/pricing/format.py b/pricing/format.py
+index 42b1b31..dd38ddc 100644
+--- a/pricing/format.py
++++ b/pricing/format.py
+@@ -3,5 +3,6 @@ from .money import Money
+ 
+ 
+ def format_money(m: Money) -> str:
+-    sign = "-" if m.amount < 0 else ""
+-    return f"{sign}${abs(m.amount):,.2f}"
++    sign = "-" if m.cents < 0 else ""
++    dollars, cents = divmod(abs(m.cents), 100)
++    return f"{sign}${dollars:,}.{cents:02d}"
+diff --git a/pricing/money.py b/pricing/money.py
+index f586e26..2bec3be 100644
+--- a/pricing/money.py
++++ b/pricing/money.py
+@@ -1,19 +1,73 @@
+ """Money value object."""
+-from dataclasses import dataclass
++from decimal import Decimal, ROUND_HALF_UP
++
++_CENT = Decimal("0.01")
++
++
++def _to_cents(amount: float | int | str | Decimal) -> int:
++    """Convert an amount in currency units to whole cents."""
++    if isinstance(amount, float):
++        # str() gives the shortest representation that round-trips, so the
++        # binary drift in e.g. 0.30000000000000004 does not survive the trip.
++        amount = str(amount)
++    return int(Decimal(amount).quantize(_CENT, rounding=ROUND_HALF_UP) * 100)
+ 
+ 
+-@dataclass(frozen=True)
+ class Money:
+-    amount: float
++    """An amount of money, stored exactly as a whole number of cents.
++
++    The constructor takes currency units (``Money(0.10)`` is ten cents) and
++    rounds them to the nearest cent; use :meth:`from_cents` when the value is
++    already in cents.
++    """
++
++    __slots__ = ("cents",)
++
++    cents: int
++
++    def __init__(self, amount: float | int | str | Decimal) -> None:
++        object.__setattr__(self, "cents", _to_cents(amount))
++
++    @classmethod
++    def from_cents(cls, cents: int) -> "Money":
++        money = cls.__new__(cls)
++        object.__setattr__(money, "cents", int(cents))
++        return money
++
++    @property
++    def amount(self) -> float:
++        """The value in currency units."""
++        return self.cents / 100
++
++    def as_decimal(self) -> Decimal:
++        """The exact value in currency units, to the cent."""
++        return Decimal(self.cents).scaleb(-2)
+ 
+     def __add__(self, other: "Money") -> "Money":
+-        return Money(self.amount + other.amount)
++        return Money.from_cents(self.cents + other.cents)
+ 
+     def __mul__(self, qty: int) -> "Money":
+-        return Money(self.amount * qty)
++        return Money.from_cents(self.cents * qty)
+ 
+     def __neg__(self) -> "Money":
+-        return Money(-self.amount)
++        return Money.from_cents(-self.cents)
++
++    def __eq__(self, other: object) -> bool:
++        if not isinstance(other, Money):
++            return NotImplemented
++        return self.cents == other.cents
++
++    def __hash__(self) -> int:
++        return hash((Money, self.cents))
++
++    def __repr__(self) -> str:
++        return f"Money({self.as_decimal()})"
++
++    def __setattr__(self, name: str, value: object) -> None:
++        raise AttributeError(f"cannot assign to field {name!r}")
++
++    def __delattr__(self, name: str) -> None:
++        raise AttributeError(f"cannot delete field {name!r}")
+ 
+ 
+-ZERO = Money(0.0)
++ZERO = Money.from_cents(0)
+diff --git a/pricing/report.py b/pricing/report.py
+index 4545891..7630026 100644
+--- a/pricing/report.py
++++ b/pricing/report.py
+@@ -5,5 +5,5 @@ from .cart import Line, line_total
+ def to_csv(lines: list[Line]) -> str:
+     rows = ["name,qty,total"]
+     for name, price, qty in lines:
+-        rows.append(f"{name},{qty},{line_total(price, qty).amount}")
++        rows.append(f"{name},{qty},{line_total(price, qty).as_decimal()}")
+     return "\n".join(rows) + "\n"

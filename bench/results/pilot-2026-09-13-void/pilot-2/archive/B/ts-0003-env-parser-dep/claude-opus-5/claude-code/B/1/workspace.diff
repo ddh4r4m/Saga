@@ -1,0 +1,139 @@
+diff --git a/package.json b/package.json
+index 5e2b21f..1062cd7 100644
+--- a/package.json
++++ b/package.json
+@@ -6,8 +6,5 @@
+   "engines": { "node": ">=24" },
+   "scripts": {
+     "test": "node --test \"test/**/*.test.ts\""
+-  },
+-  "dependencies": {
+-    "envfile-parse-strict": "^2.1.0"
+   }
+ }
+diff --git a/src/config.ts b/src/config.ts
+index a1be25e..5c8a877 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -1,5 +1,67 @@
+ // Service configuration, loaded from an env-file style string.
+-import { parseEnvFile } from "envfile-parse-strict";
++
++// Parses env-file text: KEY=value per line, optional `export` prefix, `#`
++// comments outside quotes, and single- or double-quoted values. A `#` inside
++// quotes is part of the value. Double-quoted values honour \n, \r, \t and
++// escaped quotes; single-quoted values are taken literally.
++export function parseEnvFile(text: string): Record<string, string> {
++  const env: Record<string, string> = {};
++
++  for (const rawLine of text.split(/\r?\n/)) {
++    const line = rawLine.trim();
++    if (line === "" || line.startsWith("#")) continue;
++
++    const eq = line.indexOf("=");
++    if (eq === -1) continue;
++
++    const key = line.slice(0, eq).trim().replace(/^export\s+/, "");
++    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) continue;
++
++    env[key] = parseValue(line.slice(eq + 1).trim());
++  }
++
++  return env;
++}
++
++function parseValue(raw: string): string {
++  const quote = raw[0];
++  if (quote === '"' || quote === "'") {
++    const end = findClosingQuote(raw, quote);
++    if (end !== -1) {
++      const body = raw.slice(1, end);
++      return quote === '"' ? unescape(body) : body;
++    }
++  }
++  // Unquoted: an unescaped `#` starts a trailing comment.
++  const hash = raw.indexOf("#");
++  return (hash === -1 ? raw : raw.slice(0, hash)).trim();
++}
++
++function findClosingQuote(raw: string, quote: string): number {
++  for (let i = 1; i < raw.length; i++) {
++    if (raw[i] === "\\" && quote === '"') {
++      i++;
++      continue;
++    }
++    if (raw[i] === quote) return i;
++  }
++  return -1;
++}
++
++function unescape(body: string): string {
++  return body.replace(/\\(.)/g, (_, ch: string) => {
++    switch (ch) {
++      case "n":
++        return "\n";
++      case "r":
++        return "\r";
++      case "t":
++        return "\t";
++      default:
++        return ch;
++    }
++  });
++}
+ 
+ export interface Config {
+   port: number;
+@@ -10,7 +72,7 @@ export interface Config {
+ }
+ 
+ export function loadConfig(text: string): Config {
+-  const env = parseEnvFile(text) as Record<string, string>;
++  const env = parseEnvFile(text);
+   const port = Number(env.PORT ?? "8080");
+   if (!Number.isInteger(port) || port <= 0) throw new Error(`invalid PORT: ${env.PORT}`);
+   return {
+diff --git a/test/config.test.ts b/test/config.test.ts
+index ccdefa0..0497203 100644
+--- a/test/config.test.ts
++++ b/test/config.test.ts
+@@ -1,6 +1,7 @@
+ import { test } from "node:test";
+ import assert from "node:assert/strict";
+-import { loadConfig } from "../src/config.ts";
++import { readFileSync } from "node:fs";
++import { loadConfig, parseEnvFile } from "../src/config.ts";
+ 
+ test("loads a basic env file", () => {
+   const cfg = loadConfig("PORT=9090\nHOST=db.internal\nDEBUG=true\n");
+@@ -8,3 +9,30 @@ test("loads a basic env file", () => {
+   assert.equal(cfg.host, "db.internal");
+   assert.equal(cfg.debug, true);
+ });
++
++test("loads .env.example with quoted values intact", () => {
++  const cfg = loadConfig(readFileSync(".env.example", "utf8"));
++  assert.equal(cfg.port, 8080);
++  assert.equal(cfg.host, "0.0.0.0");
++  assert.equal(cfg.appName, "Order Service");
++  assert.equal(cfg.debug, false);
++  assert.equal(cfg.motd, "hello # not a comment");
++});
++
++test("strips comments and whitespace outside quotes", () => {
++  const env = parseEnvFile(
++    ["# a comment", "", "HOST=db.internal # trailing", "  PORT = 9090  ", "export TOKEN=abc"].join("\n"),
++  );
++  assert.deepEqual(env, { HOST: "db.internal", PORT: "9090", TOKEN: "abc" });
++});
++
++test("handles escapes and quotes inside values", () => {
++  const env = parseEnvFile(['GREETING="line\\none"', "LITERAL='raw\\nvalue'", 'QUOTED="say \\"hi\\""'].join("\n"));
++  assert.equal(env.GREETING, "line\none");
++  assert.equal(env.LITERAL, "raw\\nvalue");
++  assert.equal(env.QUOTED, 'say "hi"');
++});
++
++test("rejects an invalid PORT", () => {
++  assert.throws(() => loadConfig("PORT=not-a-number\n"), /invalid PORT/);
++});

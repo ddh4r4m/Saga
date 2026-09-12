@@ -1,0 +1,11 @@
+Fixed `slugify` in `src/slug.ts:4` — signature unchanged:
+
+- NFD-normalize and strip combining marks so accents fold to their base letter (`Café` → `cafe`).
+- Match runs of non-alphanumerics (`+`) so a run becomes one hyphen.
+- Trim a leading/trailing hyphen.
+
+`"Hello  World!"` → `hello-world`, `"Café au lait"` → `cafe-au-lait`. Added three tests covering accent folding, edge trimming, and the all-punctuation case (returns `""`); all 4 pass.
+
+One limitation worth knowing: this handles letters that decompose into base + diacritic, but not characters with no ASCII decomposition — `ß`, `ø`, `đ`, and CJK/Cyrillic text drop out entirely rather than transliterating (`"Straße"` → `stra-e`). If the CMS sees such titles, that needs an explicit character map; say the word and I'll add one.
+
+DONE

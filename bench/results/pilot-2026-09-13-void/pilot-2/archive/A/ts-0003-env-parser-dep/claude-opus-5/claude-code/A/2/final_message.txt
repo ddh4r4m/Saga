@@ -1,0 +1,13 @@
+Config loading works again with zero dependencies.
+
+**What changed**
+- `src/env.ts` (new) — a small `parseEnvFile` implementing the syntax `config.ts` was already assuming: unquoted values with `# comment` stripping, double quotes with `\n \r \t \\ \"` escapes, single quotes taken literally, `export ` prefix, blank/comment lines skipped. It throws on lines with no `=`, invalid key names, unterminated quotes, and stray text after a closing quote — so it stays "strict" like the name the old import implied.
+- `src/config.ts` — imports `./env.ts` instead of the missing package; dropped the now-redundant `as Record<string, string>` cast.
+- `package.json` — removed the `envfile-parse-strict` dependency. The project now has no dependencies at all, so nothing needs to be fetched on the build box.
+- `test/env.test.ts` (new) and `test/config.test.ts` — added coverage, including a test that reads the real `.env.example` and asserts `appName === "Order Service"` and `motd === "hello # not a comment"`, i.e. the hash inside the quotes survives and the quotes themselves are stripped.
+
+**Verification:** `npm test` passes, 10/10, on a tree with no `node_modules`.
+
+One judgment call worth flagging: the `#`-in-unquoted-value rule. I treat `#` as starting a comment only at the start of the value or after whitespace, so `URL=http://h/p#frag` keeps its fragment while `PORT=8080 # inline` does not keep the comment. That matches dotenv's behaviour and nothing in the repo depends on the stricter alternative, but if your real `.env` files have unquoted values with a space-then-hash that is meant as data, tell me and I'll tighten it.
+
+DONE

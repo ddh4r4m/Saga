@@ -1,0 +1,9 @@
+All three gates pass (`ALL MET`).
+
+- `src/money.ts` — new, holds the single `formatMoney`, using the invoice's behaviour: sign hoisted in front of `$`, thousands grouping, fraction from the absolute value.
+- `src/invoice.ts` / `src/receipt.ts` — local copies deleted, both now `import { formatMoney } from "./money.ts"`. The receipt's old version floored a negative `cents` and dropped the sign, printing `$-2.50`; it now prints `-$1.50` for a −150 refund.
+- `src/legacy/report.ts` untouched, and its `fmt` left as its own frozen copy.
+
+Tests: 2 pass, 0 fail. Gate check notes `UNPROVEN` on G1 and G3 — that's saga bookkeeping about missing red-baseline evidence (G3 declares `RED: none`), not a failing check.
+
+DONE

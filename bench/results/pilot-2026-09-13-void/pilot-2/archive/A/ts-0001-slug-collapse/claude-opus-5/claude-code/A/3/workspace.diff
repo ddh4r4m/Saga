@@ -1,0 +1,18 @@
+diff --git a/src/slug.ts b/src/slug.ts
+index 65623a4..7df1380 100644
+--- a/src/slug.ts
++++ b/src/slug.ts
+@@ -2,7 +2,10 @@
+ // Used by the CMS to build article URLs from titles.
+ 
+ export function slugify(input: string): string {
+-  const lowered = input.toLowerCase();
+-  const replaced = lowered.replace(/[^a-z0-9]/g, "-");
+-  return replaced;
++  // Decompose accented letters so the combining marks can be dropped,
++  // leaving the plain ASCII base letter ("é" -> "e").
++  const folded = input.normalize("NFD").replace(/\p{Diacritic}/gu, "");
++  const lowered = folded.toLowerCase();
++  const replaced = lowered.replace(/[^a-z0-9]+/g, "-");
++  return replaced.replace(/^-+|-+$/g, "");
+ }

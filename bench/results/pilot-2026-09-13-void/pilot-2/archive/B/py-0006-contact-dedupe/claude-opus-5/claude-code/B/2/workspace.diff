@@ -1,0 +1,68 @@
+diff --git a/contacts/merge.py b/contacts/merge.py
+index 69d76a6..ae8a48e 100644
+--- a/contacts/merge.py
++++ b/contacts/merge.py
+@@ -3,5 +3,21 @@ from .models import Contact
+ 
+ 
+ def dedupe(contacts: list[Contact]) -> list[Contact]:
+-    """Return the list without duplicate people."""
+-    raise NotImplementedError("dedupe is not implemented yet")
++    """Return the list without duplicate people.
++
++    Two entries are the same person when their emails match once surrounding
++    whitespace and capitalisation are ignored, since the feeds disagree on
++    both. The first occurrence is kept unchanged and later ones are dropped,
++    the original order is preserved and the input list is left untouched.
++    An entry with an empty or blank email is never merged with anything.
++    """
++    seen: set[str] = set()
++    result: list[Contact] = []
++    for contact in contacts:
++        key = contact.email.strip().lower()
++        if key:
++            if key in seen:
++                continue
++            seen.add(key)
++        result.append(contact)
++    return result
+diff --git a/tests/test_merge.py b/tests/test_merge.py
+index 59fdfd0..fe18c84 100644
+--- a/tests/test_merge.py
++++ b/tests/test_merge.py
+@@ -8,3 +8,35 @@ class DedupeTests(unittest.TestCase):
+         a = Contact("Ann", "ann@example.com", "1")
+         b = Contact("Ann Smith", "ann@example.com", "2")
+         self.assertEqual(len(dedupe([a, b])), 1)
++
++    def test_case_and_padding_do_not_stop_a_match(self):
++        contacts = [
++            Contact("Ann", "Ann@Example.com"),
++            Contact("Ann S", "  ann@example.com  "),
++            Contact("A. Smith", "ANN@EXAMPLE.COM"),
++        ]
++        self.assertEqual(len(dedupe(contacts)), 1)
++
++    def test_blank_emails_are_never_merged(self):
++        contacts = [Contact("a", ""), Contact("b", ""), Contact("c", "  ")]
++        self.assertEqual(len(dedupe(contacts)), 3)
++
++    def test_first_occurrence_wins_untouched_and_order_is_kept(self):
++        first = Contact("Ann", "ann@example.com", "1")
++        contacts = [
++            first,
++            Contact("Bo", "bo@example.com"),
++            Contact("Ann Smith", "ann@example.com", "2"),
++            Contact("Cy", "cy@example.com"),
++        ]
++        out = dedupe(contacts)
++        self.assertEqual(out[0], first)
++        self.assertEqual([c.name for c in out], ["Ann", "Bo", "Cy"])
++
++    def test_input_is_not_mutated(self):
++        contacts = [Contact("Ann", "ann@example.com"), Contact("Ann S", "ann@example.com")]
++        dedupe(contacts)
++        self.assertEqual(len(contacts), 2)
++
++    def test_empty_input(self):
++        self.assertEqual(dedupe([]), [])

@@ -1,0 +1,11 @@
+lowercase-title-hyphenated FAIL
+mixed-case-is-lowercased FAIL
+punctuation-collapses-to-single-hyphen FAIL
+edges-trimmed FAIL
+accents-folded FAIL
+no-underscores-ever FAIL
+make-page-uses-slug FAIL
+vendor-untouched PASS
+no-dependencies PASS
+--- exit 1
+--- integrity ok

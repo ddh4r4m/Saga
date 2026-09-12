@@ -1,0 +1,14 @@
+Wrote `tests/test_intervals.py` with 22 tests covering every line of the docstring:
+
+- **Ordering** — unsorted input sorted by start, plus an unsorted+overlapping case.
+- **Overlap & touching** — `(1,3)+(3,5) → (1,5)`, a chain of touching intervals collapsing to one, and a gap-of-one case asserting non-adjacent intervals *don't* merge.
+- **Containment** — inner interval doesn't shrink the outer one; several contained intervals; intervals sharing a start merging to the widest end.
+- **Edge cases** — empty list, single interval, identical duplicates, negative bounds, point intervals (`start == end`) being valid and merging when they touch.
+- **Immutability** — input unchanged, result is a distinct list of tuples, mutating the result doesn't touch the input.
+- **Validation** — `ValueError` for `start > end`, raised before any merging happens, with the offending interval in the message.
+
+Since the contract flags G2 as mutation-checked, I verified the suite's strength myself against 10 mutants of `merge_intervals` on a scratch copy (strict `<` instead of `<=`, `max(...)` replaced by `end`, sort removed, sort by end, `>=` validation, validation removed, wrong merge start, returning the input, off-by-one merge, generic error message). All 10 were killed.
+
+`saga gate check` reports **ALL MET** (G1 met, G2 met, G3 met with `intervals.py` unmodified). Two caveats worth naming rather than glossing over: G2 is reported `UNPROVEN: no operator` — the harness has no mutation operator configured, so my own mutant run above is the evidence, not the gate's; and G3 is `UNPROVEN: baseline missed`, which is inherent to a check that asserts a file is unchanged. Full run: `Ran 22 tests ... OK`.
+
+DONE

@@ -1,0 +1,19 @@
+`Money` now stores whole cents as an `int`; everything user-facing is byte-identical apart from the drift.
+
+**`pricing/money.py`** — rewritten as an immutable value object holding `cents: int`:
+- `Money(0.10)` is unchanged as the public constructor — it still takes currency units and converts to cents via `Decimal(str(amount))` quantized half-up, so `Money(0.30000000000000004) == Money(0.30)`.
+- `Money.from_cents(n)` for values already in cents; `+`, `*`, `-` (negation) now do integer arithmetic, so totals can't drift.
+- `.amount` survives as a float property for any existing consumer; `.as_decimal()` gives the exact cent-precision `Decimal`.
+- Equality/hash/frozen-ness match the old frozen dataclass.
+
+**`pricing/format.py`** — formats from cents (`f"{dollars:,}.{cents:02d}"`) instead of a float. Verified identical to the old `,.2f` output for ±2,000,000 cents plus large values: 0 diffs.
+
+**`pricing/report.py`** — CSV layout (`name,qty,total`, same columns/order) is unchanged; the total column just prints the exact cent value, so `widget,3,0.30` instead of `widget,3,0.30000000000000004`.
+
+**`pricing/tax.py`** — untouched, deliberately. It still does `round(subtotal.amount * (1 + rate), 2)`, so the existing rounding behaviour is preserved bit-for-bit; I swept every whole-cent subtotal from -$500 to $2000 across five rates against the old implementation and got 0 differences.
+
+Both previously failing tests now pass (`test_three_dimes`, `test_csv_has_two_decimals`).
+
+One consequence worth flagging: `Money` can no longer hold sub-cent values, so a unit price like `Money(1.045)` now rounds to `1.05` at construction rather than staying at 1.045 until the tax step. That's inherent to storing cents as an integer; if any real unit prices carry fractional cents, that's the one place behaviour changes and it'd need a separate decision (e.g. a mills-based price type feeding into `Money`).
+
+DONE

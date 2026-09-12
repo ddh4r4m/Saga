@@ -1,0 +1,19 @@
+`Money` now stores exact integer cents; `pricing/money.py` and one line of `pricing/report.py` changed, everything else untouched.
+
+**`pricing/money.py`**
+- Field is `cents: int`. The constructor still takes **dollars** (`Money(0.10)`), converting via `Decimal(str(amount))` and rounding half-away-from-zero to the nearest cent, so every existing call site keeps working.
+- `Money.from_cents()` builds from exact cents; `__add__`, `__mul__` and `__neg__` do integer cent arithmetic, so `Money(0.10) * 3 == Money(0.30)` exactly (and hashes equal).
+- `amount` is kept as a derived `float` property (dollars) for `format.py` and `tax.py`; `dollars` is the same value as an exact `Decimal` for formatting.
+
+**`pricing/report.py`** — the total column prints `{...dollars:.2f}` instead of the raw float repr. Same `name,qty,total` layout, same plain unsigned-symbol decimal number, but the drift no longer leaks into the finance CSV (`widget,3,0.30`).
+
+`tax.py`, `format.py` and `cart.py` are byte-for-byte unchanged — tax still does `round(subtotal.amount * (1 + rate), 2)` and display still does `${:,.2f}`.
+
+Verification:
+- Both existing tests pass (`python3 -m unittest discover -v -s tests -t .`); both failed before.
+- Parity sweep over 200,000 random cent-valued amounts: `Money(d).cents`/`.amount` round-trip exactly, and `apply_tax` returns the identical value the float version produced, at rates 0%–20%.
+- Spot-checked formatting (`$1,234.50`, `-$0.07`, `$0.00`, `$10,000,000,000.00`), negatives in CSV (`-0.07`), zero quantity, and the negative-quantity `ValueError`.
+
+One behavioural consequence worth flagging: a sub-cent amount can no longer be held, so `Money(2.675)` is now 268 cents rather than a 2.674999… float, and taxing it yields 2.68 where the old code gave 2.67. That is inherent to storing cents, and it only affects amounts that were never representable in cents; for any whole-cent input the tax result is unchanged.
+
+DONE

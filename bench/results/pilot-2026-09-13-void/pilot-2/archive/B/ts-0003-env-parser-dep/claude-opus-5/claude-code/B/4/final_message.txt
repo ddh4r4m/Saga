@@ -1,0 +1,15 @@
+All three contract gates pass.
+
+**What changed:**
+
+- `src/config.ts:3-56` — replaced the `envfile-parse-strict` import with a local `parseEnvFile`. It skips blank lines and `#` comments, tolerates an `export ` prefix, validates key names, and handles quoting: single quotes are literal, double quotes honour `\n`/`\r`/`\t`/`\\`/`\"`, a `#` inside either quote style stays in the value, and an unquoted value drops a trailing `# comment`. Unterminated quotes, junk after a closing quote, and lines without `=` throw. `loadConfig` itself is untouched.
+- `package.json` — dropped the `dependencies` block, so the whole file declares zero deps and `npm test` needs no install (there's no lockfile or `node_modules`, so a fresh clone runs straight from source).
+- `test/config.test.ts` — kept the original test and added coverage for parsing `.env.example` itself (`appName === "Order Service"`, `motd === "hello # not a comment"`), defaults, `invalid PORT`, comment handling, quoted hashes/whitespace, escape behaviour, `export`, and the malformed-line errors.
+
+Verified: `npm test` → 10 pass, 0 fail. `saga gate check` → G1, G2, G3 MET / ALL MET.
+
+Two notes on the gate output, neither a problem with the change: G1 and G3 are flagged `UNPROVEN: baseline missed` because those checks couldn't be observed failing beforehand — at baseline both die on the missing import rather than on the assertion they test. R1 and R2 are listed as "uncovered (heuristic)"; they're the report's description of the bug ("npm test fails...", "the package doesn't exist"), which the fix resolves rather than separate deliverables.
+
+I left `.env.example` and `.github/**` alone, as the contract marks them out of scope.
+
+DONE

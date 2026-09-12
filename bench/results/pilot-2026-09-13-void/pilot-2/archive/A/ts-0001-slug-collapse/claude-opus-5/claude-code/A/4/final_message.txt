@@ -1,0 +1,11 @@
+Fixed in `src/slug.ts:4`:
+
+- **Accent folding:** `normalize("NFD")` splits accented characters into base letter + combining mark, then `/\p{Diacritic}/gu` drops the marks — so `Café` → `cafe` before any character filtering happens.
+- **Collapsing runs:** the non-alphanumeric replace now uses `+` so a whole run of separators becomes one hyphen instead of one hyphen per character.
+- **Edge trimming:** a final `/^-+|-+$/g` strip removes leading/trailing hyphens.
+
+Signature is unchanged. Added two tests alongside the existing one covering edge trimming and accent folding; all 3 pass.
+
+One behavior worth flagging: input with no alphanumerics (`"!!!"`) yields an empty string. That follows from the rules you described, but if the CMS can't accept an empty URL segment, the caller will need a fallback.
+
+DONE

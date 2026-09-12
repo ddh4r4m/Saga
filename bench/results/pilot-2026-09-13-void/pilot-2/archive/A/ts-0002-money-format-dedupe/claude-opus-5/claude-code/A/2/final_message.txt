@@ -1,0 +1,13 @@
+Both tests pass.
+
+**What changed:**
+- **`src/money.ts`** (new) — single exported `formatMoney`, carrying the invoice's behaviour verbatim: sign extracted first, magnitude formatted from `Math.abs`, thousands grouping via `toLocaleString("en-US")`.
+- **`src/invoice.ts`** — local copy deleted, now imports from `./money.ts`. Output is unchanged.
+- **`src/receipt.ts`** — local copy deleted, now imports from `./money.ts`.
+- **`src/legacy/report.ts`** — untouched; it keeps its own `fmt` so the finance export stays byte-identical.
+
+The receipt is the file whose output moves. Its old `formatMoney` floored the signed value (`Math.floor(-150/100)` → `-2`) and took the fraction from the absolute value, producing `$-2.50` — both a misplaced `$` and a wrong magnitude for any negative amount with a non-zero fractional part. Refunds now print `-$1.50`, matching the invoice. Whole-dollar negatives (e.g. `-200`) were already correct in magnitude and only shift from `$-2.00` to `-$2.00`; positive amounts are unaffected.
+
+Worth flagging: the receipt goes to a point-of-sale printer, so this is a visible change to printed output for negative lines. That's the intent of the request, but if any downstream parser reads receipt text it would need checking.
+
+DONE

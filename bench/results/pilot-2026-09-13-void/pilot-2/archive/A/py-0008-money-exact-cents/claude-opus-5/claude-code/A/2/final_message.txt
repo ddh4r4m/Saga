@@ -1,0 +1,14 @@
+`Money` now stores an integer `cents` field; `tax.py` and `cart.py` are untouched.
+
+**What changed**
+
+- `pricing/money.py:12` — the dataclass field is `cents: int`. The constructor still takes a dollar amount (`Money(0.10)`), converting to cents via `Decimal(str(round(float(amount), 2)))` so no binary error survives. `from_cents()` builds results from arithmetic directly, so `+`, `*` and unary `-` are pure integer ops — exact, and equality/hash now compare integers.
+- `amount` is kept as a derived read-only float property, so the public surface and `apply_tax` are unchanged; `as_decimal()` returns the exact `Decimal` for rendering.
+- `pricing/format.py:6` — formats from the integer (`divmod` on cents) instead of a float.
+- `pricing/report.py:8` — the total column renders `as_decimal()`. Header and columns are unchanged; the value is now `0.30`.
+
+**Verification** — both existing tests pass. I also diffed the new behaviour against the old float implementation over ~13,000 amounts (2dp, full-precision, and half-cent-heavy): 0 display-format mismatches and 0 tax mismatches across five rates. `cart_total([("widget", Money(0.10), 3)]) == Money(0.30)` is `True`, and summing `Money(0.10)` a thousand times equals `Money(100.00)` exactly.
+
+**One judgement call worth flagging:** storing cents adds a rounding point that didn't exist before, for amounts given to sub-cent precision (e.g. `Money(2.675)`). I made it reproduce the old float rounding exactly (`2.675` → `$2.67`) rather than use `ROUND_HALF_UP` (`$2.68`), to honour "nothing user facing should change". `ROUND_HALF_UP` is the more conventional money rule, so if you'd rather have it, that's a one-line change in the constructor — but it would shift the displayed cent for half-cent inputs.
+
+DONE

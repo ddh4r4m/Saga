@@ -1,0 +1,11 @@
+invoice-negative PASS
+invoice-grouping PASS
+receipt-negative PASS
+receipt-negative-total PASS
+receipt-grouping PASS
+legacy-frozen PASS
+shared-module-exists PASS
+renderers-import-shared PASS
+legacy-source-untouched PASS
+--- exit 0
+--- integrity ok

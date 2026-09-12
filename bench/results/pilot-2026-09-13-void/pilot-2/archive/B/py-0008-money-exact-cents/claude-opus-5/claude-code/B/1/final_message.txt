@@ -1,0 +1,13 @@
+All gates pass. What changed:
+
+- **`pricing/money.py`** — `Money` is now a frozen dataclass with a single `cents: int` field. The constructor still takes dollars (`Money(0.10)`, `Money(2)`) and converts via `Decimal(str(amount)) * 100` rounded half-up, so `0.10` means exactly ten cents. Added `Money.from_cents()` for internal exact arithmetic, and `__str__` producing a plain two-decimal string. `amount` is kept as a read-only float property so any existing caller outside this repo still works, but the cents are the source of truth. `__add__`/`__mul__`/`__neg__` operate on integers, so totals no longer drift.
+- **`pricing/format.py`** — formats from integer cents with `divmod`; output identical (`$1,234.50`, `-$0.05`, `$0.00`).
+- **`pricing/tax.py`** — `round(cents * (1 + rate))`, still "rounded to the cent".
+- **`pricing/report.py`** — same `name,qty,total` layout, total rendered as two decimals (`widget,3,0.30` instead of `0.30000000000000004`).
+- **`tests/test_money.py`** — new tests for integer cents, repeated addition, unchanged formatting and tax rounding.
+
+One behavior note worth flagging: sub-cent inputs are now snapped at construction instead of lingering as floats, and they round half-up. `Money(2.675)` becomes 268 cents and formats as `$2.68`, where the old float path displayed `$2.67`. That only affects amounts that were never representable in cents; every whole-cent input formats exactly as before.
+
+`python3 -m unittest discover -v -s tests -t .` → OK (6 tests); `saga gate check` → ALL MET (G1, G2, G3).
+
+DONE

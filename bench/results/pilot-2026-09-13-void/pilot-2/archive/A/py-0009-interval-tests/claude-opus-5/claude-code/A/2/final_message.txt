@@ -1,0 +1,17 @@
+Added `tests/test_intervals.py` — 22 `unittest` tests, all passing against the current implementation. `intervals.py` is unchanged.
+
+Coverage, mapped to the docstring:
+
+- **Ordering**: unsorted input sorted by start; unsorted input that also needs merging.
+- **Overlap / touching**: `(1,4)+(3,6) → (1,6)`; `(1,3)+(3,5) → (1,5)`; a gap-of-one case `(1,2),(3,4)` pinned as *not* merging (touching means shared endpoint only); chain merge collapsing four intervals to one; duplicates; same-start intervals keeping the longest end.
+- **Containment**: contained interval doesn't shrink the outer one, both when given after and before the outer one, plus several nested ones at once.
+- **Trivial inputs**: empty list, single interval.
+- **No mutation / fresh result**: input list unchanged, result is a distinct list that's safe to append to, and result items are 2-tuples.
+- **ValueError**: `start > end`, including when the bad interval is surrounded by valid ones (the check runs over the whole input before merging).
+- **Extra edges**: degenerate `(3,3)` intervals (alone and merging into a neighbour), negative bounds.
+
+I also mutation-tested the suite against six broken variants of `merge_intervals` (in temp copies, not the real file) — dropping the touching case, dropping the `max()` so a contained interval shrinks the outer one, dropping the sort, dropping validation, returning lists instead of tuples, and sorting the caller's list in place. Each was caught.
+
+One judgement call worth flagging: for closed *integer* intervals, `(1,2)` and `(3,4)` arguably ought to merge into `(1,4)` since nothing lies between them. The docstring says only overlapping and touching intervals merge, and the code agrees, so I pinned the current behaviour — if the booking calendar actually wants adjacency merging, that test is the one to change.
+
+DONE

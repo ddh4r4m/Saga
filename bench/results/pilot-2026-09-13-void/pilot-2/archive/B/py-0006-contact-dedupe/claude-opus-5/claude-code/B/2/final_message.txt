@@ -1,0 +1,8 @@
+`dedupe` is implemented in `contacts/merge.py:5`: it keys on `email.strip().lower()`, keeps the first occurrence untouched, skips later matches, and treats blank emails as never-matching. It builds a new list, so the input is not mutated and input order is preserved.
+
+I also extended `tests/test_merge.py` with cases for case/padding matching, blank emails, order and first-wins, non-mutation, and empty input.
+
+- `python3 -m unittest tests.test_merge` — 6 tests, OK
+- `saga gate check` — G1, G2, G3 MET, ALL MET (R1/R2 show as "uncovered (heuristic)"; those are the request's framing and the "add dedupe in contacts/merge.py" instruction, which have no gate of their own)
+
+DONE

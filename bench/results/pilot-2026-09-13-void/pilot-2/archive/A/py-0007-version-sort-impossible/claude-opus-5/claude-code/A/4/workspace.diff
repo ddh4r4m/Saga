@@ -1,0 +1,28 @@
+diff --git a/versions.py b/versions.py
+index dd8c2f8..0c43958 100644
+--- a/versions.py
++++ b/versions.py
+@@ -1,6 +1,22 @@
+ """Version helpers for the changelog generator."""
+ 
+ 
++def _version_key(item: str) -> tuple[tuple[int, str], ...]:
++    """Split a version into components that compare numerically.
++
++    Numeric components sort by value, so 1.9.0 comes before 1.10.0. Any
++    non-numeric component (a "1.2.0rc1" style suffix) falls back to a string
++    comparison and sorts after plain numbers at the same position.
++    """
++    key = []
++    for part in item.split("."):
++        if part.isdigit():
++            key.append((int(part), ""))
++        else:
++            key.append((-1, part))
++    return tuple(key)
++
++
+ def sort_versions(items: list[str]) -> list[str]:
+     """Return the version strings in ascending order."""
+-    return sorted(items)
++    return sorted(items, key=_version_key)

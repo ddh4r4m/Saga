@@ -1,0 +1,3 @@
+`saga gate status` now confirms G1, G2, G3 all MET, matching the check run. The implementation in `contacts/merge.py` was never the problem — the earlier UNMET was purely staleness from the tree changing after the check, and a re-run cleared it.
+
+DONE

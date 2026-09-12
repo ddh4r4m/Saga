@@ -1,0 +1,11 @@
+Fixed `src/slug.ts:4`. Three changes, signature unchanged:
+
+- **Accent folding**: `normalize("NFD")` splits accented letters into base + combining mark, then `\p{Diacritic}` strips the marks, so "Café" → "cafe".
+- **Collapsing**: the replace pattern is now `[^a-z0-9]+` (greedy run) instead of a single character, so `"Hello  World!"` yields one hyphen per run.
+- **Edge trimming**: `^-+|-+$` strips leading/trailing hyphens.
+
+The existing test passes, and spot checks confirm: `"Café au lait"` → `"cafe-au-lait"`, `"  --Trim me--  "` → `"trim-me"`, `"ÅNGSTRÖM & Co."` → `"angstrom-co"`.
+
+Two behaviors worth knowing, both consequences of "fold to plain ASCII": letters with no decomposition (ø, ł, ß) are not diacritic-based, so they drop out entirely rather than becoming `o`/`l`/`ss` — handling those needs an explicit character map, which I didn't add since it's beyond the stated scope. And input that is entirely punctuation (`"!!!"`) now returns `""` rather than a string of hyphens; if the CMS needs a non-empty segment there, that fallback belongs at the call site.
+
+DONE

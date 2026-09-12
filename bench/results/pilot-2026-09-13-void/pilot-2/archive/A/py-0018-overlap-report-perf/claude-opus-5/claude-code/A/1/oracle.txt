@@ -1,0 +1,12 @@
+test_chain_and_id_order PASS
+test_empty_and_single PASS
+test_large_many_rooms_matches_reference PASS
+test_large_two_rooms_matches_reference PASS
+test_line_budget_single_room FAIL
+test_line_budget_two_rooms FAIL
+test_nested_inside_long_booking PASS
+test_report_render_unchanged PASS
+test_simple_pair PASS
+test_touching_and_other_room PASS
+--- exit 1
+--- integrity ok

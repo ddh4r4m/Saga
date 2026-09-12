@@ -1,0 +1,5 @@
+The earlier "unmet" was staleness: the first `saga gate check` recorded evidence into `.saga/contract.md`, which itself counted as a tree change, so the hook's status read was stale. Re-running `saga gate check` and then `saga gate status` both report G1, G2, G3 MET with no intervening tree change.
+
+The implementation in `contacts/merge.py` is unchanged from before: dedupe keys on `email.strip().lower()`, keeps the first occurrence untouched, preserves order, never merges blank emails, and returns a new list.
+
+DONE

@@ -1,0 +1,7 @@
+`dedupe` in `contacts/merge.py:10` keeps the first occurrence of each person and preserves input order. Matching is on the email normalized with `.strip().casefold()`, so differing capitalisation and leading/trailing padding from either feed still collapse to one entry.
+
+One thing to flag: `Contact` only has `name`, `email`, and `phone` — there's no address field. I took "pads addresses with spaces" to mean the email address is what arrives padded, which is the only field the match depends on. If a separate postal address field is coming in a later change, the normalization lives in `_key` and is the one place to extend.
+
+The existing test passes, and I checked mixed case + padding against the same email collapse while distinct emails stay put.
+
+DONE

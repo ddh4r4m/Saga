@@ -1,0 +1,5 @@
+`dedupe` is implemented in `contacts/merge.py:9`: it keeps the first entry for each email, comparing emails with surrounding whitespace stripped and case folded, leaves blank-email entries alone (they never merge), preserves input order, and builds a new list without mutating the input.
+
+I also extended `tests/test_merge.py` with cases for case/padding, blank emails, and order/no-mutation. All 4 tests pass, and `saga gate check` reports G1, G2, G3 MET (ALL MET; R1/R2 are heuristic "uncovered" notes about the prose framing, not failing checks).
+
+DONE

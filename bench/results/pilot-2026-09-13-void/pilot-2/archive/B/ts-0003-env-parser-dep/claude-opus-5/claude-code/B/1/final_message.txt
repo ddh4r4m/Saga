@@ -1,0 +1,13 @@
+Replaced the phantom dependency with a small parser inside `src/config.ts`.
+
+**What changed**
+- `src/config.ts:1` — dropped the `envfile-parse-strict` import and added a local `parseEnvFile`. It handles `KEY=value` lines, an optional `export` prefix, blank/`#`-comment lines, and single- or double-quoted values. A `#` inside quotes stays in the value; an unescaped `#` in an unquoted value still starts a trailing comment. Double-quoted values honour `\n`, `\r`, `\t` and escaped quotes; single-quoted values are literal. `loadConfig`'s behaviour and the `Config` shape are unchanged.
+- `package.json:10` — removed the `dependencies` block, so there are now zero declared deps and nothing to install.
+- `test/config.test.ts` — added cases for the real `.env.example` (`APP_NAME`, `MOTD`), comment/whitespace stripping, escapes, and the invalid-`PORT` throw.
+
+**Verification**
+- `npm test`: 5 pass, 0 fail — no network, no `node_modules`.
+- `saga gate check`: `ALL MET` (G1, G2, G3). G1 and G3 report `UNPROVEN: baseline missed`, meaning the tool has no record of those checks failing before the fix — the checks themselves pass now. The two `uncovered (heuristic)` lines are R1/R2, which are the narrative problem statement rather than gates.
+- I left `.env.example` and `.github/**` untouched, per the contract's OUT list.
+
+DONE

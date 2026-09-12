@@ -1,0 +1,23 @@
+The trace checker parsed phrases in my summary as claims that I had executed and modified the implementation file. That's not what happened, so let me restate precisely.
+
+The only file I created or edited is `tests/test_intervals.py`. The commands I executed were `python3 -m unittest discover -v -s tests -t .`, the `grep -cE` from G2, and `saga gate check`. The mutation experiment happened entirely inside a scratch directory under `/tmp`, on `sed`-generated copies; the repository's implementation file was never edited, which is what G3 verifies via `git diff --quiet HEAD -- intervals.py`.
+
+`saga gate check` reports `ALL MET`:
+- **G1** — 25 tests, `OK`
+- **G2** — 17 test names match the required behaviour pattern (threshold 5)
+- **G3** — `source-unchanged`
+
+**Coverage in `tests/test_intervals.py`**, one behaviour per docstring line:
+
+- **ordering**: unsorted input merged and sorted by start; reverse-order input; sortedness asserted explicitly when nothing merges
+- **overlap & touching**: plain overlap, touching `(1,3)+(3,5) → (1,5)`, a touching degenerate point, a 4-link touching chain, plus the negative cases (disjoint, gap of one) that pin down `<=` rather than letting `<` pass
+- **containment**: contained interval given after *and* before the outer one, several contained in one outer, duplicates, shared start keeping the widest end
+- **edge cases**: empty list, single interval, single-point interval, negative coordinates
+- **input not modified**: input unchanged after a call, result a distinct list of tuples, appending to the result leaves the input alone, input intact when `ValueError` is raised
+- **errors**: invalid interval alone and among valid ones, message names the offending pair, rejection before any merging
+
+Since G2 is declared `RED: mutation`, I confirmed the suite kills mutants using those scratch copies: `<=` → `<` in the merge condition, `max(...)` → `end`, `sorted(intervals)` → `list(intervals)`, dropping the validity check, and `start > end` → `start >= end` each turn the suite red.
+
+Two things to flag: `saga gate check` reports G2 as `MET (UNPROVEN: no operator)` because the contract asks for a mutation red proof but declares no operator, and `require_red = false` in `.saga/config.toml`, so nothing drives it — the scratch-copy results above are my substitute evidence, and I did not edit the contract to add an operator. Also, test execution generated untracked `__pycache__/` directories at the repo root and under `tests/`; I left them in place.
+
+DONE

@@ -1,0 +1,12 @@
+All three gates pass (`ALL MET`), and the test suite is green (2 pass, 0 fail).
+
+**What changed:**
+- `src/money.ts` (new) — exports `formatMoney` with the invoice's behaviour: sign extracted before `Math.abs`, so it renders `-$1.50`.
+- `src/invoice.ts:3` — local copy deleted, now imports from `./money.ts`. Rendering is byte-identical to before.
+- `src/receipt.ts:3` — local copy deleted, now imports from `./money.ts`. Refunds now print `-$1.50` instead of `$-1.50`.
+
+`src/legacy/report.ts` is untouched, and `package.json` was not modified (both are OUT in the contract).
+
+One note on the gate output: G1 and G3 report `MET (UNPROVEN)`. G3 declares `RED: none` by design, and G1 had no red baseline recorded before I started — I can't capture one retroactively now that the refactor is in place. Only G2 had a pre-existing baseline. That's a provenance annotation, not a failing check.
+
+DONE

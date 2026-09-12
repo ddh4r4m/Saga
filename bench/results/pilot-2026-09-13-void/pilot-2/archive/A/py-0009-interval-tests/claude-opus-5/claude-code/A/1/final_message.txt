@@ -1,0 +1,13 @@
+Added `tests/test_intervals.py` — 25 `unittest` tests, one behaviour per test, covering every bullet in the docstring:
+
+- **ordering**: unsorted input sorted by start, and unsorted input that also needs merging
+- **overlap / touching**: `(1,4)+(3,6) → (1,6)`, `(1,3)+(3,5) → (1,5)`, plus the boundary case that a gap of one (`(1,3)`, `(4,6)`) does *not* merge, shared starts, shared ends, and a chain of overlaps collapsing to one
+- **containment**: nested interval doesn't shrink the outer one, both orderings, and several nested at once
+- **empty / single**: `[] → []`, `[(1,4)] → [(1,4)]`, disjoint input untouched
+- **degenerate intervals** (`start == end`): kept alone, kept among others, and merging when touching on either side; plus duplicates and negative/zero bounds
+- **ValueError**: `start > end` alone, in the middle of otherwise-valid input, and after intervals that would have merged (validation covers the whole input up front)
+- **purity**: input list unchanged, result is a distinct list, result elements are tuples
+
+All 25 pass against the current implementation. I also sanity-checked them against five deliberately broken copies of `merge_intervals` in a scratch directory (`<=`→`<`, dropped `max()`, no sort, no validation, in-place sort of the input) — each variant is caught. `intervals.py` is unmodified; the only change in the repo is the new test file. Note that the scratch directory `/tmp/mut` is still present — the cleanup `rm -rf` was blocked by a sandbox guard, so you may want to remove it yourself.
+
+DONE

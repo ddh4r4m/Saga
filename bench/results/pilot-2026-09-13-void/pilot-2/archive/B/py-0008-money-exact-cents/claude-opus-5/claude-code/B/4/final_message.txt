@@ -1,0 +1,25 @@
+`Money` now stores exact integer cents; everything user-facing is byte-identical except the drift.
+
+**`pricing/money.py`** — frozen dataclass with a single `cents: int` field. `Money(dollars)` still takes a dollar figure and converts once (`round(dollars * 100)`); `Money.from_cents` builds from an exact cent count for internal arithmetic; `dollars` is a `Decimal` property for display. `__add__`, `__mul__`, `__neg__` all operate on ints, so they can't drift.
+
+**`pricing/format.py`** — same expression, reading `m.dollars` (Decimal) instead of `m.amount`; `,.2f` works unchanged.
+
+**`pricing/tax.py`** — still rounds in dollars (`round(float(...dollars) * (1 + rate), 2)`) rather than at the cent level. Rounding on ints looked cleaner but shifted the charged cent by one in ~2900 of 3.7M rate/amount combinations (banker's rounding lands on a different side), so I kept the original formula. A sweep of 333k amounts × 11 rates is now bit-identical to the base commit, and formatting matched across ±$2000 at every cent.
+
+**`pricing/report.py`** — total column is `{...dollars:.2f}`. Layout and header are untouched. One thing to flag: the cell was previously `repr` of a float, so whole amounts printed as `4.0`; they now print `4.00`. Making that column consistently two decimals is what G1 asks for, and it's the only cell-level difference.
+
+**`tests/test_money.py`** — new: int cents, ten additions of $0.10 summing to $1.00, negation, both display cases, and tax at 7.25% and 0%.
+
+`cart.py` needed no change. `pyproject.toml` (contract OUT) untouched.
+
+```
+Ran 9 tests — OK
+exact-cents-in-money:G1      MET
+exact-cents-in-money:G2      MET
+exact-cents-in-money:G3      MET (UNPROVEN: declared none)
+ALL MET
+```
+
+G3 reports UNPROVEN because the contract declares `RED: none` for it — it's a no-regression check with no failing baseline, and it passes. Changes are left uncommitted.
+
+DONE

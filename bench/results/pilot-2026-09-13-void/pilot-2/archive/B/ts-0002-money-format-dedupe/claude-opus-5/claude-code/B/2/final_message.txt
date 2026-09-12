@@ -1,0 +1,9 @@
+Done.
+
+- Added `src/money.ts:3` exporting `formatMoney` with the invoice's behaviour (sign before `$`, thousands grouping on the absolute value).
+- `src/invoice.ts` and `src/receipt.ts` now import it; both local copies are gone. The receipt's old version placed the minus after the `$` and mis-grouped negatives — that's what produced `$-2.50`.
+- `src/legacy/report.ts` untouched.
+
+Verification: `node --test` passes 2/2 (`# fail 0`), and `saga gate check` reports `ALL MET` (G1, G2, G3). The G1/G3 "UNPROVEN" annotations are about missing baseline/red evidence recorded in `.saga`, not check failures; the R1/R2 lines are heuristic coverage notes on descriptive sentences in the request, not declared gates.
+
+DONE

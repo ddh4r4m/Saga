@@ -1,0 +1,20 @@
+`src/slug.ts:4` now folds accents, collapses separator runs, and trims edge hyphens:
+
+```ts
+export function slugify(input: string): string {
+  // Decompose accented letters into base letter + combining mark, then drop the
+  // marks so "café" folds to "cafe" instead of losing the letter entirely.
+  const folded = input.normalize("NFD").replace(/\p{M}/gu, "");
+  const lowered = folded.toLowerCase();
+  const replaced = lowered.replace(/[^a-z0-9]+/g, "-");
+  return replaced.replace(/^-+|-+$/g, "");
+}
+```
+
+The signature is untouched. Added tests in `test/slug.test.ts` for edge trimming and accent folding; all 3 tests pass.
+
+`saga gate check`: G1, G2, G3 all MET (G3 reported as "UNPROVEN: declared none", which is how the contract itself declares it — `RED: none`). The run also prints a heuristic note that R1 is uncovered; R1 is the symptom restatement from the request, and the behavior it describes is what G1 and G2 assert.
+
+Spot checks: `"Hello  World!"` → `hello-world`, `"Café au lait"` → `cafe-au-lait`, `"--Hello  World!--"` → `hello-world`, `"   "` → `""`, `"Ångström — naïve"` → `angstrom-naive`.
+
+DONE

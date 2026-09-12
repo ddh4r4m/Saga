@@ -1,0 +1,10 @@
+`dedupe` is implemented in `contacts/merge.py`. It keeps the first occurrence of each email and preserves input order; matching is done on `email.strip().lower()`, so padding and capitalisation differences between feeds don't block a match. The stored `Contact` is returned unmodified — normalisation is only for comparison.
+
+Two judgment calls worth flagging:
+
+- **"addresses"**: `Contact` only has `name`, `email`, `phone` — there's no address field, so I applied the strip/case-fold to the email. If a real `address` column is coming from one of the feeds, it'd need to be added to the model first.
+- **Blank emails**: contacts with an empty (or whitespace-only) email are all kept rather than collapsing into one. A missing email isn't evidence of being the same person, and `read_contacts` defaults the field to `""` when the column is absent, so the literal reading would silently drop unrelated people. Say the word if you'd rather they collapse.
+
+Verified with `python3 -m unittest` (1 test, passing) plus a manual check covering padded/mixed-case emails and blank-email entries.
+
+DONE

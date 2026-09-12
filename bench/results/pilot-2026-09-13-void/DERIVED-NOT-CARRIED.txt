@@ -1,0 +1,17 @@
+Derived summaries the void pilot wrote, recorded here and not carried.
+They are computed over all 200 rows, 132 of which are the harness
+declining to run, so they read as pilot results and are artefact: the
+compare states false_done A=0.200 B=0.000 delta=-0.200 and arm A
+pass@1=0.310. The rows and every per-run directory are here in full, so
+any of these regenerates with `saga bench report` or `saga bench compare`
+for anyone who wants to see them. The arm-level SHA256SUMS still lists
+them with the sums below; nothing was re-signed.
+
+39376f121e4f10af12051cfcd410ceb9ac2c0e127b1a56bc26b56492f56288f5  compare.md  (12249 bytes)
+b14e7d417ab6bd505fb000cd3e229506dcf459d0eea6400d5db626468a857c40  compare.json  (14706 bytes)
+a122339d3a34d557b40f1102105f12e25d84403b73639a8721db6ec2732d99eb  A/report.md  (6801 bytes)
+6f246650b4c709bd8d0579a14ae7f795396eb2259e4d6795eee3a474dc41d00d  A/report.json  (6526 bytes)
+a5c0d19b1b14c188a1cdbb4d825ec54bd2c92e44f823527273f22818b1de4231  A/status.json  (109 bytes)
+3cf0d29f92db29b6447b2328f909a9b4a2a57b3c52830c492f75bbec1668adcf  B/report.md  (7342 bytes)
+b40c0e0d1e1fb3717b72454701767e4481124d2016a418a02bd354a86a1f53c7  B/report.json  (7436 bytes)
+7eedcc8059b3c66add2428e2af960cd4ba244d07b0121b6b8e3f6f94bf039182  B/status.json  (102 bytes)

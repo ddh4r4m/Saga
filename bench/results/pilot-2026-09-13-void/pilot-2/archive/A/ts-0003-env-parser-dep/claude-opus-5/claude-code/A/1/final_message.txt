@@ -1,0 +1,11 @@
+`envfile-parse-strict` doesn't exist on npm — the import was fabricated. I replaced it with an in-repo parser, so the project now has zero dependencies and `npm test` runs offline with no `node_modules` at all (verified: none present here).
+
+**Changes**
+- `src/env.ts` (new) — `parseEnvFile(text)`. Handles comment/blank lines, optional `export ` prefix, double- and single-quoted values, bare values with inline-comment stripping (`#` only when at the start or after whitespace, so `http://x/#frag` survives), `\n \r \t \\ \" \$` unescaping inside double quotes only, CRLF/BOM normalisation, and multi-line quoted values. Malformed input (no `=`, bad key, unterminated quote) throws with a line number rather than silently dropping a key — that matches the "strict" intent the old name implied.
+- `src/config.ts:2` — imports from `./env.ts`; dropped the now-redundant `as Record<string, string>` cast.
+- `package.json` — removed the `dependencies` block.
+- `test/env.test.ts` (new) + `test/config.test.ts` — 15 tests, all passing. One test loads the actual `.env.example` and asserts `appName === "Order Service"` and `motd === "hello # not a comment"`, so both quoting cases are covered against the real file.
+
+Two judgment calls worth knowing about, both easy to change: bare values are trimmed while quoted ones keep their padding, and a duplicate key lets the last assignment win. I left the changes uncommitted.
+
+DONE

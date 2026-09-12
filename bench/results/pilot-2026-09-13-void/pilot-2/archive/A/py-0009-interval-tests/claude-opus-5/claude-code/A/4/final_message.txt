@@ -1,0 +1,17 @@
+Wrote `tests/test_intervals.py` — 26 unittest cases, all passing with `python3 -m unittest discover -v -s tests -t .`. `intervals.py` is unchanged (git shows only the new test file plus `__pycache__`).
+
+Coverage maps to each docstring claim:
+
+- **Ordering** — unordered input sorted by start, and unordered input that also needs merging.
+- **Overlap and touching** — overlapping merge, touching `(1,3)+(3,5) → (1,5)`, and the boundary case that a gap of one (`(1,3)`, `(4,6)`) does *not* merge.
+- **Nesting** — inner interval doesn't shrink the outer one, in both input orders, plus multiple nested intervals and a chain of overlaps collapsing to one.
+- **Empty/single** — empty gives empty; single returned as is.
+- **New list, input untouched** — result is not the input object, mutating the result leaves the input alone, input list contents unchanged, result is a list of tuples.
+- **ValueError** — bad interval first, last, and one that would otherwise be merged away (so validation runs over the whole input before merging), plus the message naming the offending interval.
+- **Extra edges** — zero-length intervals (alone, touching, disjoint), duplicates, intervals sharing a start, negative bounds.
+
+I also sanity-checked the suite against four mutants of `merge_intervals` on throwaway copies (`<=` → `<`, dropping the `max`, dropping the sort, dropping validation); each mutant fails 2–4 tests, so the suite does catch regressions of this kind rather than just passing.
+
+One note: the docstring's "a single interval is returned as is" is tested as value equality plus a fresh list, not identity of the input list — identity would contradict the "result is a new list" clause.
+
+DONE

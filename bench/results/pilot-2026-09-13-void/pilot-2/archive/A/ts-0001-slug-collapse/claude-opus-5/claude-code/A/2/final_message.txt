@@ -1,0 +1,11 @@
+Fixed in `src/slug.ts:4`. The signature is unchanged; three things changed inside:
+
+- **Accent folding:** `normalize("NFD")` splits `é` into `e` + combining acute, and `\p{Mn}` (nonspacing marks) strips the mark, leaving `cafe`.
+- **Collapsing runs:** the character class now has a `+` quantifier, so any run of non-alphanumerics becomes one hyphen instead of one hyphen per character.
+- **Edge trimming:** a final `replace(/^-+|-+$/g, "")` removes leading/trailing hyphens.
+
+`npm test` passes. Spot checks: `"Hello  World!"` → `hello-world`, `"Café au lait"` → `cafe-au-lait`, `"  --Leading & trailing--  "` → `leading-trailing`, `"naïve—résumé"` → `naive-resume`, `"!!!"` → `""`.
+
+One limitation worth knowing: NFD only folds letters that decompose into ASCII + mark. Characters like `ø`, `ß`, `æ`, `đ` have no decomposition, so they're dropped as separators (`"Køben"` → `k-ben`). Handling those needs an explicit transliteration map, which I left out since the ask was accents specifically — say the word if you want it added.
+
+DONE

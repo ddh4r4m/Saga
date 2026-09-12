@@ -1,0 +1,105 @@
+diff --git a/pricing/format.py b/pricing/format.py
+index 42b1b31..ed653d4 100644
+--- a/pricing/format.py
++++ b/pricing/format.py
+@@ -2,6 +2,14 @@
+ from .money import Money
+ 
+ 
++def format_amount(m: Money) -> str:
++    """Bare decimal amount, e.g. `0.30` -- no currency symbol, no grouping."""
++    sign = "-" if m.cents < 0 else ""
++    dollars, cents = divmod(abs(m.cents), 100)
++    return f"{sign}{dollars}.{cents:02d}"
++
++
+ def format_money(m: Money) -> str:
+-    sign = "-" if m.amount < 0 else ""
+-    return f"{sign}${abs(m.amount):,.2f}"
++    sign = "-" if m.cents < 0 else ""
++    dollars, cents = divmod(abs(m.cents), 100)
++    return f"{sign}${dollars:,}.{cents:02d}"
+diff --git a/pricing/money.py b/pricing/money.py
+index f586e26..f6171ed 100644
+--- a/pricing/money.py
++++ b/pricing/money.py
+@@ -1,19 +1,46 @@
+-"""Money value object."""
++"""Money value object.
++
++Amounts are held as a whole number of cents, so addition and multiplication
++are exact: three dimes are 30 cents, never 0.30000000000000004 dollars.
++"""
++import operator
+ from dataclasses import dataclass
++from decimal import ROUND_HALF_EVEN, Decimal
++
++Amount = float | int | str | Decimal
++
++
++def _to_cents(amount: Amount) -> int:
++    """Round a dollar amount to the nearest cent, halves to even.
+ 
++    Floats are widened to their exact binary value first, which makes this the
++    same rounding rule `round(amount, 2)` used to apply.
++    """
++    return int((Decimal(amount) * 100).quantize(Decimal(1), rounding=ROUND_HALF_EVEN))
+ 
+-@dataclass(frozen=True)
++
++@dataclass(frozen=True, init=False)
+ class Money:
+-    amount: float
++    cents: int
++
++    def __init__(self, amount: Amount = 0) -> None:
++        object.__setattr__(self, "cents", _to_cents(amount))
++
++    @classmethod
++    def from_cents(cls, cents: int) -> "Money":
++        """Build from a whole number of cents, without going via dollars."""
++        m = cls.__new__(cls)
++        object.__setattr__(m, "cents", operator.index(cents))
++        return m
+ 
+     def __add__(self, other: "Money") -> "Money":
+-        return Money(self.amount + other.amount)
++        return Money.from_cents(self.cents + other.cents)
+ 
+     def __mul__(self, qty: int) -> "Money":
+-        return Money(self.amount * qty)
++        return Money.from_cents(self.cents * operator.index(qty))
+ 
+     def __neg__(self) -> "Money":
+-        return Money(-self.amount)
++        return Money.from_cents(-self.cents)
+ 
+ 
+-ZERO = Money(0.0)
++ZERO = Money.from_cents(0)
+diff --git a/pricing/report.py b/pricing/report.py
+index 4545891..9cf73de 100644
+--- a/pricing/report.py
++++ b/pricing/report.py
+@@ -1,9 +1,10 @@
+ """CSV export consumed by the finance team."""
+ from .cart import Line, line_total
++from .format import format_amount
+ 
+ 
+ def to_csv(lines: list[Line]) -> str:
+     rows = ["name,qty,total"]
+     for name, price, qty in lines:
+-        rows.append(f"{name},{qty},{line_total(price, qty).amount}")
++        rows.append(f"{name},{qty},{format_amount(line_total(price, qty))}")
+     return "\n".join(rows) + "\n"
+diff --git a/pricing/tax.py b/pricing/tax.py
+index d7b6447..5119ac6 100644
+--- a/pricing/tax.py
++++ b/pricing/tax.py
+@@ -4,4 +4,4 @@ from .money import Money
+ 
+ def apply_tax(subtotal: Money, rate: float) -> Money:
+     """Return subtotal plus tax, rounded to the cent."""
+-    return Money(round(subtotal.amount * (1 + rate), 2))
++    return Money(round(subtotal.cents / 100 * (1 + rate), 2))

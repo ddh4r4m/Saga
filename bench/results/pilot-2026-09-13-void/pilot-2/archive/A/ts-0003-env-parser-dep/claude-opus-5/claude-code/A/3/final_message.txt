@@ -1,0 +1,14 @@
+Done. `npm test` passes on a fresh clone with zero dependencies and no network.
+
+**What I changed**
+
+- **`src/env.ts`** (new) — a small `parseEnvFile` replacing the phantom package. It handles: `KEY=value`, double- and single-quoted values, `export ` prefixes, blank lines, and `#` comments. Quotes are stripped but the contents are preserved verbatim, so `APP_NAME="Order Service"` → `Order Service` and `MOTD='hello # not a comment'` → `hello # not a comment`. A `#` only starts a comment when it's outside quotes and at the start of the line or preceded by whitespace, so `MOTD=red#1` stays intact. Double-quoted values honour `\n \r \t \\ \"`; single-quoted are literal. In keeping with the old package's "strict" name, malformed lines (no `=`, invalid key, unterminated quote, junk after a closing quote) throw with a line number rather than silently dropping a key.
+- **`src/config.ts`** — imports from `./env.ts`; dropped the now-redundant `as Record<string, string>` cast since the parser is typed.
+- **`package.json`** — removed the `dependencies` block entirely.
+- **Tests** — added `test/env.test.ts` for the parser, and in `test/config.test.ts` a case that reads the real `.env.example` off disk and asserts the full config, plus defaults and the `invalid PORT` path. That file-reading test is the guard against the quoting requirement regressing.
+
+11 tests pass. I left the changes uncommitted.
+
+One thing worth flagging: `package-lock.json` isn't in the repo, so nothing else pinned the bogus package — but if any developer has a stale `node_modules` or lockfile locally, they should delete it, since `npm ci` against an old lockfile would still try to fetch `envfile-parse-strict`.
+
+DONE

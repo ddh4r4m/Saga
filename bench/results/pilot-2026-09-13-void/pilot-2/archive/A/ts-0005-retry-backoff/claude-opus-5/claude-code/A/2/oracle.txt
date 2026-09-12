@@ -1,0 +1,9 @@
+backoff-r0 FAIL
+backoff-r-half FAIL
+backoff-r-quarter FAIL
+attempt-count-exhausted PASS
+last-error-rethrown PASS
+success-second-try PASS
+single-attempt-no-sleep PASS
+--- exit 1
+--- integrity ok

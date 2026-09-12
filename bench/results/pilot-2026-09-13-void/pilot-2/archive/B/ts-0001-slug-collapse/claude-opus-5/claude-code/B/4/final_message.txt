@@ -1,0 +1,21 @@
+Fixed `src/slug.ts:4-11`:
+
+```ts
+export function slugify(input: string): string {
+  const folded = input.normalize("NFD").replace(/\p{Diacritic}/gu, "");
+  const lowered = folded.toLowerCase();
+  const replaced = lowered.replace(/[^a-z0-9]+/g, "-");
+  return replaced.replace(/^-+|-+$/g, "");
+}
+```
+
+Three changes:
+- **Accent folding**: NFD decomposes `é` into `e` + combining acute, and the diacritic strip drops the mark, so `Café` → `cafe` instead of losing the letter entirely.
+- **Collapsing**: the non-alphanumeric replacement now matches runs (`+`) rather than single characters, so `Hello  World` yields one hyphen.
+- **Edge trimming**: leading/trailing hyphens are stripped after substitution.
+
+The signature is untouched. I added two tests in `test/slug.test.ts` alongside the existing one — edge trimming (`"--Hello  World!--"`) and accent folding (`"Café au lait"`).
+
+Verification: `node --test` passes 3/3, and `saga gate check` reports `ALL MET` (G1, G2, G3). The one remaining line, `R1 uncovered (heuristic)`, is the checker matching prose from the bug report against gate text; the behavior it describes is what G1 and G2 assert, and both pass.
+
+DONE

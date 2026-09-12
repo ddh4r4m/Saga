@@ -1,0 +1,13 @@
+Fixed in `src/slug.ts:4`:
+
+- **Accent folding**: `normalize("NFD")` splits accented letters into base + combining mark, and `/\p{M}/gu` strips the marks, so `Café` → `cafe`.
+- **Collapsing**: the non-alphanumeric replace is now greedy (`[^a-z0-9]+`), so a run of separators becomes one hyphen.
+- **Edges**: a final `replace(/^-|-$/g, "")` trims leading/trailing hyphens.
+
+`"Hello  World!"` → `hello-world`, `"Café au lait"` → `cafe-au-lait`. Signature unchanged.
+
+Added three tests alongside the existing one (accent folding, edge trimming, all-punctuation input returning `""`). All 4 pass.
+
+One limitation worth knowing: characters with no decomposition don't fold — `ß`, `ø`, `æ`, and non-Latin scripts (e.g. Cyrillic, CJK) become hyphens rather than transliterating, so a title written entirely in such a script yields an empty slug. If your CMS needs those, that requires a transliteration table, which is a larger change than asked for here.
+
+DONE

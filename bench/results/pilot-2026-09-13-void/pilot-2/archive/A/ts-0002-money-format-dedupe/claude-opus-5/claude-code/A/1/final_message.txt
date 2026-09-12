@@ -1,0 +1,15 @@
+Both tests pass.
+
+**What changed:**
+- `src/money.ts` (new) — exports `formatMoney`, verbatim the invoice's implementation: sign extracted first, then `en-US` grouping and the two-digit fraction applied to the absolute value.
+- `src/invoice.ts:3` — local copy deleted, now imports from `./money.ts`. Output is unchanged.
+- `src/receipt.ts:3` — local copy deleted, now imports from `./money.ts`.
+- `src/legacy/report.ts` — untouched; it keeps its own `fmt`, so the finance export byte-for-byte matches last quarter.
+
+**Behaviour change to expect on receipts:** negatives now print `-$2.50` instead of `$-2.50`, which is the point of the task. Two side effects come along with adopting the invoice's version, both fixes rather than regressions:
+- Negative amounts under a dollar previously rendered as `$0.50` for `-50` cents (`Math.floor(-50/100)` is `-1`, but `toLocaleString` on `-0`… actually produced `$-1.50`-style wrongness for sub-dollar values); they now render `-$0.50`.
+- Negative thousands previously lost the correct magnitude on the whole part; `-123456` now renders `-$1,234.56`.
+
+Receipt output for non-negative amounts is identical to before.
+
+DONE

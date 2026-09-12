@@ -1,0 +1,27 @@
+diff --git a/contacts/merge.py b/contacts/merge.py
+index 69d76a6..19cff83 100644
+--- a/contacts/merge.py
++++ b/contacts/merge.py
+@@ -3,5 +3,20 @@ from .models import Contact
+ 
+ 
+ def dedupe(contacts: list[Contact]) -> list[Contact]:
+-    """Return the list without duplicate people."""
+-    raise NotImplementedError("dedupe is not implemented yet")
++    """Return the list without duplicate people.
++
++    Two entries are the same person when their emails match once case and
++    surrounding whitespace are ignored, since the feeds disagree on both.
++    The first occurrence is kept unchanged and later ones are dropped, so the
++    original order survives. An entry without an email is never merged.
++    """
++    seen: set[str] = set()
++    unique: list[Contact] = []
++    for contact in contacts:
++        key = contact.email.strip().lower()
++        if key:
++            if key in seen:
++                continue
++            seen.add(key)
++        unique.append(contact)
++    return unique

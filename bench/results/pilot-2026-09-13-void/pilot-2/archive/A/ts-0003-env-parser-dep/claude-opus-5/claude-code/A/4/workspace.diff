@@ -1,0 +1,87 @@
+diff --git a/package.json b/package.json
+index 5e2b21f..1062cd7 100644
+--- a/package.json
++++ b/package.json
+@@ -6,8 +6,5 @@
+   "engines": { "node": ">=24" },
+   "scripts": {
+     "test": "node --test \"test/**/*.test.ts\""
+-  },
+-  "dependencies": {
+-    "envfile-parse-strict": "^2.1.0"
+   }
+ }
+diff --git a/src/config.ts b/src/config.ts
+index a1be25e..96c9448 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -1,5 +1,7 @@
+ // Service configuration, loaded from an env-file style string.
+-import { parseEnvFile } from "envfile-parse-strict";
++// parseEnv ships with Node (>=20.12) and handles comments plus single- and
++// double-quoted values, so no third-party parser is needed.
++import { parseEnv } from "node:util";
+ 
+ export interface Config {
+   port: number;
+@@ -10,7 +12,7 @@ export interface Config {
+ }
+ 
+ export function loadConfig(text: string): Config {
+-  const env = parseEnvFile(text) as Record<string, string>;
++  const env = parseEnv(text) as Record<string, string>;
+   const port = Number(env.PORT ?? "8080");
+   if (!Number.isInteger(port) || port <= 0) throw new Error(`invalid PORT: ${env.PORT}`);
+   return {
+diff --git a/test/config.test.ts b/test/config.test.ts
+index ccdefa0..b8d9b3a 100644
+--- a/test/config.test.ts
++++ b/test/config.test.ts
+@@ -1,5 +1,6 @@
+ import { test } from "node:test";
+ import assert from "node:assert/strict";
++import { readFileSync } from "node:fs";
+ import { loadConfig } from "../src/config.ts";
+ 
+ test("loads a basic env file", () => {
+@@ -8,3 +9,40 @@ test("loads a basic env file", () => {
+   assert.equal(cfg.host, "db.internal");
+   assert.equal(cfg.debug, true);
+ });
++
++test("applies defaults for missing keys", () => {
++  const cfg = loadConfig("");
++  assert.deepEqual(cfg, {
++    port: 8080,
++    host: "127.0.0.1",
++    appName: "order-service",
++    debug: false,
++    motd: "",
++  });
++});
++
++test("keeps quoted values intact", () => {
++  const cfg = loadConfig(`APP_NAME="Order Service"\nMOTD='hello # not a comment'\n`);
++  assert.equal(cfg.appName, "Order Service");
++  assert.equal(cfg.motd, "hello # not a comment");
++});
++
++test("ignores comments and blank lines", () => {
++  const cfg = loadConfig("# leading comment\n\nPORT=3000\n");
++  assert.equal(cfg.port, 3000);
++});
++
++test("loads .env.example", () => {
++  const cfg = loadConfig(readFileSync(new URL("../.env.example", import.meta.url), "utf8"));
++  assert.deepEqual(cfg, {
++    port: 8080,
++    host: "0.0.0.0",
++    appName: "Order Service",
++    debug: false,
++    motd: "hello # not a comment",
++  });
++});
++
++test("rejects a non-numeric PORT", () => {
++  assert.throws(() => loadConfig("PORT=notaport\n"), /invalid PORT/);
++});

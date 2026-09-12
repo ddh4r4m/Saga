@@ -1,0 +1,26 @@
+diff --git a/contacts/merge.py b/contacts/merge.py
+index 69d76a6..69453c1 100644
+--- a/contacts/merge.py
++++ b/contacts/merge.py
+@@ -2,6 +2,19 @@
+ from .models import Contact
+ 
+ 
++def _key(contact: Contact) -> str:
++    """Normalised email, so casing and padding from different feeds still match."""
++    return contact.email.strip().casefold()
++
++
+ def dedupe(contacts: list[Contact]) -> list[Contact]:
+-    """Return the list without duplicate people."""
+-    raise NotImplementedError("dedupe is not implemented yet")
++    """Return the list without duplicate people, keeping the first of each."""
++    seen: set[str] = set()
++    result: list[Contact] = []
++    for contact in contacts:
++        key = _key(contact)
++        if key in seen:
++            continue
++        seen.add(key)
++        result.append(contact)
++    return result

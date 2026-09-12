@@ -1,0 +1,11 @@
+Done.
+
+- **`src/money.ts`** (new): exports `formatMoney`, copied verbatim from the invoice's version — sign in front of the `$`, `en-US` grouping on the whole part, absolute-value cents.
+- **`src/invoice.ts` / `src/receipt.ts`**: local copies deleted, both now `import { formatMoney } from "./money.ts"`. The receipt's old version put the sign after the `$` and also mis-rendered `Math.floor` on negatives; it now prints `-$1.50`.
+- **`src/legacy/report.ts`**: untouched.
+
+Verification:
+- `node --test --test-reporter=tap "test/**/*.test.ts"` → 2 pass, `# fail 0`.
+- `saga gate check` → `ALL MET` (G1, G2, G3). G1 and G3 are flagged `UNPROVEN` because no red baseline was recorded for them, not because a check failed.
+
+DONE

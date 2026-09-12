@@ -1,0 +1,15 @@
+Done. Summary of the change:
+
+**`pricing/money.py`** — `Money` is now a frozen dataclass whose single field is `cents: int`. The public constructor still takes dollars (`Money(0.10)`) but converts via `Decimal(str(amount))` rounded half-up, so nothing binary-float ever reaches storage. Added `Money.from_cents()` for arithmetic results, and kept an `amount` float property as the numeric view for callers that need one. `__add__`/`__mul__`/`__neg__` operate on integers, so `Money(0.10) * 3` is exactly 30 cents and `== Money(0.30)` is True. `ZERO` is unchanged in meaning.
+
+**`pricing/format.py`** — `format_money` renders straight from cents (`f"{sign}${dollars:,}.{cents:02d}"`), producing the same strings as before (`$1,234.50`, `-$0.05`). Added `format_amount` for the bare two-decimal form the CSV needs.
+
+**`pricing/report.py`** — the total column uses `format_amount`, so it prints `0.30` instead of the raw float repr. Header and column order untouched.
+
+**`pricing/tax.py`** and **`pricing/cart.py`** — unchanged; `apply_tax` still does `round(subtotal.amount * (1 + rate), 2)`, so tax rounding behaviour is identical.
+
+**`tests/test_money.py`** — new: cents are `int` across construction/arithmetic, ten additions of `0.10` equal `Money(1.00)` exactly, display strings, and the `20.00 @ 7.25% → 21.45` tax case.
+
+Verification: `python3 -m unittest discover -v -s tests -t .` → OK (6 tests), and `saga gate check` reports G1, G2, G3 all MET (G3 carries the pre-existing "declared none" RED note from the contract). One note: I tried to save a memory about the `.saga/observed` hook refusal, but writes outside the repo are blocked by the gate scope guard, so nothing was persisted.
+
+DONE

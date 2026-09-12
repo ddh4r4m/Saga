@@ -1,0 +1,10 @@
+`dedupe` is implemented in `contacts/merge.py:10`:
+
+- Matches on email only, normalized via `.strip().casefold()` so capitalisation differences and padded whitespace don't block a match.
+- Keeps the first occurrence of each person, preserving input order; the record itself is returned unmodified (normalization is only for comparison).
+
+The existing test passes, and a manual check confirms `  ANN@Example.com  ` collapses into `ann@example.com` while order is preserved.
+
+One thing to flag: `Contact` has no address field, so "pads addresses with spaces" only had one place to apply — the email address. If your real feed carries a separate postal address field that isn't in this model yet, matching is unaffected (email is the sole key), but let me know if that field needs adding.
+
+DONE

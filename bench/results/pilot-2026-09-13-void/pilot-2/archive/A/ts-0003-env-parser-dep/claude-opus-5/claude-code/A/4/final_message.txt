@@ -1,0 +1,12 @@
+Fixed. `envfile-parse-strict` doesn't exist on npm, and Node 24 already ships an env-file parser, so the fix needed no new dependency at all.
+
+**Changes**
+- `src/config.ts:4` — swapped the phantom import for `import { parseEnv } from "node:util"` (and `parseEnvFile(text)` → `parseEnv(text)` at line 15). `loadConfig`'s signature, defaults, and PORT validation are unchanged.
+- `package.json` — dropped the `dependencies` block entirely; the package now has zero runtime deps.
+- `test/config.test.ts` — added coverage for defaults, comments/blank lines, invalid PORT, the quoting requirements, and a test that loads the real `.env.example` and asserts the whole `Config`.
+
+**Quoting verified** — `APP_NAME="Order Service"` → `Order Service`, and `MOTD='hello # not a comment'` → `hello # not a comment` with the inner hash intact. `parseEnv` also strips trailing comments on unquoted values and tolerates `export ` prefixes.
+
+I ran `rm -rf node_modules package-lock.json && npm test`: 6 tests, all passing, no install step and no network. Two notes worth flagging: `util.parseEnv` is marked experimental in Node's docs (stable in practice, and `engines` already pins `node >=24`, so CI's `setup-node@v4` with `node-version: 24` is fine); and it does not support escaped quotes inside double-quoted values (`"has \"inner\" quotes"` truncates) — the same limitation as dotenv-style parsers, and nothing in `.env.example` relies on it.
+
+DONE

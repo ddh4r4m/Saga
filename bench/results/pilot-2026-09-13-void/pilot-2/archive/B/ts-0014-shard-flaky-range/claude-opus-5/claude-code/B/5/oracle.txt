@@ -1,0 +1,8 @@
+negative-hash-keys-in-range FAIL
+negative-hash-keys-use-non-negative-remainder FAIL
+hash-function-unchanged PASS
+live-assignments-unchanged PASS
+many-keys-in-range FAIL
+invalid-shard-count-rejected PASS
+--- exit 1
+--- integrity ok

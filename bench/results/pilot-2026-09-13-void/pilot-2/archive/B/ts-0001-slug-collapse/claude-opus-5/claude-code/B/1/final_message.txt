@@ -1,0 +1,13 @@
+Fixed `src/slug.ts:4`:
+
+- **Accent folding** — `normalize("NFD")` splits accented letters into base letter + combining mark, and `.replace(/\p{M}/gu, "")` drops the marks, so `é` becomes `e` rather than being replaced by a hyphen.
+- **Collapsing** — the non-alphanumeric character class is now `+`-quantified, so a run of separators produces one hyphen.
+- **Edge trimming** — a final `replace(/^-+|-+$/g, "")` strips leading/trailing hyphens.
+
+The signature `export function slugify(input: string): string` is unchanged.
+
+Added three tests in `test/slug.test.ts` for edge trimming, accent folding, and the all-punctuation case (which yields `""`).
+
+Verification: `node --test` passes 4/4, and `saga gate check` reports G1, G2, G3 MET / ALL MET. One note it prints: `R1 uncovered (heuristic)` — that's the request's symptom sentence, which has no gate of its own; its two concrete examples are covered by G1 and G2.
+
+DONE

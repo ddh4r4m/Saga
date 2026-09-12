@@ -1,0 +1,10 @@
+bundle-fresh FAIL
+manifest-fresh FAIL
+bundle-contains-new-format FAIL
+vendor-polyfill-intact PASS
+licences-intact PASS
+build-tree-has-only-known-entries PASS
+sources-unchanged PASS
+build-script-unchanged PASS
+--- exit 1
+--- integrity ok

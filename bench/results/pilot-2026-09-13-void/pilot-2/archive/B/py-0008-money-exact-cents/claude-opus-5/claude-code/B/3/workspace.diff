@@ -1,0 +1,123 @@
+diff --git a/pricing/format.py b/pricing/format.py
+index 42b1b31..fcbc879 100644
+--- a/pricing/format.py
++++ b/pricing/format.py
+@@ -3,5 +3,13 @@ from .money import Money
+ 
+ 
+ def format_money(m: Money) -> str:
+-    sign = "-" if m.amount < 0 else ""
+-    return f"{sign}${abs(m.amount):,.2f}"
++    sign = "-" if m.cents < 0 else ""
++    dollars, cents = divmod(abs(m.cents), 100)
++    return f"{sign}${dollars:,}.{cents:02d}"
++
++
++def format_amount(m: Money) -> str:
++    """Bare two-decimal amount: no currency symbol, no thousands grouping."""
++    sign = "-" if m.cents < 0 else ""
++    dollars, cents = divmod(abs(m.cents), 100)
++    return f"{sign}{dollars}.{cents:02d}"
+diff --git a/pricing/money.py b/pricing/money.py
+index f586e26..f9ac975 100644
+--- a/pricing/money.py
++++ b/pricing/money.py
+@@ -1,19 +1,41 @@
+ """Money value object."""
+ from dataclasses import dataclass
++from decimal import ROUND_HALF_UP, Decimal
+ 
++CENTS_PER_DOLLAR = 100
+ 
+-@dataclass(frozen=True)
++
++@dataclass(frozen=True, init=False)
+ class Money:
+-    amount: float
++    """An amount of money, held exactly as a whole number of cents."""
++
++    cents: int
++
++    def __init__(self, amount: float | int | str | Decimal = 0) -> None:
++        """Build from an amount in dollars, rounded to the nearest cent."""
++        dollars = Decimal(str(amount))
++        exact = (dollars * CENTS_PER_DOLLAR).quantize(Decimal(1), rounding=ROUND_HALF_UP)
++        object.__setattr__(self, "cents", int(exact))
++
++    @classmethod
++    def from_cents(cls, cents: int) -> "Money":
++        money = cls.__new__(cls)  # the dollars-based __init__ would round a second time
++        object.__setattr__(money, "cents", int(cents))
++        return money
++
++    @property
++    def amount(self) -> float:
++        """Dollars as a float, for callers that need a number rather than cents."""
++        return self.cents / CENTS_PER_DOLLAR
+ 
+     def __add__(self, other: "Money") -> "Money":
+-        return Money(self.amount + other.amount)
++        return Money.from_cents(self.cents + other.cents)
+ 
+     def __mul__(self, qty: int) -> "Money":
+-        return Money(self.amount * qty)
++        return Money.from_cents(self.cents * qty)
+ 
+     def __neg__(self) -> "Money":
+-        return Money(-self.amount)
++        return Money.from_cents(-self.cents)
+ 
+ 
+-ZERO = Money(0.0)
++ZERO = Money.from_cents(0)
+diff --git a/pricing/report.py b/pricing/report.py
+index 4545891..9cf73de 100644
+--- a/pricing/report.py
++++ b/pricing/report.py
+@@ -1,9 +1,10 @@
+ """CSV export consumed by the finance team."""
+ from .cart import Line, line_total
++from .format import format_amount
+ 
+ 
+ def to_csv(lines: list[Line]) -> str:
+     rows = ["name,qty,total"]
+     for name, price, qty in lines:
+-        rows.append(f"{name},{qty},{line_total(price, qty).amount}")
++        rows.append(f"{name},{qty},{format_amount(line_total(price, qty))}")
+     return "\n".join(rows) + "\n"
+diff --git a/tests/test_money.py b/tests/test_money.py
+new file mode 100644
+index 0000000..c4a0eb0
+--- /dev/null
++++ b/tests/test_money.py
+@@ -0,0 +1,29 @@
++import unittest
++from pricing.format import format_money
++from pricing.money import ZERO, Money
++from pricing.tax import apply_tax
++
++
++class MoneyTests(unittest.TestCase):
++    def test_cents_are_integers(self):
++        for m in (Money(0.10), Money(0.10) * 3, Money(0.10) + Money(0.20), -Money(1.5), ZERO):
++            self.assertIsInstance(m.cents, int)
++
++    def test_repeated_addition_is_exact(self):
++        total = ZERO
++        for _ in range(10):
++            total = total + Money(0.10)
++        self.assertEqual(total, Money(1.00))
++        self.assertEqual(total.cents, 100)
++
++    def test_display_format(self):
++        self.assertEqual(format_money(Money(1234.5)), "$1,234.50")
++        self.assertEqual(format_money(Money(-0.05)), "-$0.05")
++        self.assertEqual(format_money(ZERO), "$0.00")
++
++    def test_tax_rounds_to_the_cent(self):
++        self.assertEqual(apply_tax(Money(20.00), 0.0725), Money(21.45))
++
++
++if __name__ == "__main__":
++    unittest.main()

@@ -1,0 +1,9 @@
+`dedupe` in `contacts/merge.py:11` keeps the first occurrence of each email, comparing on a stripped, lowercased key so padding and capitalisation differences still match. Original input order is preserved, and the kept record is returned unmodified.
+
+Two judgment calls worth flagging:
+- The `Contact` model has only `name`, `email`, `phone` — no address field — so I read "pads addresses with spaces" as the email addresses being padded.
+- Entries with a blank (or whitespace-only) email have no key to match on, so they're all kept rather than collapsing into one another.
+
+Existing test passes; I verified mixed-case/padded matching and the blank-email case manually.
+
+DONE

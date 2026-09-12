@@ -1,0 +1,6 @@
+bench-smoke 2026-09-12T20:04:20Z
+saga saga dev; claude 2.1.266 (Claude Code)
+model=claude-opus-5 k=5 wall_cap=0s out=/tmp/saga-pilot-1
+prereg=docs/12-experiment-protocol.md (c44b53101b2260301ba4bdebc32943eb1b61c7c21e017c5c4d05c94bc85cfb82)
+saga: run: the user tier caps at 20 usd (section 4.4)
+bench run exit 3

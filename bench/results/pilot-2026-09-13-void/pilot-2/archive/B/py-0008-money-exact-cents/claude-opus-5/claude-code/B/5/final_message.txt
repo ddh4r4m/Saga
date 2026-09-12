@@ -1,0 +1,14 @@
+Done. `Money` now stores exact integer cents.
+
+**Changes**
+
+- `pricing/money.py:1` — `Money` is now a frozen dataclass with a single `cents: int` field. The constructor still takes dollars (`Money(0.10)` → 10 cents), converting via `Decimal(str(amount)) * 100` so no binary-float artifact reaches storage. Added `Money.from_cents()` for internal construction and a `dollars` property returning an exact `Decimal`. `__add__`/`__mul__`/`__neg__` are pure integer arithmetic, so `Money(0.10) * 3 == Money(0.30)`.
+- `pricing/format.py:6` — formats from the integer with `divmod`, giving byte-identical output (`$1,234.50`, `-$0.05`, `$0.00`).
+- `pricing/tax.py:7` — same round-half-even-to-the-cent behaviour, applied as `round(cents * (1 + rate))`.
+- `pricing/report.py:8` — same header and columns; the total column is rendered `:.2f` from the exact `Decimal`, so `0.30000000000000004` becomes `0.30`.
+
+One visible consequence worth flagging: the CSV total column now always carries two decimals, so a line that previously exported `4.0` exports `4.00`. That is what G1's `test_csv_has_two_decimals` requires, and the header/column layout is untouched.
+
+**Verification** — `python3 -m unittest discover -v -s tests -t .` passes (2 tests, OK), and `saga gate check` reports `ALL MET` (G1 MET, G2 MET, G3 MET with its declared `RED: none`).
+
+DONE

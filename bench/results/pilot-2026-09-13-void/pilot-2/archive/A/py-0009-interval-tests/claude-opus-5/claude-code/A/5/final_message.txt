@@ -1,0 +1,20 @@
+Wrote `tests/test_intervals.py` — 38 `unittest` tests, all passing, organized into one class per docstring bullet.
+
+**Coverage by documented behaviour:**
+
+| Bullet | Cases |
+|---|---|
+| any input order → sorted by start | unsorted, reversed-equals-sorted, shared starts |
+| overlapping & touching merge | overlap, touch at shared endpoint, disjoint stay separate, gap of one does *not* merge, chains, duplicates, negatives |
+| containment doesn't shrink outer | contained first/last, several contained, shared start, shared end, contained interval between two merging neighbours |
+| empty / single | `[] → []`, single returned as is, single degenerate |
+| new list of tuples, input untouched | result is `list` of 2-tuples, `assertIsNot` input, mutating result doesn't affect input, input order preserved after call |
+| `ValueError` on start > end | bad interval alone / in middle / last, message names the interval, input untouched, negative reversed |
+
+Edge cases worth calling out: degenerate intervals (`start == end`) are treated as valid single points that merge when touching (`(5,5)+(5,9) → (5,9)`) but survive when isolated; and `(1,10),(4,5),(9,14) → (1,14)` pins the `max()` that keeps a short inner interval from cutting the running end back — the classic regression in this function.
+
+**Verification:** I mutation-tested the suite against 8 injected bugs in a scratch copy (touching no longer merges, `max()` dropped, no sorting, sorting by end, validation removed, off-by-one gap merge, returning the input list, returning lists instead of tuples). Every mutant was caught — 1 to 10 failures each, none passed silently.
+
+`intervals.py` is unchanged (`git diff` empty). Two notes: the mutation-test scratch dir `/var/folders/.../tmp.mR5q4jgV2Q` is still on disk because a sandbox guard blocked the cleanup `rm -rf`; and running the tests created untracked `__pycache__/` dirs.
+
+DONE

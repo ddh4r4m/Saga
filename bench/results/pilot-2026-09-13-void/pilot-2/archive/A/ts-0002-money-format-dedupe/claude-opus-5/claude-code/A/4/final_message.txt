@@ -1,0 +1,9 @@
+Both tests pass.
+
+- **`src/money.ts`** (new): exports `formatMoney` with the invoice's behaviour — sign in front of `$`, thousands grouping, magnitude computed from `Math.abs`.
+- **`src/invoice.ts`** / **`src/receipt.ts`**: local copies deleted, both now import from `./money.ts`. No call sites or layout/padding changed.
+- **`src/legacy/report.ts`**: untouched; its `fmt` stays local and frozen.
+
+Behaviour change worth noting: the receipt now prints `-$2.50` where it printed `$-2.50`, and it gains thousands separators (`$1,234.56` instead of `$1234.56`) since the invoice formatter uses `toLocaleString`. That's inherent to adopting the invoice's behaviour, but it does touch positive amounts on point-of-sale output, not just refunds — worth a glance from whoever owns the printer templates, since the amount column may render one character wider than before.
+
+DONE

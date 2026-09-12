@@ -1,0 +1,15 @@
+Wrote `tests/test_intervals.py` — 22 tests, one behaviour per test, all passing against the current implementation.
+
+Coverage maps to the docstring:
+- **ordering** — unsorted input sorted by start; order preserved after merges
+- **overlap & touching** — `(1,3)+(3,5) → (1,5)`, chained touches, disjoint and gap-of-one left alone
+- **containment** — `(1,10)+(2,3) → (1,10)`, plus a case where a contained interval sits between two merges so a `max`-dropping bug shows up
+- **edge cases** — empty list, single interval, duplicates, shared starts, degenerate `(5,5)` point intervals, negative bounds
+- **purity** — input list unmodified, result is a distinct list of tuples, mutating the result doesn't touch the input
+- **validation** — `ValueError` for `start > end`, including when the bad interval is not first, and checked before any merging happens
+
+Since the contract marks G2 `RED: mutation`, I verified the suite actually kills mutants rather than just passing: I applied seven mutations to a scratch copy of `intervals.py` (`<=`→`<`, dropping `max`, both directions; `sorted`→`list`; removing the validation; `>`→`>=`; returning the input list) and each one produced failures. `intervals.py` was restored to its committed bytes afterwards — `git diff --quiet HEAD -- intervals.py` is clean.
+
+`saga gate check`: **ALL MET** (G1, G2, G3). G2 and G3 carry `UNPROVEN` notes — no mutation operator is configured for G2, and G3's baseline can't be red since the source is untouched by construction — and `require_red = false` in `.saga/config.toml`, so neither is a failure.
+
+DONE
