@@ -1,0 +1,25 @@
+# Brief: a harness session-limit reply is infra, and the runner waits for the reset
+
+Date: 2026-09-13. Owner of the decision: saga (Fable). Implementer: saga-opus. Two commits: (1) the ingest of the void pilot, archive only; (2) the runner change with tests and docs. Go changes move the binary; the owner re-approves in the morning.
+
+## 1. What happened
+
+Pilot-2 (`/tmp/saga-pilot-2`, commit 1193154, binary 9fcaeaeb…, tier dev, K=5, claude-opus-5, budget 65) ran 200 rows and exited 0, spending 20.63 usd. At row 70 (ts-0003 arm B run 5/5, about 04:00 IST) the owner's Max-plan session window was exhausted. From then on every harness invocation returned at once: `result` with `subtype: success`, one turn, cost 0, wall about 1.5 s, and the final message `You've hit your session limit · resets 4:40am (Asia/Calcutta)`. The runner graded each of those 131 rows `completed` with `outcome_reason: result subtype success`, oracle exit 1, pass false, claimed_done null. Rows 1 to 69 are real: py-0006, py-0007, py-0008, py-0009, ts-0001, ts-0002 complete in both arms at K=5, ts-0003 complete except arm B run 5. Two real rows ended `budget` (the per-run usd limit), which is a pre-registered outcome.
+
+The report cannot be generated from this archive (commitment 1: once, from its rows), and the runner cannot pair a re-run of the missing tasks with these rows across manifests, so the pilot is void and is re-run whole after the fix.
+
+## 2. Commit 1: ingest, archive only
+
+`/tmp/saga-pilot-1` (refused at the user cap, log and provenance only) and `/tmp/saga-pilot-2` into `bench/results/pilot-2026-09-13-void/` with NOTES.md: provenance heads verbatim, the row at which the limit hit and the clock time, the 69 real rows tabled by task and arm (outcome, pass, false_done, cost, wall) with the plain statement that they are seven tasks of a void run and not the pilot, the 131 void rows counted per task and arm, the two `budget` rows named, the prereg hash move (dev runs c44b5310…, this run d5adae70…), the arm A approval-store env leak (dev-2 finding 3) carried forward, and the memory kill and detached launch noted from the dev runs. No report, no compare, no badge. Masking as ruled (MASKED.md, SHA256SUMS untouched). Say before you commit.
+
+## 3. Commit 2: the runner
+
+1. **Detection.** In the claude-code adapter, a harness result whose final text matches the harness-limit lexicon (`You've hit your session limit`, `You've hit your usage limit`, `resets <time>`; keep the lexicon in one place with a fixture from this archive's row, e.g. `fixtures/harness/session-limit.txt` copied from `/tmp/saga-pilot-2/archive/A/py-0020-invoice-rounding-impossible/claude-opus-5/claude-code/A/5/final_message.txt`) with no tool use and cost 0 is outcome `infra`, `outcome_reason: harness-limit: <first line>`, never `completed`, never graded, `claimed_done` null. Also treat the harness `result` `subtype` values that name a limit or an error (`error_max_turns`, `error_during_execution`, and any `subtype` starting `error`) as infra with the subtype in the reason if they are not already.
+2. **Waiting.** `saga bench run --on-limit wait|stop` (default `wait`): on a harness-limit row, parse the reset time from the message (`resets 4:40am (Asia/Calcutta)`: time and IANA zone; if unparsable, wait 5 minutes and retry once, then stop), sleep until reset plus 90 s, and re-run the same (task, arm, k) once; the first attempt is kept in the run directory as `attempt-1/` with its harness.json and final message, the retry becomes the row. The manifest records `limit_waits: [{task, arm, k, hit_at, resumed_at, message}]`; the per-arm cost and wall exclude the wait. If the retry hits the limit again, stop the run with exit 3 and a message naming the rows not run; `--on-limit stop` stops at the first hit. The `1.5 × estimate` scheduling cap and `--budget` are unaffected by waits. Record the policy in harness.json `limits.on_limit`.
+3. **Launchers.** `bench-smoke.sh` passes `--on-limit "${ON_LIMIT:-wait}"`; the provenance head prints `on_limit:`.
+4. **Tests.** Adapter: the fixture row classifies as infra harness-limit (and the old `completed` grading is asserted gone). Runner under the stub harness: a stub that answers with the limit message once and then normally, asserting one `limit_waits` entry, the row from the retry, `attempt-1/` kept, and the wait clock stubbed; `--on-limit stop` exits 3 naming the rows; an unparsable reset time takes the 5-minute path. Drift guard: harness-facts entry C38 for the limit reply shape, with the fixture as evidence.
+5. **Docs.** docs/12 §13: runs interrupted by the account's session limit are infra and re-run in place after the reset, never graded; the pilot of 2026-09-13 is void beyond row 69 and is re-run whole. `docs/specs/harness-facts.md` C38. `bench-spec` §4.5 one paragraph on `--on-limit`. IMPLEMENTATION-STATUS row. Schema: `manifest.json` gains `limit_waits` (optional), `harness.json` `limits.on_limit`.
+
+## 4. Report
+
+Per commit: hash; for commit 2 the new binary hash (the owner re-approves), test names, the C38 text. Under 20 lines total. Do not launch any live run.
