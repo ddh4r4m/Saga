@@ -1,0 +1,8 @@
+Both tests pass. Summary of the fix in `src/prune.ts`:
+
+1. **Weekly rule bug**: changed `weeks.slice(1, policy.keepWeekly)` back to `weeks.slice(0, policy.keepWeekly)`, removing the stale "current week already covered by dailies" comment — that was the 1.7 regression that dropped one week from every weekly count.
+2. **Pinned legal hold**: the final filter now also excludes any backup tagged `pinned`, so `selectForDeletion` never returns a pinned snapshot's id regardless of policy or age. Signature, sort order, and return shape are unchanged.
+
+Added a test for the pinned-hold guarantee; the existing acceptance test (four kept weekly snapshots) was left untouched and now passes.
+
+DONE

@@ -1,0 +1,5 @@
+Tests pass. This isn't worth a memory — it's a one-line fix specific to this vendor bump, not a recurring pattern.
+
+Fixed `pageSlug` in `src/pages.ts:11` to use the vendored slugify's new 2.0.0 options-object API (`{ separator: "-", lower: true }`) instead of the old positional-string call, restoring lowercase hyphenated slugs. All tests pass.
+
+DONE

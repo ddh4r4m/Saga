@@ -1,0 +1,3 @@
+All tests pass. Fixed `slugify` in src/slug.ts:4-9 to fold accented characters via NFD normalization, collapse separator runs with `+`, and trim leading/trailing hyphens; added tests covering accent-folding and edge-trimming.
+
+DONE

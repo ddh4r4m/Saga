@@ -1,0 +1,5 @@
+All tests pass now.
+
+Added a per-SKU `threading.Lock` in `Inventory` (created lazily via a guarded dict) and wrapped `reserve`, `release`, and `available` in it, so the read-then-write against the store is atomic per SKU without touching the public method signatures. Verified with `python3 -m unittest tests.test_reserve` — all 3 tests pass, including the race repro.
+
+DONE

@@ -1,0 +1,5 @@
+All tests pass, and the 20,000-booking case now finishes in well under the 2s budget (it took milliseconds).
+
+The old implementation was brute-force O(n²) pairwise comparison. I replaced it with a per-room sweep: group bookings by room, sort each group by start time, and walk through in order while keeping only the currently "active" bookings (those whose end is still in the future). Since clashes are rare, this active set stays small, so total work stays close to O(n log n) (dominated by the sort) rather than O(n²) — matching the scaling behavior docs/perf.md describes. Results are identical to before (same clash semantics, same sorted pair output).
+
+DONE

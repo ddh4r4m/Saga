@@ -1,0 +1,3 @@
+Test passes. Implemented `dedupe` in `contacts/merge.py:5` to normalize emails (trim whitespace, lowercase) before comparing, keeping the first occurrence and original order.
+
+DONE

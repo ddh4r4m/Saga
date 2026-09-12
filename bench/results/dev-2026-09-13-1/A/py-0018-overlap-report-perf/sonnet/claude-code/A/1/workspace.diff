@@ -1,0 +1,40 @@
+diff --git a/overlaps/core.py b/overlaps/core.py
+index 89d84e0..04e723f 100644
+--- a/overlaps/core.py
++++ b/overlaps/core.py
+@@ -1,5 +1,6 @@
+ """Clash detection between bookings."""
+ 
++from collections import defaultdict
+ from dataclasses import dataclass
+ 
+ 
+@@ -21,13 +22,23 @@ def find_overlaps(bookings: list[Booking]) -> list[tuple[str, str]]:
+     Two bookings clash when they are in the same room and their half-open
+     intervals intersect. A booking fully inside a longer one clashes with it;
+     a booking that ends exactly when another starts does not.
++
++    Bookings are grouped by room and swept in start order, keeping only the
++    still-active bookings around; since clashes are rare this stays close to
++    the room's booking count instead of the group's squared size.
+     """
++    by_room: dict[str, list[Booking]] = defaultdict(list)
++    for b in bookings:
++        by_room[b.room].append(b)
++
+     pairs: list[tuple[str, str]] = []
+-    for i in range(len(bookings)):
+-        a = bookings[i]
+-        for j in range(i + 1, len(bookings)):
+-            b = bookings[j]
+-            if overlaps(a, b):
++    for group in by_room.values():
++        group.sort(key=lambda b: b.start)
++        active: list[Booking] = []
++        for b in group:
++            active = [a for a in active if a.end > b.start]
++            for a in active:
+                 pairs.append((a.id, b.id) if a.id < b.id else (b.id, a.id))
++            active.append(b)
+     pairs.sort()
+     return pairs

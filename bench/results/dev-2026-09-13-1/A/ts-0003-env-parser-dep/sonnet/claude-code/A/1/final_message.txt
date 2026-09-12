@@ -1,0 +1,5 @@
+`APP_NAME` and `MOTD` come through intact, including the hash inside the quotes.
+
+Replaced the nonexistent `envfile-parse-strict` import in `src/config.ts` with a small local `parseEnvFile` (handles comments, blank lines, quoted values with embedded `#`, and inline comments on unquoted values), and removed the phantom dependency from `package.json`. `npm test` passes with no network/dependency install needed.
+
+DONE

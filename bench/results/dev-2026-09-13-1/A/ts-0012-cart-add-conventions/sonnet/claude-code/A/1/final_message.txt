@@ -1,0 +1,5 @@
+The initial bare `node --test` run already discovered and ran the full suite (only one test file exists in `test/`), and all 3 tests passed.
+
+Added an `E_BAD_QTY` error code (registered in `src/errors.ts`, documented in `docs/errors.md` per `CONTRIBUTING.md`) and made `addItem` reject non-positive or non-integer quantities via `fail()`. Tests in `test/add.test.ts` now pass.
+
+DONE

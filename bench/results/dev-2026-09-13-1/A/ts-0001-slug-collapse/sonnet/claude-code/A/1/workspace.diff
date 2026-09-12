@@ -1,0 +1,30 @@
+diff --git a/src/slug.ts b/src/slug.ts
+index 65623a4..ace07df 100644
+--- a/src/slug.ts
++++ b/src/slug.ts
+@@ -3,6 +3,7 @@
+ 
+ export function slugify(input: string): string {
+   const lowered = input.toLowerCase();
+-  const replaced = lowered.replace(/[^a-z0-9]/g, "-");
+-  return replaced;
++  const folded = lowered.normalize("NFD").replace(/[̀-ͯ]/g, "");
++  const replaced = folded.replace(/[^a-z0-9]+/g, "-");
++  return replaced.replace(/^-+|-+$/g, "");
+ }
+diff --git a/test/slug.test.ts b/test/slug.test.ts
+index 8216d16..a8b85ed 100644
+--- a/test/slug.test.ts
++++ b/test/slug.test.ts
+@@ -5,3 +5,11 @@ import { slugify } from "../src/slug.ts";
+ test("collapses runs of separators", () => {
+   assert.equal(slugify("Hello  World!"), "hello-world");
+ });
++
++test("folds accented letters to ascii", () => {
++  assert.equal(slugify("Café au lait"), "cafe-au-lait");
++});
++
++test("trims leading and trailing hyphens", () => {
++  assert.equal(slugify("!Hello World!"), "hello-world");
++});

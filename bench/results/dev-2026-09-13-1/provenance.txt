@@ -1,0 +1,9 @@
+bench-dev 2026-09-12T18:29:55Z
+commit:    069af89
+binary:    sha256:6d2defeaaf1081600a3e553da3fb33643e3c52ef80460dc72d910091c61a00ef
+task set:  sha256:fc22a4d4e333155c972173462beeb09e8bab56e6fd4045bd897676ad80feb521
+prereg:    sha256:c44b53101b2260301ba4bdebc32943eb1b61c7c21e017c5c4d05c94bc85cfb82
+path:      SAGA_MASK_HOME/.saga/bench/bin/6d2defeaaf108160:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin
+estimate:  9.70 usd (k=1, 2 arms, model sonnet)
+budget:    10 usd
+out:       /tmp/saga-dev-2

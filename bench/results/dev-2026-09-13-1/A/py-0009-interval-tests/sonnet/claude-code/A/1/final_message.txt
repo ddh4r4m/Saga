@@ -1,0 +1,3 @@
+All 15 tests pass. Created `tests/test_intervals.py` covering: empty/single input, overlap merging, touching-interval merging, non-overlapping intervals, fully-nested intervals not shrinking, unsorted input being sorted, chained multi-merges, immutability of input/new list output, tuple output type, zero-length (point) intervals, and `ValueError` on invalid `start > end` intervals. `intervals.py` was not modified.
+
+DONE

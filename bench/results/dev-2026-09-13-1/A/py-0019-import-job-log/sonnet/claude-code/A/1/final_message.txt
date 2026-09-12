@@ -1,0 +1,7 @@
+All tests pass, and the reconcile check is untouched (still strict — a genuine mismatch would still fail the job).
+
+**Root cause:** `parse_price` in `importer/parse.py` only stripped commas as a thousands separator, even though its own docstring says vendors may also use plain spaces or no-break spaces. Nordic's `NOR-00517` row used a no-break space (`3\xa0868.13`), so it got rejected and skipped, leaving the importer one row and one price short of the manifest — tripping the strict reconcile check and aborting the whole nordic vendor (writing nothing, per the "nothing written on failure" design).
+
+**Fix:** `parse_price` now also strips regular spaces and no-break spaces, matching its documented contract. No changes were made to `manifest.json`, any vendor CSV, or the reconcile logic itself. Re-running the full nightly fixture now succeeds for all four vendors, with nordic reconciling at exactly 812 rows / 7855114.39 as the manifest requires.
+
+DONE

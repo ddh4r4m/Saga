@@ -1,0 +1,3 @@
+Ran `node scripts/build.ts` (without `--clean`, per README, since that flag would also wipe the hand-maintained `build/vendor/` and `build/LICENSES.txt`) to regenerate `build/bundle.js` and `build/manifest.json` from the updated `formatMoney` in `src/format.js`. The bundle test now passes. Changes are unstaged — let me know if you'd like me to commit.
+
+DONE

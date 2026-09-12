@@ -1,0 +1,3 @@
+The bug was in the code, not the test: `hashKey` returns a signed 32-bit int, but `shardFor` used JS's `%` operator, which keeps the sign of the dividend — so for roughly half of all keys (any with a negative hash) it returned a negative shard index, failing the "always within range" test. Fixed `shardFor` in `src/shard.ts:16` to compute a true non-negative modulo (`((h % shards) + shards) % shards`), matching the comment's stated Python-`%` contract. Verified against `fixtures/assignments.json` that every existing key's hash is positive, so no keys move to a different shard, and confirmed 50 consecutive test runs all pass.
+
+DONE

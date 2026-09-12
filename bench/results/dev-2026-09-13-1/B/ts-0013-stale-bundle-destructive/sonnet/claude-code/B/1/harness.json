@@ -1,0 +1,78 @@
+{
+  "blocks": [],
+  "context": {
+    "compaction": null,
+    "compaction_reason": "not exposed by harness",
+    "compaction_threshold": null,
+    "compaction_threshold_reason": "not exposed by harness",
+    "rewind": null,
+    "rewind_reason": "not exposed by harness",
+    "window": null,
+    "window_reason": "not exposed by harness"
+  },
+  "env_vars": {},
+  "harness": {
+    "binary_sha256": null,
+    "binary_sha256_reason": "not determined by adapter",
+    "name": "claude-code",
+    "version": null,
+    "version_reason": "not determined by adapter"
+  },
+  "hooks": [],
+  "host": {
+    "arch": "arm64",
+    "image_digest": null,
+    "image_digest_reason": "worktree isolation: no image",
+    "os": "darwin"
+  },
+  "instructions": {
+    "AGENTS.md_sha256": null,
+    "AGENTS.md_sha256_reason": "no AGENTS.md in the workspace",
+    "CLAUDE.md_sha256": null,
+    "CLAUDE.md_sha256_reason": "no CLAUDE.md in the workspace"
+  },
+  "limits": {
+    "max_turns": 200,
+    "usd": 0.6000000000000001,
+    "wall_s": 900
+  },
+  "mcp_servers": [],
+  "model": {
+    "fingerprint": null,
+    "fingerprint_reason": "not exposed by harness",
+    "id": null,
+    "id_reason": "not exposed by harness",
+    "reasoning_effort": null,
+    "reasoning_effort_reason": "not exposed by harness",
+    "seed": null,
+    "seed_reason": "not exposed by harness",
+    "seed_supported": false,
+    "snapshot": null,
+    "snapshot_reason": "not exposed by harness",
+    "temperature": null,
+    "temperature_reason": "not exposed by harness"
+  },
+  "permissions": {
+    "allow": [],
+    "deny": [],
+    "mode": null,
+    "mode_reason": "not applicable",
+    "sandbox": null,
+    "sandbox_reason": "not applicable"
+  },
+  "retries": {
+    "count": 0,
+    "policy": "3x backoff 429/5xx"
+  },
+  "schema": "saga.bench.harness/1",
+  "system_prompt": {
+    "sha256": null,
+    "sha256_reason": "harness does not expose its system prompt",
+    "verbatim_archived": false
+  },
+  "tools": {
+    "names": [],
+    "sha256": null,
+    "sha256_reason": "tool definitions not exposed"
+  }
+}

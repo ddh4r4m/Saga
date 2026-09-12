@@ -1,0 +1,3 @@
+All tests pass. The root cause was `int(cents * rate)` in `ledger/fx.py` truncating every FX conversion toward zero instead of rounding, which biased the EUR account (4471) — the only account requiring conversion — down by a cent on many postings, accumulating to the observed 0.30 EUR drift. Fixed by rounding to the nearest cent (`int(cents * rate + 0.5)`); reconcile now reports 0 mismatches.
+
+DONE

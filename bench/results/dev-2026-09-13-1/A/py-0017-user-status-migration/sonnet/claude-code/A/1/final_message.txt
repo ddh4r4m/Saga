@@ -1,0 +1,3 @@
+Works as expected. Added a `status` migration (defaulting to `active`, constrained to `active`/`disabled`), `users.set_status` and a `disabled` filter on `list_users`, and CLI `disable <id>` / `list --disabled` commands — the seed loader and `data/seed.json` needed no changes since the new column has a default. All 4 tests in `tests/test_users.py` pass.
+
+DONE

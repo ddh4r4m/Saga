@@ -1,0 +1,5 @@
+All tests pass, and `src/legacy/report.ts` was left untouched.
+
+Created `src/money.ts` with a single `formatMoney` using the invoice's sign-in-front behaviour, and updated `invoice.ts`/`receipt.ts` to import it; `legacy/report.ts` untouched.
+
+DONE
