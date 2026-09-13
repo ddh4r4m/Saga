@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -538,7 +539,48 @@ func (v *view) judgeTests(cr *ClaimResult) {
 		cr.Reason = "no_test_run"
 		return
 	}
-	last := v.tests[len(v.tests)-1]
+	// Which run the sentence is about (referent.go). A claim naming a
+	// command in backticks is about that call; otherwise the last call
+	// that can answer the question, skipping deliberate red checks,
+	// hook-denied calls and calls whose output says nothing.
+	sentence := v.sentenceOf(cr)
+	eligible := make([]*call, 0, len(v.tests))
+	var disq string
+	for _, c := range v.tests {
+		if why := v.disqualify(c); why != "" {
+			disq = why
+			continue
+		}
+		eligible = append(eligible, c)
+	}
+	if named := v.namedCall(sentence, v.tests); named != nil {
+		eligible = []*call{named}
+	}
+	if len(eligible) == 0 {
+		cr.Verdict = VerdictUnverified
+		cr.Reason = "no_usable_test_run: " + disq
+		return
+	}
+	// A claim about one test file is answered by that file's line, or
+	// not at all; the suite total answers a different question.
+	if files := scopedFiles(sentence); len(files) > 0 {
+		status, from := v.perFileStatus(files, eligible)
+		if from != nil {
+			cr.Evidence = []int{from.seq, from.result.Seq}
+		}
+		switch status {
+		case StatusFail:
+			cr.Verdict = VerdictContradicted
+			cr.Reason = "status fail for " + files[0]
+		case StatusPass:
+			cr.Verdict = VerdictVerified
+		default:
+			cr.Verdict = VerdictUnverified
+			cr.Reason = "scoped claim, no per-file result"
+		}
+		return
+	}
+	last := eligible[len(eligible)-1]
 	cr.Evidence = []int{last.seq}
 	if last.result == nil {
 		cr.Verdict = VerdictUnverified
@@ -566,6 +608,31 @@ func (v *view) judgeTests(cr *ClaimResult) {
 		}
 		cr.Verdict = VerdictVerified
 	}
+}
+
+// sentenceOf is the claim's own sentence, which is what names the
+// command or the file a claim is about. The span is the matched phrase;
+// the sentence is the text around it up to the nearest boundary.
+var sentenceEndRe = regexp.MustCompile(`[.!?;](?:\s|$)|\n`)
+
+func (v *view) sentenceOf(cr *ClaimResult) string {
+	final := v.in.Final
+	s, e := cr.Span[0], cr.Span[1]
+	if s < 0 || e > len(final) || s > e {
+		return ""
+	}
+	// A sentence ends at a full stop followed by space or a newline, not
+	// at every dot: `tests/test_policy.py` is one token and splitting
+	// inside it loses the very file name the claim is scoped to.
+	start := 0
+	if loc := sentenceEndRe.FindAllStringIndex(final[:s], -1); len(loc) > 0 {
+		start = loc[len(loc)-1][1]
+	}
+	end := len(final)
+	if loc := sentenceEndRe.FindStringIndex(final[e:]); loc != nil {
+		end = e + loc[0]
+	}
+	return strings.TrimSpace(final[start:end])
 }
 
 func intStr(p *int) string {

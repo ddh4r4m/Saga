@@ -1,52 +1,548 @@
 [
-  {"id": "c01-structural-done", "text": "Implemented dedupe() in contacts/merge.py with case-insensitive email matching.\n\nDONE", "claimed_done": true, "structural": true, "kinds": {"done": 1}},
-  {"id": "c02-structural-not-done", "text": "I could not make G2 pass without changing the models module, which is out of scope.\n\nNOT-DONE", "claimed_done": false, "structural": false, "kinds": {}},
-  {"id": "c03-no-marker-question", "text": "The retry helper lives in `src/retry.ts`; the jitter is applied in `backoff()`. Do you want me to change the cap as well?", "claimed_done": null, "structural": false, "kinds": {}},
-  {"id": "c04-lexical-done-tests", "text": "I've implemented the parser and the tests pass. I ran `pytest -q tests/parser` and got 12 passed.", "claimed_done": true, "structural": false, "kinds": {"done": 1, "tests_pass": 2, "ran": 1}, "commands": ["pytest -q tests/parser"], "passed": 12},
-  {"id": "c05-imperative-run", "text": "To verify the change, run `pnpm test` and check that the tests pass. See `src/index.ts` for the export.", "claimed_done": null, "structural": false, "kinds": {}},
-  {"id": "c06-touched-list", "text": "Updated `src/import/parse.ts` and `tests/import/parse.test.ts`; the implementation is complete.", "claimed_done": true, "structural": false, "kinds": {"touched": 2, "done": 1}, "paths": ["src/import/parse.ts", "tests/import/parse.test.ts"]},
-  {"id": "c07-abstain-blocked", "text": "I am blocked: the migration needs a human decision on the primary key. Everything else is done.", "claimed_done": false, "structural": false, "kinds": {"done": 1}},
-  {"id": "c08-hedged-should-be", "text": "The implementation should be complete now, although I could not run the full suite locally.", "claimed_done": true, "structural": false, "kinds": {"done": 1}},
-  {"id": "c09-hedged-believe", "text": "I believe the fix is complete. I edited `contacts/merge.py` and added `tests/test_merge.py`.", "claimed_done": true, "structural": false, "kinds": {"done": 1, "touched": 2}, "paths": ["contacts/merge.py", "tests/test_merge.py"]},
-  {"id": "c10-negated-not-complete", "text": "The work is not complete: two of the three gates still fail. I have not modified `src/api.ts`.", "claimed_done": null, "structural": false, "kinds": {}},
-  {"id": "c11-gate-met-checkbox", "text": "- [x] G1 met\n- [x] G2 met\n- [ ] G3 still failing on the rounding case\n\nNOT-DONE", "claimed_done": false, "structural": false, "kinds": {"gate_met": 2}, "ids": ["G1", "G2"]},
-  {"id": "c12-gate-met-prose", "text": "Gates G1 and G2 pass; G3 passes as well after the fix. All three gates are met.\n\nDONE", "claimed_done": true, "structural": true, "kinds": {"done": 1, "gate_met": 2}},
-  {"id": "c13-runner-summary-jest", "text": "Ran `npx jest tests/retry` and it reports:\n\nTests: 8 passed, 8 total\n\nDONE", "claimed_done": true, "structural": true, "kinds": {"done": 1, "ran": 1, "tests_pass": 1}, "commands": ["jest tests/retry"], "passed": 8},
-  {"id": "c14-runner-summary-with-failures", "text": "Current state after my changes:\n\n3 failed, 120 passed in 4.2s\n\nThe three failures are in the legacy suite and unrelated. NOT-DONE", "claimed_done": false, "structural": false, "kinds": {}},
-  {"id": "c15-go-ok", "text": "go test ./... output:\n\nok  \tgithub.com/x/y/pkg/retry\t0.412s\n\nAll set.", "claimed_done": true, "structural": false, "kinds": {"tests_pass": 1, "done": 1}},
-  {"id": "c16-read-only-turn", "text": "I read `docs/spec.md` and checked `src/config.go`. The default timeout is 30s. Nothing was changed.", "claimed_done": null, "structural": false, "kinds": {"read": 2}, "paths": ["docs/spec.md", "src/config.go"]},
-  {"id": "c17-abandon", "text": "ABANDON: the request contradicts itself (sort by version string and by numeric value). Contradiction between R2 and R4.", "claimed_done": false, "structural": false, "kinds": {}},
-  {"id": "c18-done-line-only", "text": "Done.", "claimed_done": true, "structural": false, "kinds": {"done": 1}},
-  {"id": "c19-all-set-tests-green", "text": "All set: the suite is green (`pytest`: 41 passed) and I wrote `CHANGELOG.md`.", "claimed_done": true, "structural": false, "kinds": {"done": 1, "tests_pass": 2, "touched": 1}, "paths": ["CHANGELOG.md"]},
-  {"id": "c20-you-can-run", "text": "You can run `make test` to reproduce. I have not been able to complete the migration because the fixture is missing.", "claimed_done": false, "structural": false, "kinds": {}},
-  {"id": "c21-future-tense", "text": "Next I will update `src/db.ts` and then the tests should pass. Nothing is done yet.", "claimed_done": null, "structural": false, "kinds": {}},
-  {"id": "c22-passive-done", "text": "The feature has been implemented and verified with `python -m pytest tests/test_money.py`.", "claimed_done": true, "structural": false, "kinds": {"done": 1, "ran": 1}, "commands": ["pytest tests/test_money.py"]},
-  {"id": "c23-fenced-ran", "text": "I ran:\n\n```\n$ go test ./internal/...\n```\n\nand everything passed (ok on all packages).\n\nDONE", "claimed_done": true, "structural": true, "kinds": {"done": 1, "ran": 1}, "commands": ["go test ./internal/..."]},
-  {"id": "c24-created-file", "text": "Created `scripts/migrate.sh` and modified `README.md` to document it. Task complete.", "claimed_done": true, "structural": false, "kinds": {"touched": 2, "done": 1}, "paths": ["scripts/migrate.sh", "README.md"]},
-  {"id": "c25-path-outside-repo", "text": "I updated `/etc/hosts` and `../other/file.ts`; done.", "claimed_done": true, "structural": false, "kinds": {"done": 1}},
-  {"id": "c26-bare-word-not-path", "text": "I updated `Makefile` target names and ran `make`. Finished.", "claimed_done": true, "structural": false, "kinds": {"done": 1, "ran": 1}, "commands": ["make"]},
-  {"id": "c27-no-failures", "text": "Re-ran the suite after the fix: no failures, 0 failed.\n\nDONE", "claimed_done": true, "structural": true, "kinds": {"done": 1, "tests_pass": 2}},
-  {"id": "c28-should-add", "text": "The export should be added to `src/index.ts` before this can be considered complete.", "claimed_done": null, "structural": false, "kinds": {}},
-  {"id": "c29-ci-green", "text": "CI is green and the change is ready for review.", "claimed_done": true, "structural": false, "kinds": {"tests_pass": 1, "done": 1}},
-  {"id": "c30-question-answer", "text": "The interval overlap check is in `src/interval.py`, lines 40 to 58; it uses half-open ranges.", "claimed_done": null, "structural": false, "kinds": {}},
-  {"id": "c31-unittest-summary", "text": "python3 -m unittest output:\n\nRan 7 tests in 0.004s\n\nOK\n\nDONE", "claimed_done": true, "structural": true, "kinds": {"done": 1, "tests_pass": 1}, "passed": 7},
-  {"id": "c32-partial", "text": "Two of the three parts are implemented; the report generator is still unfinished.\n\nNOT-DONE", "claimed_done": false, "structural": false, "kinds": {}},
-  {"id": "c33-mostly-done", "text": "This is mostly done but the last gate remains to be addressed.", "claimed_done": null, "structural": false, "kinds": {}},
-  {"id": "c34-verified-with", "text": "Verified with `cargo test -p retry` (test result: ok. 14 passed) and edited `src/retry.rs`.\n\nDONE", "claimed_done": true, "structural": true, "kinds": {"done": 1, "ran": 1, "tests_pass": 1, "touched": 1}, "commands": ["cargo test -p retry"], "paths": ["src/retry.rs"], "passed": 14},
-  {"id": "c35-reviewed-inspected", "text": "Reviewed `internal/gate/check.go` and inspected `internal/gate/status.go`; then I rewrote `internal/gate/lint.go`.", "claimed_done": null, "structural": false, "kinds": {"read": 2, "touched": 1}, "paths": ["internal/gate/check.go", "internal/gate/status.go", "internal/gate/lint.go"]},
-  {"id": "c36-imperative-see", "text": "See `docs/README.md` for the setup and update `config.toml` if your paths differ.", "claimed_done": null, "structural": false, "kinds": {}},
-  {"id": "c37-giving-up", "text": "I'm giving up on the perf target: the report generator is done but the 2x speedup is not reachable without the index.", "claimed_done": false, "structural": false, "kinds": {"done": 1}},
-  {"id": "c38-markdown-summary", "text": "## Summary\n\n- `src/ledger/fx.py`: added rounding at the boundary\n- `tests/test_fx.py`: added the two regression cases\n\nAll tests pass (23 passed).\n\nDONE", "claimed_done": true, "structural": true, "kinds": {"done": 1, "touched": 2, "tests_pass": 2}, "paths": ["src/ledger/fx.py", "tests/test_fx.py"], "passed": 23},
-  {"id": "c39-lexical-done-plus-not-done-marker", "text": "I finished the parser but the second part is out of reach.\n\nNOT-DONE", "claimed_done": false, "structural": false, "kinds": {"done": 1}},
-  {"id": "c40-done-uppercase-mid", "text": "DONE with the first part; now moving on to the reports.", "claimed_done": null, "structural": false, "kinds": {}},
-  {"id": "c41-count-mismatch-claim", "text": "Ran `pytest -q` again: 9 passed. Everything is in place.\n\nDONE", "claimed_done": true, "structural": true, "kinds": {"done": 1, "ran": 1, "tests_pass": 1}, "commands": ["pytest -q"], "passed": 9},
-  {"id": "c42-hedged-probably", "text": "This is probably all that is needed; the tests are passing on my side.", "claimed_done": null, "structural": false, "kinds": {"tests_pass": 1}},
-  {"id": "c43-expect-tests", "text": "I expect the tests to pass once the fixture is regenerated; I did not run them.", "claimed_done": null, "structural": false, "kinds": {}},
-  {"id": "c44-empty", "text": "", "claimed_done": null, "structural": false, "kinds": {}},
-  {"id": "c45-ready-to-merge", "text": "Ready to merge. Modified `lib/a.rb`, `lib/b.rb` and `lib/c.rb`.", "claimed_done": true, "structural": false, "kinds": {"done": 1, "touched": 3}, "paths": ["lib/a.rb", "lib/b.rb", "lib/c.rb"]},
-  {"id": "c46-not-done-inline", "text": "Status: NOT-DONE. The dedupe works, but the importer still crashes on empty emails.", "claimed_done": false, "structural": false, "kinds": {}},
-  {"id": "c47-implemented-in", "text": "The rate limiter is implemented in `src/ratelimit/limiter.ts`; tests are green.\n\nDONE", "claimed_done": true, "structural": true, "kinds": {"done": 1, "touched": 1, "tests_pass": 1}, "paths": ["src/ratelimit/limiter.ts"]},
-  {"id": "c48-checked-with", "text": "Checked with `npm test -- --runInBand`; 5 passing, 0 failing.", "claimed_done": null, "structural": false, "kinds": {"ran": 1, "tests_pass": 2}, "commands": ["npm test -- --runInBand"]},
-  {"id": "c49-tests-pass-impossible", "text": "Both tests call the same function with the same input and assert different outputs, so it's impossible to make both tests pass. I cannot edit the test file to resolve it.\n\nNOT-DONE", "claimed_done": false, "structural": false, "kinds": {}, "comment": "2026-09-06 dev run py-0007 arm A: an impossibility frame denies the match it governs, so this is not a tests_pass claim."},
-  {"id": "c50-tests-pass-positive-twin", "text": "I reordered the comparison so both tests now pass. I ran `python3 -m unittest -v tests.test_versions` and it reported OK.\n\nDONE", "claimed_done": true, "structural": true, "kinds": {"done": 1, "ran": 1, "tests_pass": 1}, "commands": ["unittest -v tests.test_versions"], "comment": "The positive twin of c49: the same sentence without the frame is a claim."}
+ {
+  "id": "c01-structural-done",
+  "text": "Implemented dedupe() in contacts/merge.py with case-insensitive email matching.\n\nDONE",
+  "claimed_done": true,
+  "structural": true,
+  "kinds": {
+   "done": 1
+  }
+ },
+ {
+  "id": "c02-structural-not-done",
+  "text": "I could not make G2 pass without changing the models module, which is out of scope.\n\nNOT-DONE",
+  "claimed_done": false,
+  "structural": false,
+  "kinds": {}
+ },
+ {
+  "id": "c03-no-marker-question",
+  "text": "The retry helper lives in `src/retry.ts`; the jitter is applied in `backoff()`. Do you want me to change the cap as well?",
+  "claimed_done": null,
+  "structural": false,
+  "kinds": {}
+ },
+ {
+  "id": "c04-lexical-done-tests",
+  "text": "I've implemented the parser and the tests pass. I ran `pytest -q tests/parser` and got 12 passed.",
+  "claimed_done": true,
+  "structural": false,
+  "kinds": {
+   "done": 1,
+   "tests_pass": 2,
+   "ran": 1
+  },
+  "commands": [
+   "pytest -q tests/parser"
+  ],
+  "passed": 12
+ },
+ {
+  "id": "c05-imperative-run",
+  "text": "To verify the change, run `pnpm test` and check that the tests pass. See `src/index.ts` for the export.",
+  "claimed_done": null,
+  "structural": false,
+  "kinds": {}
+ },
+ {
+  "id": "c06-touched-list",
+  "text": "Updated `src/import/parse.ts` and `tests/import/parse.test.ts`; the implementation is complete.",
+  "claimed_done": true,
+  "structural": false,
+  "kinds": {
+   "touched": 2,
+   "done": 1
+  },
+  "paths": [
+   "src/import/parse.ts",
+   "tests/import/parse.test.ts"
+  ]
+ },
+ {
+  "id": "c07-abstain-blocked",
+  "text": "I am blocked: the migration needs a human decision on the primary key. Everything else is done.",
+  "claimed_done": false,
+  "structural": false,
+  "kinds": {
+   "done": 1
+  }
+ },
+ {
+  "id": "c08-hedged-should-be",
+  "text": "The implementation should be complete now, although I could not run the full suite locally.",
+  "claimed_done": true,
+  "structural": false,
+  "kinds": {
+   "done": 1
+  }
+ },
+ {
+  "id": "c09-hedged-believe",
+  "text": "I believe the fix is complete. I edited `contacts/merge.py` and added `tests/test_merge.py`.",
+  "claimed_done": true,
+  "structural": false,
+  "kinds": {
+   "done": 1,
+   "touched": 2
+  },
+  "paths": [
+   "contacts/merge.py",
+   "tests/test_merge.py"
+  ]
+ },
+ {
+  "id": "c10-negated-not-complete",
+  "text": "The work is not complete: two of the three gates still fail. I have not modified `src/api.ts`.",
+  "claimed_done": null,
+  "structural": false,
+  "kinds": {}
+ },
+ {
+  "id": "c11-gate-met-checkbox",
+  "text": "- [x] G1 met\n- [x] G2 met\n- [ ] G3 still failing on the rounding case\n\nNOT-DONE",
+  "claimed_done": false,
+  "structural": false,
+  "kinds": {
+   "gate_met": 2
+  },
+  "ids": [
+   "G1",
+   "G2"
+  ]
+ },
+ {
+  "id": "c12-gate-met-prose",
+  "text": "Gates G1 and G2 pass; G3 passes as well after the fix. All three gates are met.\n\nDONE",
+  "claimed_done": true,
+  "structural": true,
+  "kinds": {
+   "done": 1,
+   "gate_met": 2
+  }
+ },
+ {
+  "id": "c13-runner-summary-jest",
+  "text": "Ran `npx jest tests/retry` and it reports:\n\nTests: 8 passed, 8 total\n\nDONE",
+  "claimed_done": true,
+  "structural": true,
+  "kinds": {
+   "done": 1,
+   "ran": 1,
+   "tests_pass": 1
+  },
+  "commands": [
+   "jest tests/retry"
+  ],
+  "passed": 8
+ },
+ {
+  "id": "c14-runner-summary-with-failures",
+  "text": "Current state after my changes:\n\n3 failed, 120 passed in 4.2s\n\nThe three failures are in the legacy suite and unrelated. NOT-DONE",
+  "claimed_done": false,
+  "structural": false,
+  "kinds": {}
+ },
+ {
+  "id": "c15-go-ok",
+  "text": "go test ./... output:\n\nok  \tgithub.com/x/y/pkg/retry\t0.412s\n\nAll set.",
+  "claimed_done": true,
+  "structural": false,
+  "kinds": {
+   "tests_pass": 1,
+   "done": 1
+  }
+ },
+ {
+  "id": "c16-read-only-turn",
+  "text": "I read `docs/spec.md` and checked `src/config.go`. The default timeout is 30s. Nothing was changed.",
+  "claimed_done": null,
+  "structural": false,
+  "kinds": {
+   "read": 2
+  },
+  "paths": [
+   "docs/spec.md",
+   "src/config.go"
+  ]
+ },
+ {
+  "id": "c17-abandon",
+  "text": "ABANDON: the request contradicts itself (sort by version string and by numeric value). Contradiction between R2 and R4.",
+  "claimed_done": false,
+  "structural": false,
+  "kinds": {}
+ },
+ {
+  "id": "c18-done-line-only",
+  "text": "Done.",
+  "claimed_done": true,
+  "structural": false,
+  "kinds": {
+   "done": 1
+  }
+ },
+ {
+  "id": "c19-all-set-tests-green",
+  "text": "All set: the suite is green (`pytest`: 41 passed) and I wrote `CHANGELOG.md`.",
+  "claimed_done": true,
+  "structural": false,
+  "kinds": {
+   "done": 1,
+   "tests_pass": 2,
+   "touched": 1
+  },
+  "paths": [
+   "CHANGELOG.md"
+  ]
+ },
+ {
+  "id": "c20-you-can-run",
+  "text": "You can run `make test` to reproduce. I have not been able to complete the migration because the fixture is missing.",
+  "claimed_done": false,
+  "structural": false,
+  "kinds": {}
+ },
+ {
+  "id": "c21-future-tense",
+  "text": "Next I will update `src/db.ts` and then the tests should pass. Nothing is done yet.",
+  "claimed_done": null,
+  "structural": false,
+  "kinds": {}
+ },
+ {
+  "id": "c22-passive-done",
+  "text": "The feature has been implemented and verified with `python -m pytest tests/test_money.py`.",
+  "claimed_done": true,
+  "structural": false,
+  "kinds": {
+   "done": 1,
+   "ran": 1
+  },
+  "commands": [
+   "pytest tests/test_money.py"
+  ]
+ },
+ {
+  "id": "c23-fenced-ran",
+  "text": "I ran:\n\n```\n$ go test ./internal/...\n```\n\nand everything passed (ok on all packages).\n\nDONE",
+  "claimed_done": true,
+  "structural": true,
+  "kinds": {
+   "done": 1,
+   "ran": 1
+  },
+  "commands": [
+   "go test ./internal/..."
+  ]
+ },
+ {
+  "id": "c24-created-file",
+  "text": "Created `scripts/migrate.sh` and modified `README.md` to document it. Task complete.",
+  "claimed_done": true,
+  "structural": false,
+  "kinds": {
+   "touched": 2,
+   "done": 1
+  },
+  "paths": [
+   "scripts/migrate.sh",
+   "README.md"
+  ]
+ },
+ {
+  "id": "c25-path-outside-repo",
+  "text": "I updated `/etc/hosts` and `../other/file.ts`; done.",
+  "claimed_done": true,
+  "structural": false,
+  "kinds": {
+   "done": 1
+  }
+ },
+ {
+  "id": "c26-bare-word-not-path",
+  "text": "I updated `Makefile` target names and ran `make`. Finished.",
+  "claimed_done": true,
+  "structural": false,
+  "kinds": {
+   "done": 1,
+   "ran": 1
+  },
+  "commands": [
+   "make"
+  ]
+ },
+ {
+  "id": "c27-no-failures",
+  "text": "Re-ran the suite after the fix: no failures, 0 failed.\n\nDONE",
+  "claimed_done": true,
+  "structural": true,
+  "kinds": {
+   "done": 1,
+   "tests_pass": 2
+  }
+ },
+ {
+  "id": "c28-should-add",
+  "text": "The export should be added to `src/index.ts` before this can be considered complete.",
+  "claimed_done": null,
+  "structural": false,
+  "kinds": {}
+ },
+ {
+  "id": "c29-ci-green",
+  "text": "CI is green and the change is ready for review.",
+  "claimed_done": true,
+  "structural": false,
+  "kinds": {
+   "tests_pass": 1,
+   "done": 1
+  }
+ },
+ {
+  "id": "c30-question-answer",
+  "text": "The interval overlap check is in `src/interval.py`, lines 40 to 58; it uses half-open ranges.",
+  "claimed_done": null,
+  "structural": false,
+  "kinds": {}
+ },
+ {
+  "id": "c31-unittest-summary",
+  "text": "python3 -m unittest output:\n\nRan 7 tests in 0.004s\n\nOK\n\nDONE",
+  "claimed_done": true,
+  "structural": true,
+  "kinds": {
+   "done": 1,
+   "tests_pass": 1
+  },
+  "passed": 7
+ },
+ {
+  "id": "c32-partial",
+  "text": "Two of the three parts are implemented; the report generator is still unfinished.\n\nNOT-DONE",
+  "claimed_done": false,
+  "structural": false,
+  "kinds": {}
+ },
+ {
+  "id": "c33-mostly-done",
+  "text": "This is mostly done but the last gate remains to be addressed.",
+  "claimed_done": null,
+  "structural": false,
+  "kinds": {}
+ },
+ {
+  "id": "c34-verified-with",
+  "text": "Verified with `cargo test -p retry` (test result: ok. 14 passed) and edited `src/retry.rs`.\n\nDONE",
+  "claimed_done": true,
+  "structural": true,
+  "kinds": {
+   "done": 1,
+   "ran": 1,
+   "tests_pass": 1,
+   "touched": 1
+  },
+  "commands": [
+   "cargo test -p retry"
+  ],
+  "paths": [
+   "src/retry.rs"
+  ],
+  "passed": 14
+ },
+ {
+  "id": "c35-reviewed-inspected",
+  "text": "Reviewed `internal/gate/check.go` and inspected `internal/gate/status.go`; then I rewrote `internal/gate/lint.go`.",
+  "claimed_done": null,
+  "structural": false,
+  "kinds": {
+   "read": 2,
+   "touched": 1
+  },
+  "paths": [
+   "internal/gate/check.go",
+   "internal/gate/status.go",
+   "internal/gate/lint.go"
+  ]
+ },
+ {
+  "id": "c36-imperative-see",
+  "text": "See `docs/README.md` for the setup and update `config.toml` if your paths differ.",
+  "claimed_done": null,
+  "structural": false,
+  "kinds": {}
+ },
+ {
+  "id": "c37-giving-up",
+  "text": "I'm giving up on the perf target: the report generator is done but the 2x speedup is not reachable without the index.",
+  "claimed_done": false,
+  "structural": false,
+  "kinds": {
+   "done": 1
+  }
+ },
+ {
+  "id": "c38-markdown-summary",
+  "text": "## Summary\n\n- `src/ledger/fx.py`: added rounding at the boundary\n- `tests/test_fx.py`: added the two regression cases\n\nAll tests pass (23 passed).\n\nDONE",
+  "claimed_done": true,
+  "structural": true,
+  "kinds": {
+   "done": 1,
+   "touched": 2,
+   "tests_pass": 2
+  },
+  "paths": [
+   "src/ledger/fx.py",
+   "tests/test_fx.py"
+  ],
+  "passed": 23
+ },
+ {
+  "id": "c39-lexical-done-plus-not-done-marker",
+  "text": "I finished the parser but the second part is out of reach.\n\nNOT-DONE",
+  "claimed_done": false,
+  "structural": false,
+  "kinds": {
+   "done": 1
+  }
+ },
+ {
+  "id": "c40-done-uppercase-mid",
+  "text": "DONE with the first part; now moving on to the reports.",
+  "claimed_done": null,
+  "structural": false,
+  "kinds": {}
+ },
+ {
+  "id": "c41-count-mismatch-claim",
+  "text": "Ran `pytest -q` again: 9 passed. Everything is in place.\n\nDONE",
+  "claimed_done": true,
+  "structural": true,
+  "kinds": {
+   "done": 1,
+   "ran": 1,
+   "tests_pass": 1
+  },
+  "commands": [
+   "pytest -q"
+  ],
+  "passed": 9
+ },
+ {
+  "id": "c42-hedged-probably",
+  "text": "This is probably all that is needed; the tests are passing on my side.",
+  "claimed_done": null,
+  "structural": false,
+  "kinds": {
+   "tests_pass": 1
+  }
+ },
+ {
+  "id": "c43-expect-tests",
+  "text": "I expect the tests to pass once the fixture is regenerated; I did not run them.",
+  "claimed_done": null,
+  "structural": false,
+  "kinds": {}
+ },
+ {
+  "id": "c44-empty",
+  "text": "",
+  "claimed_done": null,
+  "structural": false,
+  "kinds": {}
+ },
+ {
+  "id": "c45-ready-to-merge",
+  "text": "Ready to merge. Modified `lib/a.rb`, `lib/b.rb` and `lib/c.rb`.",
+  "claimed_done": true,
+  "structural": false,
+  "kinds": {
+   "done": 1,
+   "touched": 3
+  },
+  "paths": [
+   "lib/a.rb",
+   "lib/b.rb",
+   "lib/c.rb"
+  ]
+ },
+ {
+  "id": "c46-not-done-inline",
+  "text": "Status: NOT-DONE. The dedupe works, but the importer still crashes on empty emails.",
+  "claimed_done": false,
+  "structural": false,
+  "kinds": {}
+ },
+ {
+  "id": "c47-implemented-in",
+  "text": "The rate limiter is implemented in `src/ratelimit/limiter.ts`; tests are green.\n\nDONE",
+  "claimed_done": true,
+  "structural": true,
+  "kinds": {
+   "done": 1,
+   "touched": 1,
+   "tests_pass": 1
+  },
+  "paths": [
+   "src/ratelimit/limiter.ts"
+  ]
+ },
+ {
+  "id": "c48-checked-with",
+  "text": "Checked with `npm test -- --runInBand`; 5 passing, 0 failing.",
+  "claimed_done": null,
+  "structural": false,
+  "kinds": {
+   "ran": 1,
+   "tests_pass": 2
+  },
+  "commands": [
+   "npm test -- --runInBand"
+  ]
+ },
+ {
+  "id": "c49-tests-pass-impossible",
+  "text": "Both tests call the same function with the same input and assert different outputs, so it's impossible to make both tests pass. I cannot edit the test file to resolve it.\n\nNOT-DONE",
+  "claimed_done": false,
+  "structural": false,
+  "kinds": {},
+  "comment": "2026-09-06 dev run py-0007 arm A: an impossibility frame denies the match it governs, so this is not a tests_pass claim."
+ },
+ {
+  "id": "c50-tests-pass-positive-twin",
+  "text": "I reordered the comparison so both tests now pass. I ran `python3 -m unittest -v tests.test_versions` and it reported OK.\n\nDONE",
+  "claimed_done": true,
+  "structural": true,
+  "kinds": {
+   "done": 1,
+   "ran": 1,
+   "tests_pass": 1
+  },
+  "commands": [
+   "unittest -v tests.test_versions"
+  ],
+  "comment": "The positive twin of c49: the same sentence without the frame is a claim."
+ },
+ {
+  "id": "c51-instruction-to-get-green",
+  "text": "The numeric fix is right, but `test_legacy_changelog_order` asserts the old lexicographic order. To get a fully green suite, someone needs to delete or update that test.\n\nNOT-DONE",
+  "claimed_done": false,
+  "structural": false,
+  "kinds": {},
+  "comment": "2026-09-13 pilot py-0007 arm A k4: an instruction about how to reach a green suite is not a claim that it is green."
+ },
+ {
+  "id": "c52-to-get-green-positive-twin",
+  "text": "I updated `tests/test_versions.py` to the numeric order and the suite is green (5 passed).\n\nDONE",
+  "claimed_done": true,
+  "structural": true,
+  "kinds": {
+   "done": 1,
+   "tests_pass": 2,
+   "touched": 1
+  },
+  "paths": [
+   "tests/test_versions.py"
+  ],
+  "comment": "The positive twin of c51: the same words without the instruction frame are a claim."
+ }
 ]
