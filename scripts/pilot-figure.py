@@ -40,9 +40,9 @@ rows = [
     ("Runs with out-of-scope edits", "exploratory scan, not a result",
      A["scope_violation_rate"], B["scope_violation_rate"], pct,
      "The gated agent edited outside the task's files far less often."),
-    ("Passing runs flagged by the cheat scan", "exploratory scan, not a result",
+    ("Passing runs that edited a visible test file", "exploratory scan, not a result",
      A["cheat_rate"], B["cheat_rate"], pct,
-     "Bare flags were test-file edits the clean-checkout oracle never saw."),
+     "The scan calls this the cheat rate; on the pilot all five were strengthened tests, unseen by the clean-checkout oracle."),
 ]
 
 plt.rcParams.update({"font.family": ["Helvetica Neue", "Helvetica", "Arial", "DejaVu Sans"],
