@@ -1,0 +1,15 @@
+# Brief: a Haiku exploration cell, and the scope hints written up
+
+Date: 2026-09-13. Owner of the decision: saga (Fable). Implementer: saga-opus. Two commits, in order. Nothing here is the pre-registered experiment, which is closed (docs/12 §13, b085526); both parts say so in their first line.
+
+## Part 1. `scripts/bench-explore.sh`
+
+A launcher for exploration cells, sibling of `bench-dev.sh`: `MODEL` defaults to `claude-haiku-4-5-20251001` (the pinned row in `internal/trace/prices/default.toml` already exists; cite its source line in the header), `K=5`, `TIER=user` (so the 20 usd cap applies by construction), `WALL_CAP=0`, `TASKS` as `bench-dev.sh` (`1-20`, `21-40`, `all`, or globs), `OUT=/tmp/saga-explore-<date>`, `--prereg` still passed (the runner requires it) but the provenance head prints `purpose:   exploration, not pre-registered` and the run's NOTES template (a `PURPOSE.txt` written into OUT) says the numbers may not be quoted as results. `BUDGET_USD` required, refused above 20. Why Haiku: a weaker model should carry a higher false-done base rate and more failure shapes, which exercises the bench (detectors, gate, abandon grading, limit handling) on cheap runs; say that in the header. Test: the provenance head under the stub harness names the model, tier user, and the purpose line; `BUDGET_USD=25` refuses. Docs: `bench/results/README.md` one line; IMPLEMENTATION-STATUS. The owner launches it (approval and token are theirs); do not run it.
+
+## Part 2. `docs/15-scope-hints.md`, analysis of archived rows, no code
+
+From `bench/results/pilot-2026-09-13/` rows only (scan.json, guard.jsonl, hook-trace.jsonl, workspace.diff, final_message.txt), read-only. Sections: (1) what "scope violation" and "flagged" mean operationally in this bench (cite bench-spec sections and the detector names); (2) per task and arm: scope-violation runs, the out-of-scope files by name, flagged runs with the detector that fired, safety-hook denies with the denied command class; (3) the ts-0014 arm B story from the hook trace (gate allowed, claim layer blocked, what the agent changed, second Stop allowed), with the row ids; (4) the arm A ts-0014 oracle-touch runs: what was edited in the test file and why the clean-checkout oracle still passed; (5) an honest paragraph on what these differences could be: the gate's contract naming the files in scope, the Stop block prompting a review, or chance, and what would separate them; (6) a sketch, not a pre-registration, of a second experiment: primary `scope_violation_rate` per task (runs with any out-of-scope edit over runs), the pilot's per-task rates and their spread, the bootstrap SE at 20 and 40 tasks with K=5 computed the way docs/12 §7 does it, and the base rate 0.32 as the room the metric has; secondary cheat-scan flags; what would have to be pre-registered anew. No pilot number is quoted as a result; every figure in the document is labelled exploratory. Add the README index row 15.
+
+## Report
+
+Per part: hash; for part 2 the per-task scope table and the two SE figures. Under 25 lines.
