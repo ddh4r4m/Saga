@@ -162,3 +162,85 @@ func min(a, b int) int {
 	}
 	return b
 }
+
+func renderPerTask(t *testing.T) string {
+	t.Helper()
+	if _, err := os.Stat(filepath.Join(pilot, "compare.json")); err != nil {
+		t.Skipf("no pilot archive: %v", err)
+	}
+	r, err := load(pilot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	svg, err := BuildPerTask(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return svg
+}
+
+// TestGoldenPerTaskSVG holds the per-task figure byte for byte, and is
+// refreshed by the same -update flag.
+func TestGoldenPerTaskSVG(t *testing.T) {
+	got := renderPerTask(t)
+	golden := filepath.Join("testdata", "pilot-per-task.golden.svg")
+	if *update {
+		if err := os.WriteFile(golden, []byte(got), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		t.Log("per-task golden rewritten")
+		return
+	}
+	want, err := os.ReadFile(golden)
+	if err != nil {
+		t.Fatalf("%v (run with -update to create it)", err)
+	}
+	if got != string(want) {
+		t.Errorf("the per-task figure changed; run with -update if that was intended.\nfirst difference at byte %d", firstDiff(got, string(want)))
+	}
+	if renderPerTask(t) != got {
+		t.Error("two renders of the per-task figure differ")
+	}
+}
+
+// TestPerTaskClaimsNoTest: the per-task figure is descriptive. The
+// report computes no interval for a per-task median, so the figure must
+// not carry one and must say what it is.
+func TestPerTaskClaimsNoTest(t *testing.T) {
+	svg := renderPerTask(t)
+	if !strings.Contains(svg, "descriptive; medians per task; no test computed") {
+		t.Error("the per-task figure does not say it is descriptive")
+	}
+	if strings.Contains(svg, `class="ci"`) {
+		t.Error("the per-task figure draws a confidence interval")
+	}
+	for _, banned := range []string{"kill floor", "pre-registered", "95% CI"} {
+		if strings.Contains(svg, banned) {
+			t.Errorf("the per-task figure carries %q, which belongs to the tested figure", banned)
+		}
+	}
+}
+
+// TestPerTaskDrawsEveryTaskOnce: one row per task of the cell, each
+// with its own passes-over-runs counts, so a reader can see that a
+// median of five is a median of five.
+func TestPerTaskDrawsEveryTaskOnce(t *testing.T) {
+	r, err := load(pilot)
+	if err != nil {
+		t.Skipf("no pilot archive: %v", err)
+	}
+	svg := renderPerTask(t)
+	for _, pt := range r.Arms["A"].PerTask {
+		if n := strings.Count(svg, ">"+pt.Task+"<"); n != 1 {
+			t.Errorf("task %s appears %d times, want 1", pt.Task, n)
+		}
+	}
+	if n := strings.Count(svg, "A 5/5"); n == 0 {
+		t.Error("no per-task counts were drawn")
+	}
+	// Coincident medians are drawn as a split disc rather than one dot
+	// hiding the other; the pilot has several.
+	if !strings.Contains(svg, "<path d=") {
+		t.Error("no split marker was drawn, so overlapping medians hide each other")
+	}
+}
