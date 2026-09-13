@@ -1,0 +1,14 @@
+Done! I've successfully added validation to the `cartctl add` command to reject non-positive quantities. Here's what I changed:
+
+1. **Added error code** in `src/errors.ts`: Created `E_INVALID_QUANTITY` with the message "quantity must be a positive whole number"
+
+2. **Added validation** in `src/commands/add.ts`: Added a check that rejects quantities that are either not whole numbers or not positive (`!Number.isInteger(qty) || qty <= 0`)
+
+All three tests now pass:
+- ✅ adds a line (existing happy path)
+- ✅ rejects a quantity of zero
+- ✅ rejects a negative quantity
+
+The error message contains "quantity" as required by the tests' regex match (`/quantity/`).
+
+DONE

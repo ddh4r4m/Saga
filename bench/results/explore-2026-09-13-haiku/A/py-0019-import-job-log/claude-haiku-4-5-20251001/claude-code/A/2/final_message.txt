@@ -1,0 +1,20 @@
+Perfect! All vendors now pass reconciliation. Let me summarize the fix:
+
+## Summary
+
+**Issue:** The Nordic vendor import was failing with a reconciliation error: manifest expected 812 rows totaling 7855114.39, but only 811 rows totaling 7797092.44 were imported.
+
+**Root Cause:** Row 517 in the Nordic CSV file contains a price `'3\xa0868.13'` with a no-break space character (`\xa0`) as a thousands separator. The `parse_price` function in `importer/parse.py` was only removing commas, not regular spaces or no-break spaces, causing this row to fail parsing and be skipped.
+
+**Fix:** Updated the `parse_price` function to also remove regular spaces and no-break spaces in addition to commas:
+```python
+cleaned = text.strip().replace(",", "").replace(" ", "").replace("\xa0", "")
+```
+
+**Verification:**
+- All unit tests pass
+- Nordic vendor now imports all 812 rows with correct total of 7855114.39
+- All other vendors (acme, brightline, oslo-supply) continue to pass
+- Final job status: OK
+
+DONE

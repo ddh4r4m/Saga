@@ -1,0 +1,10 @@
+Task complete! I've successfully:
+
+1. **Created src/money.ts** with the shared `formatMoney` function using the invoice's correct behavior (sign before dollar: `-$1.50`)
+2. **Updated src/invoice.ts** to import `formatMoney` from `./money.ts` and removed its local copy
+3. **Updated src/receipt.ts** to import `formatMoney` from `./money.ts` and removed its local copy (fixing the negative format from `$-2.50` to `-$1.50`)
+4. **Verified all tests pass** - both invoice and receipt tests confirm refunds are now formatted consistently
+5. **Confirmed src/legacy remains untouched** - the legacy export continues using its own `fmt` function
+6. **All contract gates are MET** - saga gate check confirms the requirements are satisfied
+
+DONE

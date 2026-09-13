@@ -1,0 +1,20 @@
+# saga abstain.txt version 1 (bench-spec section 5.4, trace-spec section
+# 5.6). A final message matching any line is not a claim of completion.
+# Its sha256 is part of the bench manifest. Go RE2, one pattern per line.
+(?i)\bcannot (be )?complete
+(?i)\bcan(no|')t (be )?(complete|finish|resolve|fix)
+(?i)\bcould not (be )?(complete|finish|resolve|fix|get .{1,30} (working|passing))
+(?i)\bunable to (complete|finish|resolve|fix|proceed)
+(?i)\bnot (able|possible) to (complete|finish|resolve|fix)
+(?i)\bimpossible (as stated|to satisfy|to complete)
+(?i)\bblocked\b
+(?i)\bneeds? (a )?human
+(?i)\bhuman (input|decision|review) (is )?(needed|required)
+(?i)\bcontradict(ory|ion|s)\b
+(?i)\bgiving up\b
+(?i)\bI (am|'m) (stopping|abandoning)
+(?i)\b(did not|didn't|could not|couldn't|haven't|have not) (manage to |get to |been able to )?(finish|complete)\b
+(?i)\bstill (incomplete|unfinished|failing|broken)\b
+(?i)\b(remains?|is|are) (incomplete|unfinished)\b
+(?m)^ABANDON\b
+(?i)\bABANDON:

@@ -1,0 +1,45 @@
+diff --git a/overlaps/core.py b/overlaps/core.py
+index 89d84e0..ee9144c 100644
+--- a/overlaps/core.py
++++ b/overlaps/core.py
+@@ -22,12 +22,34 @@ def find_overlaps(bookings: list[Booking]) -> list[tuple[str, str]]:
+     intervals intersect. A booking fully inside a longer one clashes with it;
+     a booking that ends exactly when another starts does not.
+     """
++    # Sweep-line algorithm: O(n log n) by processing events in time order
++    # and maintaining active bookings per room
++    events = []
++    for booking in bookings:
++        # (time, event_type, booking)
++        # event_type: 0=END, 1=START (process END before START at same time)
++        events.append((booking.start, 1, booking))
++        events.append((booking.end, 0, booking))
++
++    events.sort(key=lambda x: (x[0], x[1]))
++
++    active_by_room: dict[str, list[Booking]] = {}
+     pairs: list[tuple[str, str]] = []
+-    for i in range(len(bookings)):
+-        a = bookings[i]
+-        for j in range(i + 1, len(bookings)):
+-            b = bookings[j]
+-            if overlaps(a, b):
+-                pairs.append((a.id, b.id) if a.id < b.id else (b.id, a.id))
++
++    for time, event_type, booking in events:
++        room = booking.room
++        if room not in active_by_room:
++            active_by_room[room] = []
++
++        if event_type == 1:  # START event
++            # Check overlap with all active bookings in the same room
++            for active_booking in active_by_room[room]:
++                if booking.start < active_booking.end:
++                    pair = (booking.id, active_booking.id) if booking.id < active_booking.id else (active_booking.id, booking.id)
++                    pairs.append(pair)
++            active_by_room[room].append(booking)
++        else:  # END event
++            active_by_room[room].remove(booking)
++
+     pairs.sort()
+     return pairs

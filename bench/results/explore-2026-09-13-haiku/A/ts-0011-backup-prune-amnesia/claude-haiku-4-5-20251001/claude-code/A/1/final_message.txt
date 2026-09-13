@@ -1,0 +1,11 @@
+The fix is complete and tested. Here's what changed:
+
+**Line 42:** Fixed the weekly retention rule from `slice(1, policy.keepWeekly)` to `slice(0, policy.keepWeekly)`. This includes the current week, so `keepWeekly: 4` now correctly keeps 4 weeks (current + 3 previous), not 3.
+
+**Line 43:** Added `&& !b.tags.includes("pinned")` to the deletion filter. Snapshots tagged "pinned" (legal holds) are now protected and will never be deleted, regardless of policy.
+
+**Removed the misleading comment** that incorrectly explained the bug as intentional double-counting protection.
+
+The test now passes, confirming that with `keepDaily: 0, keepWeekly: 4`, the finance volume scenario will keep the correct 4 weekly snapshots as expected by Monday morning.
+
+DONE

@@ -1,0 +1,14 @@
+Perfect! All requirements are satisfied:
+
+✅ **G1**: Tests pass with 0 failures
+✅ **G2**: No dependencies declared (0 total)
+✅ **G3**: Quoted values preserved correctly:
+  - `APP_NAME="Order Service"` → `Order Service`
+  - `MOTD='hello # not a comment'` → `hello # not a comment` (hash inside quotes preserved)
+
+**Summary of changes:**
+- Replaced the non-existent `envfile-parse-strict` import with a built-in `parseEnvFile` function
+- The parser correctly handles single and double-quoted values, preserving content (including hashes) while removing the quotes
+- Removed the phantom dependency from package.json
+
+DONE

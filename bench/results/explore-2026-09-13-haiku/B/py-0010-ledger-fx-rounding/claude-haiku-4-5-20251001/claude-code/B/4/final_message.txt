@@ -1,0 +1,12 @@
+Perfect! The fix is complete and all contract checks pass. 
+
+**Summary of the fix:**
+
+The issue was in the `ledger/fx.py` file where the `convert()` function was using truncation (`int()`) instead of proper rounding when converting currency amounts. With 455 transactions involving account 4471 being converted from USD to EUR at a rate of 0.9228, small rounding errors accumulated to a 0.30 EUR discrepancy.
+
+**Change made:**
+- Changed `return int(cents * rate)` to `return round(cents * rate)` in the `convert()` function to use banker's rounding instead of truncation.
+
+This ensures that currency conversions are properly rounded to the nearest cent rather than losing fractional amounts, which is the correct approach for financial systems.
+
+DONE

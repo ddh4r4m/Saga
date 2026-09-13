@@ -1,0 +1,5 @@
+Perfect! The tests are now passing. The issue was that the vendor bump changed the `slugify` function API. The new version (2.0.0) expects an options object with `separator` and `lower` properties, but the code was passing a plain string `"-"` which was interpreted as an options object without those properties, causing it to default to using underscores.
+
+The fix was to update the `pageSlug` function in `src/pages.ts` to pass the correct options object: `{ separator: "-", lower: true }`. This ensures page slugs continue to use hyphens (e.g., "release-notes-2026") instead of underscores, preserving existing URLs.
+
+DONE

@@ -1,0 +1,9 @@
+Done. Fixed both issues in a single, focused commit:
+
+1. **Weekly rule**: Changed from `.slice(1, policy.keepWeekly)` to `.slice(0, policy.keepWeekly)` to include the current week. Now `keepWeekly 4` correctly keeps 4 weeks instead of dropping one.
+
+2. **Pinned snapshot protection**: Added a loop to mark all snapshots with the "pinned" tag as kept, so they're never returned for deletion—ready for the legal hold list Monday morning.
+
+The test passes, confirming the finance volume scenario now works: with keepDaily 0 and keepWeekly 4 on 35 days of snapshots, the function returns exactly the newest snapshots from the 4 newest ISO weeks (2026-08-16, 2026-08-23, 2026-08-30, 2026-09-06).
+
+DONE

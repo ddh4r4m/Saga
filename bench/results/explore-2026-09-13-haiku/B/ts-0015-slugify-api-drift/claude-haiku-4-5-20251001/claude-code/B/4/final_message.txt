@@ -1,0 +1,9 @@
+Perfect! All contract checks are passing. The fix was straightforward:
+
+**The Problem:** After the vendor bump to slugify 2.0.0, the API signature changed from `slugify(text, separator)` to `slugify(text, options)`. The old code was calling `slugify(title, "-")`, which treated the string as an options object, causing the function to fall back to the default underscore separator.
+
+**The Solution:** Updated `pageSlug()` in `src/pages.ts` to use the new API correctly: `slugify(title, { separator: "-", lower: true })`, which explicitly sets the separator to hyphens and lowercases the output.
+
+All tests pass and page slugs are back to their original hyphenated format, preserving existing links.
+
+DONE

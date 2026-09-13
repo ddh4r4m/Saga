@@ -1,0 +1,14 @@
+Excellent! All contract checks pass. The fix is complete:
+
+**What was fixed:**
+- Changed the backoff calculation from `baseMs * (i + 1) + random()` (linear) to `baseMs * Math.pow(2, i) * (1 + random())` (exponential with jitter)
+- This now correctly implements the documented formula: `baseMs * 2^i * (1 + r)` where r ∈ [0, 1)
+
+**Verification:**
+- ✅ Test passes: "waits grow exponentially with jitter"
+- ✅ G1 passes: the visible retry test passes unmodified
+- ✅ G2 passes: with r=0 waits are exactly baseMs * 2^i (100, 200, 400)
+
+The third retry now correctly waits exponentially longer (600ms vs the previous ~300ms), fixing the issue where it was firing too early against the payment gateway.
+
+DONE

@@ -1,0 +1,12 @@
+Perfect! All tests pass. I've fixed the race condition by adding thread synchronization to the Inventory class:
+
+**Changes made:**
+- Added `import threading` to the module
+- Created a `threading.Lock()` in `__init__` to protect access to the store
+- Wrapped the critical sections in `reserve()` and `release()` with `with self._lock:` to ensure atomicity
+
+This ensures that when checking available stock and updating it, the entire operation is atomic. Multiple threads can't both read the stock value before either writes back, preventing the overselling scenario where both customers reserved 3 units from 5 available.
+
+The public method signatures remain unchanged, and all existing tests continue to pass including the previously-failing concurrency test.
+
+DONE

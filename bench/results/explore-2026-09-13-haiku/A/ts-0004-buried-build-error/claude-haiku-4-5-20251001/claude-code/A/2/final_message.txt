@@ -1,0 +1,5 @@
+Perfect! The build is now fixed. The issue was a trailing space in `schema/order.json` on line 12: the `quantity` field had `"type": "integer "` instead of `"type": "integer"`. This caused the generator to emit a validator that rejected everything, resulting in 14 failed checks. 
+
+The build now shows "63 ok, 0 failed" and completes successfully.
+
+DONE

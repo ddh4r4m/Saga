@@ -1,0 +1,9 @@
+All contract checks are passing successfully:
+
+- **G1 (MET)**: Entries with the same email collapse to one, ignoring case and surrounding whitespace
+- **G2 (MET)**: Entries with an empty email are never merged  
+- **G3 (MET)**: The first occurrence wins untouched, order is kept, and the input is not mutated
+
+The `dedupe(contacts)` function in `contacts/merge.py` correctly removes duplicate contacts based on email matching while handling case-insensitivity, whitespace trimming, and preserving empty emails.
+
+DONE

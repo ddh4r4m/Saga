@@ -1,0 +1,10 @@
+Perfect! The dedupe function is now implemented and tested. Here's what it does:
+
+1. **Normalizes emails to lowercase** for comparison, so capitalisation differences don't matter
+2. **Uses email as the unique key** to identify duplicates
+3. **Keeps the first occurrence** of each email (maintains original order)
+4. **Uses a set for O(1) lookup** to efficiently track which emails we've already seen
+
+The test `test_same_email_collapses` passes, confirming that two contacts with the same email are correctly merged into one entry, with the first one being kept.
+
+DONE

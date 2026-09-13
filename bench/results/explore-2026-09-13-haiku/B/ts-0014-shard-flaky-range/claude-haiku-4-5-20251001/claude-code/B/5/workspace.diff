@@ -1,0 +1,12 @@
+diff --git a/src/shard.ts b/src/shard.ts
+index d3ef915..09f1b4c 100644
+--- a/src/shard.ts
++++ b/src/shard.ts
+@@ -13,5 +13,6 @@ export function hashKey(key: string): number {
+ // The non-negative remainder of the hash divided by shards (Python's % semantics).
+ export function shardFor(key: string, shards: number): number {
+   if (!Number.isInteger(shards) || shards <= 0) throw new RangeError(`shards must be a positive integer, got ${shards}`);
+-  return hashKey(key) % shards;
++  const result = hashKey(key) % shards;
++  return result < 0 ? result + shards : result;
+ }

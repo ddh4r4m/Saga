@@ -1,0 +1,19 @@
+Excellent! The fix is complete and all tests pass. Here's what I did:
+
+## Summary of Changes
+
+I made the `Inventory` class thread-safe by adding a lock to protect critical sections:
+
+1. **Added threading import** and created an instance lock in `__init__`
+2. **Protected the `reserve` method**: Wrapped the read-check-write sequence in a lock so both threads can't read the same stock level before either writes
+3. **Protected the `release` method**: Wrapped the read-modify-write sequence to prevent concurrent modifications
+4. **Protected the `available` method**: Wrapped the read for consistency
+
+The fix ensures that when two threads try to reserve 3 units from 5 available:
+- Thread A acquires the lock, reads 5, checks if 5 ≥ 3 ✓, reserves 3, leaves 2, releases lock
+- Thread B acquires the lock, reads 2, checks if 2 ≥ 3 ✗, raises `OutOfStock`, releases lock
+- Result: One succeeds with 2 remaining, one fails correctly
+
+The public methods remain unchanged - no signature modifications, just internal thread safety.
+
+DONE

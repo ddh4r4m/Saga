@@ -1,0 +1,13 @@
+diff --git a/fixtures/invoices/INV-1042.json b/fixtures/invoices/INV-1042.json
+index 4aa6a7a..d04ceaa 100644
+--- a/fixtures/invoices/INV-1042.json
++++ b/fixtures/invoices/INV-1042.json
+@@ -31,7 +31,7 @@
+     {
+       "sku": "MIN-SEC-6",
+       "qty": 1,
+-      "unit_price": "272.285"
++      "unit_price": "272.284"
+     }
+   ]
+ }

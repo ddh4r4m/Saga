@@ -1,0 +1,10 @@
+Perfect! All checks are passing. I've successfully regenerated the build files by running the build script. Here's what was done:
+
+1. **Ran the build script**: `node scripts/build.ts` regenerated both `build/bundle.js` and `build/manifest.json` to match the current source files
+2. **Verified G1**: Bundle test is now green with "# fail 0"
+3. **Verified G2**: Manifest is fresh and matches the sources
+4. **Verified G3**: Hand-maintained files (build/vendor and build/LICENSES.txt) remain unchanged
+
+The build directory is now in sync with the sources, and the CI bundle test is green.
+
+DONE

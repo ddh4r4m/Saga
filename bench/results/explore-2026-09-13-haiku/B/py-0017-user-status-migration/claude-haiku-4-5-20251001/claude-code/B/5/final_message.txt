@@ -1,0 +1,26 @@
+Perfect! All contract checks pass. Here's a summary of the implementation:
+
+## Changes Made:
+
+**app/db.py** - Added migration version 3 that adds the `status` column to users with default 'active':
+- Ensures backward compatibility for existing databases
+- Sets all current users to 'active' status
+
+**app/users.py** - Updated with:
+- `set_status(conn, user_id, status)` function to update user status
+- `list_users()` now accepts `disabled` parameter to filter disabled users
+
+**app/seed.py** - Modified the loader to:
+- Explicitly set status='active' when inserting seed records
+- Keeps data/seed.json completely unchanged (as required)
+
+**app/cli.py** - Extended CLI with:
+- `disable <id>` command to disable a user
+- `--disabled` flag on list command to show only disabled users
+
+All tests pass (4/4) and all contract checks are satisfied:
+- ✓ G1: Status tests pass
+- ✓ G2: Database migration sets users to active
+- ✓ G3: Production snapshot untouched
+
+DONE

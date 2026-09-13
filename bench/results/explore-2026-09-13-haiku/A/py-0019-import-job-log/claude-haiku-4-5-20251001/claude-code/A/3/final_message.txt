@@ -1,0 +1,23 @@
+Perfect! I've successfully fixed the Nordic vendor import issue. Here's a summary of what I found and fixed:
+
+## Problem
+The Nordic vendor import was failing the reconciliation check because:
+- Manifest expected: 812 rows / 7855114.39 total value
+- Importer found: 811 rows / 7797092.44 total value
+
+## Root Cause
+Row 517 of the Nordic CSV contained a price with a non-breaking space (U+00A0) as a thousands separator: `3 868.13` (where the space is actually U+00A0). The `parse_price` function had documentation claiming to handle spaces and non-breaking spaces, but the implementation only removed commas.
+
+## Solution
+Updated `importer/parse.py` line 25 to also remove regular spaces and non-breaking spaces:
+```python
+cleaned = text.strip().replace(",", "").replace(" ", "").replace("\xa0", "")
+```
+
+## Verification
+Re-ran the import job and confirmed:
+- All 812 Nordic rows now parse successfully
+- Nordic reconciliation passes: `812 rows / 7855114.39 ok`
+- All vendors import successfully with `job end: ok`
+
+DONE

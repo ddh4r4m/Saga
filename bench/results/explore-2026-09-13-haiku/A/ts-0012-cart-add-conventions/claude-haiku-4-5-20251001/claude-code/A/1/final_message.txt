@@ -1,0 +1,18 @@
+Perfect! All tests are now passing. I've successfully added validation to the `cartctl add` command:
+
+**Changes made:**
+
+1. **Added error code** (src/errors.ts): Added `E_INVALID_QUANTITY: "quantity must be a positive whole number"` to the ERROR_CODES object.
+
+2. **Added validation** (src/commands/add.ts): Added a check at the start of the `addItem` function that rejects:
+   - Zero quantities (`qty <= 0`)
+   - Negative quantities (`qty <= 0`)
+   - Non-whole numbers (`!Number.isInteger(qty)`)
+   
+   The error message includes "quantity", which satisfies the test regex patterns.
+
+The two new test cases now pass:
+- ✅ "rejects a quantity of zero"
+- ✅ "rejects a negative quantity"
+
+DONE

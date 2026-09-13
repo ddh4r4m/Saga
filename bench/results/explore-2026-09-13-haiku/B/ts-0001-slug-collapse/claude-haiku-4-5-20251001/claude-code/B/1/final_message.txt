@@ -1,0 +1,12 @@
+Excellent! All contract checks pass. The slugify function is now fixed to:
+
+1. **Normalize accented characters to ASCII** using `normalize("NFD")` and removing combining diacritical marks (e.g., "Café" → "cafe")
+2. **Collapse runs of separators** to a single hyphen using `.replace(/-+/g, "-")`
+3. **Trim hyphens from edges** using `.replace(/^-+|-+$/g, "")`
+
+The results:
+- `slugify("--Hello  World!--")` → `hello-world` ✓
+- `slugify("Café au lait")` → `cafe-au-lait` ✓
+- `slugify("Hello  World!")` → `hello-world` ✓
+
+DONE

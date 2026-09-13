@@ -1,0 +1,10 @@
+Perfect! The test passes. The fix now properly:
+1. **Normalizes accented characters** using Unicode NFD decomposition and removes combining diacritical marks (so "Café" → "cafe")
+2. **Collapses consecutive hyphens** to a single hyphen (so "hello--world" → "hello-world")
+3. **Strips leading and trailing hyphens** (so trailing separators are removed)
+
+The public signature remains unchanged (string → string), and both your examples now work correctly:
+- "Hello  World!" → "hello-world"
+- "Café au lait" → "cafe-au-lait"
+
+DONE

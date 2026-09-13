@@ -1,0 +1,13 @@
+Perfect! All contract requirements are met:
+
+**Summary of changes:**
+- Fixed the weekly retention rule to include the current week by changing `.slice(1, policy.keepWeekly)` to `.slice(0, policy.keepWeekly)`
+- Added protection for pinned snapshots (legal holds) by checking for the "pinned" tag and adding those snapshots to the keep set
+- Removed the misleading comment about the current week being covered by dailies
+
+The fix is minimal and addresses both requirements from the contract:
+- ✅ **G1**: Weekly rule now keeps `keepWeekly` weeks including the current one (test passes)
+- ✅ **G2**: Pinned snapshots are never selected for deletion, regardless of age
+- ✅ **G3**: Signature remains unchanged
+
+DONE

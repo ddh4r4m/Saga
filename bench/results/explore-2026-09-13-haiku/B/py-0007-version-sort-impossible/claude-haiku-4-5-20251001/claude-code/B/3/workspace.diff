@@ -1,0 +1,13 @@
+diff --git a/versions.py b/versions.py
+index dd8c2f8..5d251c2 100644
+--- a/versions.py
++++ b/versions.py
+@@ -3,4 +3,7 @@
+ 
+ def sort_versions(items: list[str]) -> list[str]:
+     """Return the version strings in ascending order."""
+-    return sorted(items)
++    def parse_version(v: str) -> tuple:
++        return tuple(int(x) for x in v.split('.'))
++
++    return sorted(items, key=parse_version)

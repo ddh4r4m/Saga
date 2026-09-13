@@ -1,0 +1,136 @@
+diff --git a/tests/test_intervals.py b/tests/test_intervals.py
+new file mode 100644
+index 0000000..cc760d0
+--- /dev/null
++++ b/tests/test_intervals.py
+@@ -0,0 +1,130 @@
++"""Tests for interval merging functionality."""
++
++import pytest
++from intervals import merge_intervals
++
++
++class TestMergeIntervals:
++    """Test suite for merge_intervals function."""
++
++    def test_empty_list(self):
++        """Empty input list returns empty output list."""
++        assert merge_intervals([]) == []
++
++    def test_single_interval(self):
++        """A single interval is returned as is."""
++        assert merge_intervals([(1, 5)]) == [(1, 5)]
++
++    def test_single_interval_zero_length(self):
++        """A zero-length interval (start == end) is returned."""
++        assert merge_intervals([(3, 3)]) == [(3, 3)]
++
++    def test_non_overlapping_sorted(self):
++        """Non-overlapping intervals in sorted order remain unchanged."""
++        assert merge_intervals([(1, 2), (3, 4), (5, 6)]) == [(1, 2), (3, 4), (5, 6)]
++
++    def test_non_overlapping_unsorted(self):
++        """Non-overlapping intervals in unsorted order are sorted by start."""
++        assert merge_intervals([(5, 6), (1, 2), (3, 4)]) == [(1, 2), (3, 4), (5, 6)]
++
++    def test_overlapping_intervals(self):
++        """Overlapping intervals merge."""
++        assert merge_intervals([(1, 3), (2, 5)]) == [(1, 5)]
++
++    def test_overlapping_multiple(self):
++        """Multiple overlapping intervals all merge together."""
++        assert merge_intervals([(1, 3), (2, 5), (4, 6)]) == [(1, 6)]
++
++    def test_touching_intervals_merge(self):
++        """Touching intervals merge: (1, 3) and (3, 5) give (1, 5)."""
++        assert merge_intervals([(1, 3), (3, 5)]) == [(1, 5)]
++
++    def test_touching_multiple_chain(self):
++        """Multiple touching intervals chain together."""
++        assert merge_intervals([(1, 2), (2, 3), (3, 4)]) == [(1, 4)]
++
++    def test_touching_unsorted(self):
++        """Touching intervals merge even when unsorted."""
++        assert merge_intervals([(3, 5), (1, 3)]) == [(1, 5)]
++
++    def test_contained_interval(self):
++        """An interval fully inside another does not shrink the outer one."""
++        assert merge_intervals([(1, 5), (2, 3)]) == [(1, 5)]
++
++    def test_contained_unsorted(self):
++        """Contained interval case works when unsorted."""
++        assert merge_intervals([(2, 3), (1, 5)]) == [(1, 5)]
++
++    def test_multiple_contained(self):
++        """Multiple intervals contained within a larger one."""
++        assert merge_intervals([(1, 10), (2, 3), (4, 5), (6, 8)]) == [(1, 10)]
++
++    def test_partially_overlapping(self):
++        """Partially overlapping intervals merge to encompass both."""
++        assert merge_intervals([(1, 4), (3, 6)]) == [(1, 6)]
++
++    def test_complex_unsorted_overlapping(self):
++        """Complex case with unsorted overlapping and touching intervals."""
++        result = merge_intervals([(3, 5), (1, 2), (6, 8), (2, 3), (7, 10)])
++        assert result == [(1, 5), (6, 10)]
++
++    def test_identical_intervals(self):
++        """Identical intervals merge to single interval."""
++        assert merge_intervals([(1, 5), (1, 5)]) == [(1, 5)]
++
++    def test_duplicate_intervals_multiple(self):
++        """Multiple identical intervals all merge to one."""
++        assert merge_intervals([(1, 5), (1, 5), (1, 5)]) == [(1, 5)]
++
++    def test_negative_numbers(self):
++        """Intervals with negative numbers work correctly."""
++        assert merge_intervals([(-5, -2), (-3, 0), (1, 3)]) == [(-5, 0), (1, 3)]
++
++    def test_negative_and_positive(self):
++        """Intervals spanning negative and positive work correctly."""
++        assert merge_intervals([(-2, 2), (-1, 1)]) == [(-2, 2)]
++
++    def test_zero_length_intervals(self):
++        """Zero-length intervals (single point) are handled."""
++        assert merge_intervals([(1, 1), (2, 2), (3, 3)]) == [(1, 1), (2, 2), (3, 3)]
++
++    def test_zero_length_touching(self):
++        """Zero-length intervals touching others."""
++        assert merge_intervals([(1, 1), (1, 3)]) == [(1, 3)]
++
++    def test_large_numbers(self):
++        """Large numbers are handled correctly."""
++        assert merge_intervals([(1000000, 1000005), (1000004, 1000010)]) == [(1000000, 1000010)]
++
++    def test_result_is_new_list(self):
++        """Result is a new list, not the input list."""
++        original = [(1, 5), (2, 3)]
++        result = merge_intervals(original)
++        assert result is not original
++        assert result == [(1, 5)]
++
++    def test_input_list_not_modified(self):
++        """Input list is not modified by merge_intervals."""
++        original = [(3, 5), (1, 2)]
++        merge_intervals(original)
++        assert original == [(3, 5), (1, 2)]
++
++    def test_result_sorted_by_start(self):
++        """Result is sorted by start position."""
++        result = merge_intervals([(5, 6), (1, 2), (3, 4)])
++        assert result == [(1, 2), (3, 4), (5, 6)]
++
++    def test_error_on_invalid_interval_start_greater_than_end(self):
++        """Raises ValueError if start > end."""
++        with pytest.raises(ValueError, match="invalid interval"):
++            merge_intervals([(5, 2)])
++
++    def test_error_on_invalid_interval_in_list(self):
++        """Raises ValueError if any interval in list has start > end."""
++        with pytest.raises(ValueError, match="invalid interval"):
++            merge_intervals([(1, 5), (4, 2), (6, 8)])
++
++    def test_error_on_first_invalid_interval(self):
++        """Raises ValueError even if the invalid interval is first."""
++        with pytest.raises(ValueError, match="invalid interval"):
++            merge_intervals([(3, 1), (1, 5)])

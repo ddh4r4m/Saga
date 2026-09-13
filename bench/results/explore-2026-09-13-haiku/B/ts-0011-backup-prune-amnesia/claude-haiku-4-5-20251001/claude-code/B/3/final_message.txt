@@ -1,0 +1,17 @@
+## Summary
+
+Fixed the weekly retention bug in `src/prune.ts`:
+
+**Changes made:**
+1. **Fixed weekly rule** (line 42): Changed `weeks.slice(1, policy.keepWeekly)` to `weeks.slice(0, policy.keepWeekly)` to include the current ISO week. This corrects the bug where keepWeekly 4 was only keeping 3 weeks instead of 4.
+
+2. **Added legal hold protection** (lines 43-45): Added logic to ensure snapshots tagged "pinned" are never returned for deletion, protecting legal holds regardless of retention policy.
+
+3. **Removed misleading comment**: The comment claiming "The current week is already covered by the dailies" was the source of the bug and has been removed.
+
+**Verification:**
+- Test passes: the finance volume scenario now correctly keeps 4 weekly snapshots
+- Signature unchanged: function still takes `backups` and `policy` positionally
+- All contract checks pass
+
+DONE

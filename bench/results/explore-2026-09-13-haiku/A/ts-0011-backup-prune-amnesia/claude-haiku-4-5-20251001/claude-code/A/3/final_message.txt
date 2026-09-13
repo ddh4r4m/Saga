@@ -1,0 +1,15 @@
+Perfect. The fix is complete and all tests pass.
+
+**Summary of changes made to `src/prune.ts`:**
+
+1. **Pinned snapshot protection** (lines 40-42): Added a loop that marks any snapshot with a "pinned" tag as must-keep, preventing them from ever being returned for deletion regardless of retention policy.
+
+2. **Fixed weekly retention rule** (line 45): Changed `weeks.slice(1, policy.keepWeekly)` to `weeks.slice(0, policy.keepWeekly)`. This was the core bug from version 1.7 — the slice was skipping the current week, causing `keepWeekly: 4` to keep only 3 snapshots instead of 4.
+
+3. **Removed incorrect comment**: The outdated comment claiming the current week is already covered by dailies was misleading and has been removed.
+
+The test now passes: with `keepDaily: 0` and `keepWeekly: 4` over 35 nightly snapshots, exactly 4 snapshots survive deletion — the newest from each of the 4 newest ISO weeks, including the current week (Sep 6).
+
+The function signature remains unchanged, sort order is unchanged, and no test cases were modified.
+
+DONE

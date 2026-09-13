@@ -1,0 +1,39 @@
+diff --git a/overlaps/core.py b/overlaps/core.py
+index 89d84e0..baa899a 100644
+--- a/overlaps/core.py
++++ b/overlaps/core.py
+@@ -23,11 +23,29 @@ def find_overlaps(bookings: list[Booking]) -> list[tuple[str, str]]:
+     a booking that ends exactly when another starts does not.
+     """
+     pairs: list[tuple[str, str]] = []
+-    for i in range(len(bookings)):
+-        a = bookings[i]
+-        for j in range(i + 1, len(bookings)):
+-            b = bookings[j]
+-            if overlaps(a, b):
++
++    # Group bookings by room
++    rooms: dict[str, list[Booking]] = {}
++    for booking in bookings:
++        if booking.room not in rooms:
++            rooms[booking.room] = []
++        rooms[booking.room].append(booking)
++
++    # For each room, find overlaps using sweep-line algorithm
++    for room_bookings in rooms.values():
++        # Sort by start time for sweep-line
++        room_bookings.sort(key=lambda b: b.start)
++
++        # Check each booking against subsequent ones; stop when no more overlaps possible
++        for i in range(len(room_bookings)):
++            a = room_bookings[i]
++            for j in range(i + 1, len(room_bookings)):
++                b = room_bookings[j]
++                # Since sorted by start, if b starts after a ends, no more overlaps
++                if b.start >= a.end:
++                    break
++                # Both in same room and intervals overlap
+                 pairs.append((a.id, b.id) if a.id < b.id else (b.id, a.id))
++
+     pairs.sort()
+     return pairs

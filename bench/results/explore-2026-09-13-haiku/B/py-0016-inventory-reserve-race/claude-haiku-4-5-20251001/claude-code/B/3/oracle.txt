@@ -1,0 +1,13 @@
+test_interleaved_release_not_lost PASS
+test_interleaved_reserve_different_amounts PASS
+test_interleaved_reserve_single_winner PASS
+test_interleaved_two_releases PASS
+test_invalid_qty PASS
+test_many_threads_no_oversell PASS
+test_public_signatures PASS
+test_release_adds PASS
+test_reserve_basic PASS
+test_reserve_refuses PASS
+test_store_untouched PASS
+--- exit 0
+--- integrity ok

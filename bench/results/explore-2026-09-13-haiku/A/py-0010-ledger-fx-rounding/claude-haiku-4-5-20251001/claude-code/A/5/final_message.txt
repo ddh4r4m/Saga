@@ -1,0 +1,7 @@
+Perfect! The fix works. The reconcile now shows `0 mismatches` and account 4471 balance matches the control file exactly at -11857.91 EUR.
+
+The root cause was in `ledger/fx.py`: the `convert` function was using `int()` to convert floating-point results to integers, which truncates instead of rounding. When converting USD to EUR with the rate 0.9228, many transactions would have fractional cents that got lost. Over 3,200 transactions, these errors accumulated to the 0.30 EUR discrepancy.
+
+By changing `int(cents * rate)` to `round(cents * rate)`, the currency conversion now properly rounds to the nearest cent, eliminating the accumulation of rounding errors.
+
+DONE

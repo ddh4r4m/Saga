@@ -1,0 +1,14 @@
+Perfect! The fix is complete and verified:
+
+**What was wrong:** The retry implementation used `baseMs * (i + 1) + random()`, which is nearly linear, causing the third retry to fire too early against the payment gateway.
+
+**What changed:** Updated line 27 in `src/retry.ts` to implement the correct exponential backoff formula: `baseMs * Math.pow(2, i) * (1 + random())`
+
+**Verification:**
+- ✅ Test passes with exponential waits [150, 300, 600] for baseMs=100 with jitter r=0.5
+- ✅ Contract check G1: visible test passes unmodified
+- ✅ Contract check G2: with r=0 waits are exactly 100, 200, 400
+
+The retry backoff now properly follows the documented exponential behavior with jitter, preventing the third retry from firing too early.
+
+DONE

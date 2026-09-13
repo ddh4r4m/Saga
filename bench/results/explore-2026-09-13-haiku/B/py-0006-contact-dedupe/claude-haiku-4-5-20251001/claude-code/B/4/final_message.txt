@@ -1,0 +1,12 @@
+Perfect! The `dedupe()` function has been successfully implemented and all gate checks pass.
+
+**Implementation summary:**
+- The function removes duplicate contacts by email address (case-insensitive and whitespace-tolerant)
+- Entries with empty or blank emails are never deduplicated
+- The first occurrence of each unique email is kept unchanged
+- The input list is not mutated
+- The output preserves the original order
+
+All three gate checks (G1, G2, G3) are **MET**.
+
+DONE

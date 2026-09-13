@@ -1,0 +1,17 @@
+Perfect! All 41 tests pass. I've created a comprehensive test module at `tests/test_intervals.py` that covers all the behavior specified in the `merge_intervals` docstring:
+
+**Test coverage includes:**
+- Basic cases: empty lists, single intervals, zero-width intervals
+- Ordering: unsorted input becomes sorted output
+- Overlapping intervals: proper merging of overlaps
+- Touching intervals: closed intervals that share boundaries merge
+- Nested intervals: intervals inside other intervals don't shrink the outer ones
+- Complex scenarios: multiple groups, partial overlaps, mixed relationships
+- Negative numbers and edge cases
+- Point intervals (zero-width)
+- Immutability: input list is not modified
+- Error handling: ValueError when start > end
+
+The test suite contains 41 tests organized into 9 logical test classes, all of which pass successfully. The tests are designed to catch the kinds of regressions mentioned in the docstring.
+
+DONE

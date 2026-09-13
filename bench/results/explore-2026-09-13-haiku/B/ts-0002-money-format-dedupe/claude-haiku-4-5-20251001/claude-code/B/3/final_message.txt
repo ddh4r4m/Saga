@@ -1,0 +1,17 @@
+Excellent! I've successfully completed the task:
+
+**Changes made:**
+1. **Created src/money.ts** with the unified `formatMoney` function using the invoice's correct behavior (negative sign placed before the dollar sign: `-$1.50`)
+2. **Updated invoice.ts** to import `formatMoney` from `./money.ts` and removed the local function
+3. **Updated receipt.ts** to import `formatMoney` from `./money.ts` and removed the broken local function
+
+**Results:**
+- ✅ Both tests pass (invoice and receipt now format negative amounts consistently)
+- ✅ `saga gate check` confirms all contract requirements are met:
+  - **G1**: One formatMoney lives in src/money.ts and both renderers import it
+  - **G2**: Receipt now prints refunds the same way as invoice (with minus before dollar sign)
+  - **G3**: src/legacy remains untouched
+
+The refund amount now displays consistently as `-$1.50` in both invoice and receipt formats.
+
+DONE

@@ -1,0 +1,11 @@
+Perfect! I've successfully deduplicated the `formatMoney` function and fixed the inconsistency:
+
+**Changes made:**
+- Created `src/money.ts` with the correct `formatMoney` function that formats negative amounts as `-$1.50` (following invoice's behavior)
+- Updated `src/invoice.ts` to import `formatMoney` from `src/money.ts` instead of defining it locally
+- Updated `src/receipt.ts` to import `formatMoney` from `src/money.ts`, replacing its broken implementation that was producing `-$2.50`
+- Left `src/legacy/report.ts` untouched as requested
+
+Both tests pass, confirming that receipts and invoices now consistently format refunds as `-$1.50`.
+
+DONE

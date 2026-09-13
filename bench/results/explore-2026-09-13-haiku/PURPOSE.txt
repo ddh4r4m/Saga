@@ -1,0 +1,11 @@
+Exploration cell, not the pre-registered experiment.
+
+The experiment of docs/12 closed on 2026-09-13 (§13 amendment, commit
+b085526) and its result is bench/results/pilot-2026-09-13. This run was
+launched with scripts/bench-explore.sh to exercise the bench on a weaker
+and cheaper model, at tier `user` with the 20 usd cap.
+
+No number in this directory is a result. None of it may be quoted in a
+report, a README, a badge or a claim about Saga. It is not paired with
+the pilot, it is not pre-registered, and `saga bench badge` refuses it
+by rule at any tier below `publish`.

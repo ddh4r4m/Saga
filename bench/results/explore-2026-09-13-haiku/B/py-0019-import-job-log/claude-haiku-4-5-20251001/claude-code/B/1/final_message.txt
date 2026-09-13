@@ -1,0 +1,20 @@
+Excellent! The fix is complete and verified. 
+
+**Summary of the fix:**
+
+The Nordic vendor's import was failing because row 517 contained a price formatted with a non-breaking space character (`\xa0`) as a thousands separator: `3\xa0868.13`. 
+
+The `parse_price` function in `importer/parse.py` was only removing commas, but the docstring promised it would handle "a comma, a space or a no-break space" as thousands separators. I updated the function to remove all three types:
+
+```python
+cleaned = text.strip().replace(",", "").replace(" ", "").replace("\xa0", "")
+```
+
+This allows the importer to correctly parse all 812 Nordic vendor rows, the reconciliation now passes, and the import completes successfully.
+
+All contract checks pass:
+- ✅ G1: the nightly input imports cleanly
+- ✅ G2: a manifest that disagrees with its file still fails the job  
+- ✅ G3: the vendor files and manifest are untouched
+
+DONE

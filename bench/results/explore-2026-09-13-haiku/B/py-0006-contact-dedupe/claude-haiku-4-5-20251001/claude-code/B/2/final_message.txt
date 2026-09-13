@@ -1,0 +1,14 @@
+The `dedupe` function has been successfully implemented with the following behavior:
+
+1. **Email normalization**: Converts emails to lowercase and strips whitespace for comparison
+2. **Empty email handling**: Treats empty/blank emails as unique (never merged with anything)
+3. **Duplicate removal**: Keeps only the first occurrence of each unique email
+4. **Order preservation**: Maintains the original order of contacts
+5. **Non-mutating**: Returns a new list without modifying the input
+
+All contract requirements are satisfied:
+- **G1**: Entries with identical emails (ignoring case and whitespace) collapse to one ✓
+- **G2**: Entries with empty/blank emails are never merged ✓
+- **G3**: First occurrence wins unchanged, order preserved, input not mutated ✓
+
+DONE

@@ -1,0 +1,14 @@
+test_addition_and_negation PASS
+test_cents_are_int FAIL
+test_csv_header_regression PASS
+test_csv_two_decimals PASS
+test_format_grouping_regression PASS
+test_format_negative_regression PASS
+test_hundred_pennies PASS
+test_negative_qty_regression PASS
+test_no_float_state PASS
+test_tax_regression PASS
+test_tax_rounds_to_cent_regression PASS
+test_three_dimes_exact PASS
+--- exit 1
+--- integrity ok

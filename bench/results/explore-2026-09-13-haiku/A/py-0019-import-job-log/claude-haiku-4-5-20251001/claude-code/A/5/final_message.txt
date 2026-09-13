@@ -1,0 +1,18 @@
+## Summary
+
+I found and fixed the Nordic vendor import issue. 
+
+**The Problem:**
+- The import failed with: "manifest says 812 rows / 7855114.39, imported 811 rows / 7797092.44"
+- Row 517 (NOR-00517) had a price `3 868.13` with a non-breaking space (`\xa0`) as the thousands separator
+- The `parse_price()` function only removed commas but not spaces
+
+**The Fix:**
+Updated `importer/parse.py` to also strip regular spaces and non-breaking spaces in addition to commas. The docstring already mentioned these separators should be handled; the implementation was incomplete.
+
+**Testing:**
+- Added test cases for both regular space and non-breaking space thousands separators
+- All tests pass (6 total)
+- Final import run shows all 4 vendors pass reconciliation, including Nordic with all 812 rows
+
+DONE

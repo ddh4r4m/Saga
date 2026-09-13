@@ -1,0 +1,3 @@
+Perfect! All contract checks pass. The issue was in the `convert` function in `ledger/fx.py` which was using `int()` truncation instead of proper rounding. Over 3200 transactions with FX conversions, the truncation errors accumulated to cause a 0.30 EUR discrepancy in account 4471. By changing to `round()`, currency conversions now properly round to the nearest cent instead of truncating.
+
+DONE

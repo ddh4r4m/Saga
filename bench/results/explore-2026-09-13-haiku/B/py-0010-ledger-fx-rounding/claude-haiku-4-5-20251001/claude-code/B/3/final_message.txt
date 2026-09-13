@@ -1,0 +1,12 @@
+## Summary
+
+I found and fixed the reconciliation issue with account 4471. The problem was in the `ledger/fx.py` file's `convert()` function, which was using `int()` to truncate fractional cents instead of rounding them properly. This caused a cumulative rounding error of 0.30 EUR across all currency conversions.
+
+**The fix:** Changed `return int(cents * rate)` to `return round(cents * rate)` in the `convert()` function.
+
+After the fix:
+- Account 4471 balance is now exactly -11857.91 EUR (matching the control file)
+- The reconciliation reports 0 mismatches
+- All contract checks pass
+
+DONE

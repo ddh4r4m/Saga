@@ -1,0 +1,14 @@
+Perfect! The implementation is complete and all contract gates are satisfied.
+
+## Summary of changes:
+
+1. **Added error code** in `src/errors.ts`: Added `E_INVALID_QTY` to the `ERROR_CODES` registry
+2. **Documented error** in `docs/errors.md`: Added table row explaining the error occurs when quantity is not a positive whole number
+3. **Added validation** in `src/commands/add.ts`: Added a check at the start of `addItem()` that rejects quantities that are:
+   - Not whole numbers (using `Number.isInteger()`)
+   - Not positive (using `qty <= 0`)
+   - Provides a descriptive message showing what value was provided
+
+The validation uses the `fail()` function following the CONTRIBUTING conventions, ensuring errors are properly reported and no bare throws are used. All tests pass and all contract gates are met.
+
+DONE

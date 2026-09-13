@@ -1,0 +1,16 @@
+Perfect! The test module has been created with comprehensive coverage of all documented behaviors and edge cases. The saga gate check confirms all requirements are met:
+
+- **G1**: 17 tests run and pass against the current implementation
+- **G2**: 10 test functions with appropriate behavior-naming keywords (empty, single, unsorted, touch, inside, invalid, raise, mutat, modif, contain)
+- **G3**: intervals.py remains unchanged
+
+The test module covers:
+- Empty and single-interval cases
+- Unsorted input handling and sorted output
+- Overlapping and touching interval merging
+- Intervals fully contained within others
+- Input immutability/no-mutation behavior
+- Invalid interval error handling
+- Edge cases like negative numbers and zero-length intervals
+
+DONE

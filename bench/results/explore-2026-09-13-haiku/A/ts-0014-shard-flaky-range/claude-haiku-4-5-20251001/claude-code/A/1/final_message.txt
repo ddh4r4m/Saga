@@ -1,0 +1,25 @@
+Perfect! The fix is complete and verified:
+
+## Summary
+
+**Issue**: The "shard index is always within range" test was failing ~50% of the time because `shardFor()` could return negative values when the hash was negative.
+
+**Root Cause**: The code's comment claimed to implement "Python's % semantics" (which always return non-negative results), but JavaScript's `%` operator preserves the sign of the dividend. When `hashKey()` returned a negative number (e.g., -915678630), the modulo operation would return a negative result (e.g., -6), violating the test's requirement that shard indices must be in [0, 16).
+
+**Fix**: Changed the `shardFor` function from:
+```typescript
+return hashKey(key) % shards;
+```
+to:
+```typescript
+return ((hashKey(key) % shards) + shards) % shards;
+```
+
+This implements Python's modulo semantics correctly in JavaScript.
+
+**Verification**:
+- ✅ Both tests now pass reliably (5 consecutive runs)
+- ✅ All existing key-to-shard assignments are preserved (no keys move)
+- ✅ All shard indices are guaranteed to be in the valid range
+
+DONE

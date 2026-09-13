@@ -1,0 +1,12 @@
+Perfect! I've successfully deduplicated the `formatMoney` function:
+
+**What was done:**
+1. Created `src/money.ts` with the correct `formatMoney` implementation (invoice's version)
+2. Updated `src/invoice.ts` to import `formatMoney` from `src/money.ts`
+3. Updated `src/receipt.ts` to import `formatMoney` from `src/money.ts` — this fixes the bug where it was formatting -150 cents as `$-2.50` instead of `-$1.50`
+4. Left `src/legacy/report.ts` untouched (finance export is frozen)
+5. Both tests pass with consistent formatting
+
+The key difference was that receipt.ts used `Math.floor(cents / 100)` which produces -2 for -150, while the correct approach uses `Math.abs()` to get the absolute value before formatting, then prepends the sign separately.
+
+DONE

@@ -1,0 +1,8 @@
+Excellent! The parser correctly handles all the cases:
+- Unquoted values: `PORT=8080`, `HOST=0.0.0.0`
+- Double-quoted values: `APP_NAME="Order Service"` → `appName: Order Service`
+- Single-quoted values with hashes: `MOTD='hello # not a comment'` → `motd: hello # not a comment`
+
+The config loading is now working without any external dependencies.
+
+DONE

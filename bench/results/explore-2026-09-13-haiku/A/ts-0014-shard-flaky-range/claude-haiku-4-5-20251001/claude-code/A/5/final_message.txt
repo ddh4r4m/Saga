@@ -1,0 +1,23 @@
+## Summary
+
+I've identified and fixed the issue causing the flaky keyshard CI test.
+
+**The Problem:** The `shardFor` function was using JavaScript's modulo operator, which returns negative results when the dividend is negative. Since `hashKey()` returns a signed 32-bit integer, some keys would produce negative shard indices, failing the test that expects values in `[0, shards)`.
+
+**The Fix:** Modified `shardFor` to use Python's modulo semantics by changing:
+```javascript
+return hashKey(key) % shards;
+```
+to:
+```javascript
+return (hashKey(key) % shards + shards) % shards;
+```
+
+**Verification:** 
+- Ran the test suite 10+ times consecutively—all tests pass reliably
+- Keys don't move to different shards (verified by "live assignments do not move" test)
+- No regressions introduced
+
+The **code was wrong**, not the test. The test correctly expected non-negative shard indices.
+
+DONE

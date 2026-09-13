@@ -1,0 +1,17 @@
+Perfect! The fix is complete and minimal. Here's what was changed:
+
+**Changes made:**
+1. **Line 42**: Fixed the weekly retention rule from `weeks.slice(1, policy.keepWeekly)` to `weeks.slice(0, policy.keepWeekly)` — now it includes the current week (index 0) and keeps exactly `policy.keepWeekly` weeks as the policy specifies.
+
+2. **Removed the misleading comment** that incorrectly explained the bug as intentional double-count avoidance.
+
+3. **Added pinned snapshot protection** (lines 43-45): Any snapshot with the 'pinned' tag is marked as kept and never returned for deletion, ensuring legal holds are protected regardless of age or retention policy.
+
+**Verification:**
+- ✅ Test passes: The 35-snapshot retention test with keepDaily 0, keepWeekly 4 now correctly keeps 4 weekly snapshots (one from each of the 4 newest ISO weeks)
+- ✅ Pinned protection works: Old pinned snapshots are never returned for deletion
+- ✅ All contract gates pass: G1 (weekly count), G2 (pinned protection), G3 (signature unchanged)
+
+The fix is ready for Monday's deployment when the legal hold tag list goes live.
+
+DONE

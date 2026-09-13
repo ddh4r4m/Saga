@@ -1,0 +1,19 @@
+Excellent! All contract checks pass successfully. 
+
+## Summary
+
+I identified and fixed the Nordic vendor import issue. The problem was in the price parser in `importer/parse.py`. The Nordic CSV file had a price containing a non-breaking space character (`\xa0`) as a thousands separator, but the parser only removed commas, not the various whitespace characters mentioned in its docstring.
+
+**Root cause:** Row 517 of nordic.csv had the price `3 868.13` (where the space is a non-breaking space U+00A0), which failed parsing.
+
+**Fix:** Updated `parse_price()` to remove spaces and non-breaking spaces in addition to commas:
+```python
+cleaned = text.strip().replace(",", "").replace(" ", "").replace("\xa0", "")
+```
+
+All contract gates now pass:
+- ✅ G1: The nightly input imports cleanly
+- ✅ G2: Strict reconcile check still fails on manifest/file mismatches  
+- ✅ G3: Vendor files and manifest remain untouched
+
+DONE

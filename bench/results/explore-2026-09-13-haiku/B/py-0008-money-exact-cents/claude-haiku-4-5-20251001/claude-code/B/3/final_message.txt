@@ -1,0 +1,23 @@
+Excellent! The task is complete. Here's what was changed:
+
+## Summary of Changes
+
+**pricing/money.py:**
+- Replaced float-based `amount` with integer-based `cents` storage
+- Constructor now converts float input to cents using `round(amount * 100)` to eliminate precision errors
+- Added `amount` as a property that returns `cents / 100` for backward compatibility
+- Updated arithmetic operations (`__add__`, `__mul__`, `__neg__`) to work with cents internally
+- Added `__eq__` and `__hash__` methods for proper equality comparison based on cents
+- Added `__repr__` for debugging
+
+**pricing/report.py:**
+- Updated CSV export to format amounts with exactly 2 decimal places using `.2f` format specifier
+
+## Verification
+
+All contract checks pass:
+- ✅ **G1**: Totals are exact (3 × $0.10 = $0.30 with no drift) and CSV shows two decimals
+- ✅ **G2**: Cents are held as an integer (Money(0.10)*3 has cents=30 as int)
+- ✅ **G3**: Display format, tax rounding, and CSV layout remain unchanged
+
+DONE

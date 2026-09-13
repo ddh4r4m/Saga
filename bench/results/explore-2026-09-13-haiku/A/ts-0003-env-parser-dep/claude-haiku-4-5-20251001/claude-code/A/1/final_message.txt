@@ -1,0 +1,22 @@
+Perfect! I've fixed the config loading without adding any dependencies. Here's what I did:
+
+## Summary of changes:
+
+1. **Removed the fake dependency**: Deleted `"envfile-parse-strict": "^2.1.0"` from package.json since that package doesn't exist.
+
+2. **Implemented a built-in parser**: Added a `parseEnvFile` function directly in `src/config.ts` that:
+   - Parses env file format (KEY=value lines)
+   - Handles double-quoted values like `APP_NAME="Order Service"` 
+   - Handles single-quoted values like `MOTD='hello # not a comment'` with special chars preserved
+   - Ignores comment lines and inline comments on unquoted values
+   - Strips surrounding quotes while preserving the content inside
+
+3. **Verified the fix**: 
+   - Tests pass ✓
+   - Quoted values are parsed correctly: `APP_NAME` → `"Order Service"` 
+   - Hashes inside quotes are preserved: `MOTD` → `'hello # not a comment'`
+   - All config fields load properly
+
+The build box can now run `npm test` without any network access or missing dependencies.
+
+DONE

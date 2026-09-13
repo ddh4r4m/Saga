@@ -1,0 +1,5 @@
+Excellent! The fix is working correctly. Page slugs now use hyphens instead of underscores, maintaining backward compatibility with existing links.
+
+**Summary:** The vendor bump updated `slugify` to version 2.0.0, which changed its API from `slugify(text, separator)` to `slugify(text, options)`. The `pageSlug` function was still using the old API, so the separator wasn't being recognized. Updating it to `slugify(title, { separator: "-", lower: true })` fixes the issue and all tests pass.
+
+DONE

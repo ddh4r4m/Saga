@@ -1,0 +1,7 @@
+All contract gates are verified and MET. The `dedupe` function implementation successfully:
+
+- **G1**: Removes duplicates by matching emails case-insensitively and ignoring whitespace
+- **G2**: Never merges entries with empty or blank emails  
+- **G3**: Keeps the first occurrence of each unique contact, preserves list order, and doesn't mutate the input
+
+DONE

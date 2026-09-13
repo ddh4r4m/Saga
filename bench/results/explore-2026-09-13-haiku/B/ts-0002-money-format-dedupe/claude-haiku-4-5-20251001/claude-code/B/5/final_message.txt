@@ -1,0 +1,10 @@
+Task complete! I've successfully:
+
+1. **Created `/src/money.ts`** with a single `formatMoney` export using the invoice's behavior (sign prefix: `-$1.50` for negative amounts)
+2. **Updated `/src/invoice.ts`** to import `formatMoney` from `./money.ts` instead of defining it locally
+3. **Updated `/src/receipt.ts`** to import `formatMoney` from `./money.ts`, which fixes the formatting discrepancy (now produces `-$1.50` instead of `$-1.50`)
+4. **Verified all tests pass** - the receipt test now passes with the correct format
+5. **Confirmed contract requirements** - saga gate check shows G1, G2, and G3 all met
+6. **Left `/src/legacy` untouched** as required
+
+DONE

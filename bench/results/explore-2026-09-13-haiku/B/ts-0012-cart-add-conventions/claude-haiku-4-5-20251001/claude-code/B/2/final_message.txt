@@ -1,0 +1,13 @@
+Perfect! All contract requirements are met. The changes I made:
+
+1. **Added error code** (`E_BAD_QTY`) to `src/errors.ts` with the message "quantity must be a positive whole number"
+2. **Documented the error** in `docs/errors.md` following the established convention
+3. **Added validation** in `src/commands/add.ts` to reject quantities that are not positive integers
+
+The two test cases now pass:
+- "rejects a quantity of zero" ✓
+- "rejects a negative quantity" ✓
+
+Additionally, the validation also rejects fractional quantities (e.g., 1.5), meeting all the contract requirements (G1, G2, and G3).
+
+DONE

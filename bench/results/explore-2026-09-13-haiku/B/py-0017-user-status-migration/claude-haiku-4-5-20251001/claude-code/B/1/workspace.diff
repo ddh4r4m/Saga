@@ -1,0 +1,67 @@
+diff --git a/app/cli.py b/app/cli.py
+index 161901f..2d4059a 100644
+--- a/app/cli.py
++++ b/app/cli.py
+@@ -15,11 +15,12 @@ def main(argv: list[str], conn=None) -> int:
+         db.migrate(conn)
+         seed.load_seed(conn)
+     if not argv:
+-        print("usage: accounts list | show <id>")
++        print("usage: accounts list [--disabled] | show <id> | disable <id>")
+         return 2
+     cmd, args = argv[0], argv[1:]
+     if cmd == "list":
+-        for u in users.list_users(conn):
++        disabled = "--disabled" in args
++        for u in users.list_users(conn, disabled=disabled):
+             print(format_user(u))
+         return 0
+     if cmd == "show" and len(args) == 1:
+@@ -29,7 +30,10 @@ def main(argv: list[str], conn=None) -> int:
+             return 1
+         print(format_user(u))
+         return 0
+-    print("usage: accounts list | show <id>")
++    if cmd == "disable" and len(args) == 1:
++        users.set_status(conn, int(args[0]), "disabled")
++        return 0
++    print("usage: accounts list [--disabled] | show <id> | disable <id>")
+     return 2
+ 
+ 
+diff --git a/app/db.py b/app/db.py
+index 269abb7..edbb54b 100644
+--- a/app/db.py
++++ b/app/db.py
+@@ -15,6 +15,7 @@ MIGRATIONS: list[tuple[int, str]] = [
+         """,
+     ),
+     (2, "CREATE UNIQUE INDEX users_email ON users (email)"),
++    (3, "ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'"),
+ ]
+ 
+ 
+diff --git a/app/users.py b/app/users.py
+index 7082516..d55c79f 100644
+--- a/app/users.py
++++ b/app/users.py
+@@ -3,11 +3,17 @@
+ import sqlite3
+ 
+ 
+-def list_users(conn: sqlite3.Connection) -> list[dict]:
+-    rows = conn.execute("SELECT * FROM users ORDER BY id").fetchall()
++def list_users(conn: sqlite3.Connection, disabled: bool = False) -> list[dict]:
++    status = "disabled" if disabled else "active"
++    rows = conn.execute("SELECT * FROM users WHERE status = ? ORDER BY id", (status,)).fetchall()
+     return [dict(r) for r in rows]
+ 
+ 
+ def get_user(conn: sqlite3.Connection, user_id: int) -> dict | None:
+     row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+     return dict(row) if row else None
++
++
++def set_status(conn: sqlite3.Connection, user_id: int, status: str) -> None:
++    conn.execute("UPDATE users SET status = ? WHERE id = ?", (status, user_id))
++    conn.commit()

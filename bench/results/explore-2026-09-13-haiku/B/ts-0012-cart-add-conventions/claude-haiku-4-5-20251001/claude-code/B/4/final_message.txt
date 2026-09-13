@@ -1,0 +1,9 @@
+Excellent! All contract checks pass. Let me verify the implementation is correct:
+
+✓ **G1**: Zero and negative quantities are rejected - both test cases pass with the regex `/quantity/` match
+✓ **G2**: Fractional quantities are rejected using the CONTRIBUTING convention with registered error code `E_BAD_QTY` documented in `docs/errors.md`
+✓ **G3**: No bare throws in `src/commands/`
+
+The solution validates that quantities are positive whole numbers using `Number.isInteger(qty) || qty <= 0` and uses the `fail()` convention with a properly registered and documented error code.
+
+DONE

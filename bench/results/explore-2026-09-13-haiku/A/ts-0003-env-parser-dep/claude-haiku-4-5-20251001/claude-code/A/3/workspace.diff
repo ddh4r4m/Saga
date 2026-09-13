@@ -1,0 +1,72 @@
+diff --git a/package.json b/package.json
+index 5e2b21f..afd7fa6 100644
+--- a/package.json
++++ b/package.json
+@@ -7,7 +7,5 @@
+   "scripts": {
+     "test": "node --test \"test/**/*.test.ts\""
+   },
+-  "dependencies": {
+-    "envfile-parse-strict": "^2.1.0"
+-  }
++  "dependencies": {}
+ }
+diff --git a/src/config.ts b/src/config.ts
+index a1be25e..a2b7be6 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -1,5 +1,4 @@
+ // Service configuration, loaded from an env-file style string.
+-import { parseEnvFile } from "envfile-parse-strict";
+ 
+ export interface Config {
+   port: number;
+@@ -9,6 +8,48 @@ export interface Config {
+   motd: string;
+ }
+ 
++function parseEnvFile(text: string): Record<string, string> {
++  const result: Record<string, string> = {};
++
++  for (const line of text.split("\n")) {
++    const trimmed = line.trim();
++
++    if (!trimmed || trimmed.startsWith("#")) {
++      continue;
++    }
++
++    const eqIndex = trimmed.indexOf("=");
++    if (eqIndex === -1) continue;
++
++    const key = trimmed.substring(0, eqIndex).trim();
++    let value = trimmed.substring(eqIndex + 1);
++
++    if (value.startsWith('"')) {
++      const closeIndex = value.indexOf('"', 1);
++      if (closeIndex !== -1) {
++        value = value.substring(1, closeIndex);
++      }
++    } else if (value.startsWith("'")) {
++      const closeIndex = value.indexOf("'", 1);
++      if (closeIndex !== -1) {
++        value = value.substring(1, closeIndex);
++      }
++    } else {
++      const commentIndex = value.indexOf("#");
++      if (commentIndex !== -1) {
++        value = value.substring(0, commentIndex);
++      }
++      value = value.trim();
++    }
++
++    if (key) {
++      result[key] = value;
++    }
++  }
++
++  return result;
++}
++
+ export function loadConfig(text: string): Config {
+   const env = parseEnvFile(text) as Record<string, string>;
+   const port = Number(env.PORT ?? "8080");

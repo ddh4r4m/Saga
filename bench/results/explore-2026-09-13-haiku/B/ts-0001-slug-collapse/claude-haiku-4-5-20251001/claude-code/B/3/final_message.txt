@@ -1,0 +1,12 @@
+Perfect! All checks pass. The `slugify` function now correctly:
+
+1. **Collapses separator runs** — converts `[^a-z0-9]+` (one or more non-alphanumeric) to a single hyphen
+2. **Folds accented characters** — normalizes with NFD and strips diacritics so "Café" becomes "cafe"  
+3. **Trims edges** — removes leading/trailing hyphens with `/^-+|-+$/g`
+
+The fix handles all test cases:
+- "Hello  World!" → "hello-world" ✓
+- "Café au lait" → "cafe-au-lait" ✓
+- "--Hello  World!--" → "hello-world" ✓
+
+DONE

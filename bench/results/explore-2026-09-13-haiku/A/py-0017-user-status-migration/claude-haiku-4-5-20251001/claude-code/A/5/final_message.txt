@@ -1,0 +1,25 @@
+Perfect! I've successfully implemented support for disabling users. Here's a summary of the changes:
+
+## Changes Made:
+
+1. **app/db.py** - Added migration 3 to add a `status` column to the users table with a default value of "active"
+
+2. **app/seed.py** - Updated `load_seed` to explicitly insert "active" as the status when loading records from seed.json (seed.json file format remains unchanged as required)
+
+3. **app/users.py** - Added:
+   - `set_status(conn, user_id, status)` function to update a user's status
+   - Updated `list_users(conn, disabled=False)` to filter by status (returns active users by default, disabled users when `disabled=True`)
+
+4. **app/cli.py** - Added:
+   - `disable <id>` command to disable a user
+   - `list --disabled` flag to show only disabled users
+   - Updated usage documentation
+
+All tests pass, and the implementation satisfies all requirements:
+- Status column defaults to "active" for all seeded and new users
+- `set_status` allows changing user status
+- `list_users` filters by status
+- CLI commands work as expected
+- seed.json format remains unchanged for ops' export jobs
+
+DONE

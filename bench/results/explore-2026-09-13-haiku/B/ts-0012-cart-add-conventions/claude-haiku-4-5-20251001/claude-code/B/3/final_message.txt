@@ -1,0 +1,15 @@
+Perfect! I've successfully fixed the `cartctl add` command to reject non-positive whole numbers. Here's what I implemented:
+
+**Changes made:**
+1. **Added quantity validation** in `src/commands/add.ts` - checks that quantity is a positive whole number using `qty !== Math.floor(qty) || qty <= 0`
+2. **Registered error code** `E_INVALID_QUANTITY` in `src/errors.ts` with message "quantity must be a positive whole number"
+3. **Documented the error** in `docs/errors.md` with the new error code
+
+**Verification:**
+- All 3 test cases pass (including the two new ones for zero and negative quantities)
+- All contract requirements satisfied:
+  - G1: zero and negative quantities are rejected ✓
+  - G2: fractional quantities rejected with proper error code ✓
+  - G3: no bare throws ✓
+
+DONE

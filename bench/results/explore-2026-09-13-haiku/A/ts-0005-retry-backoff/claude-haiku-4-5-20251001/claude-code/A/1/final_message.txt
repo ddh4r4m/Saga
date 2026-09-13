@@ -1,0 +1,12 @@
+Perfect! The test is now passing. The issue was on line 27 of `/private/var/folders/yb/b_617z_s2ml933nmr_k7m47m0000gn/T/saga-bench-3187082499/ts-0005-retry-backoff/1/ws/src/retry.ts`.
+
+The implementation was using linear backoff `baseMs * (i + 1) + random()` instead of the documented exponential backoff formula `baseMs * 2^i * (1 + random())`. 
+
+With the fix, retry delays now correctly follow exponential backoff with jitter:
+- 1st retry (i=0): 100 × 2⁰ × 1.5 = 150ms
+- 2nd retry (i=1): 100 × 2¹ × 1.5 = 300ms  
+- 3rd retry (i=2): 100 × 2² × 1.5 = 600ms
+
+This gives the payment gateway the proper spacing it expects instead of the premature third retry.
+
+DONE

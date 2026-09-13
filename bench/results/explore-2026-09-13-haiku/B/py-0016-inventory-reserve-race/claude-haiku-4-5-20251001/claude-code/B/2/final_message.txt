@@ -1,0 +1,17 @@
+Excellent! All contract checks pass. Here's what I fixed:
+
+**The Problem**: The `reserve` and `release` methods had classic read-modify-write race conditions. When two threads tried to reserve simultaneously:
+1. Both threads read the same initial stock value
+2. Both perform their calculations independently
+3. Both write back, overwriting each other's changes
+
+**The Solution**: I added a `threading.Lock` to the Inventory class to protect all store operations. Now the critical sections in `reserve` and `release` are atomic - a thread must acquire the lock before reading and writing, ensuring operations complete without interruption.
+
+**Key points**:
+- Public API unchanged (all method signatures identical)
+- Thread-safe for concurrent `reserve`, `release`, and `available` calls
+- G1: Oversell reproduction test passes - exactly one concurrent reserve succeeds
+- G2: Release racing with reserve works correctly - no data loss
+- G3: Public methods remain unchanged
+
+DONE

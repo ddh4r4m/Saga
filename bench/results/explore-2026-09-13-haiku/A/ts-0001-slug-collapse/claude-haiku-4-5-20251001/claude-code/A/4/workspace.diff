@@ -1,0 +1,24 @@
+diff --git a/src/slug.ts b/src/slug.ts
+index 65623a4..2c33650 100644
+--- a/src/slug.ts
++++ b/src/slug.ts
+@@ -2,7 +2,17 @@
+ // Used by the CMS to build article URLs from titles.
+ 
+ export function slugify(input: string): string {
+-  const lowered = input.toLowerCase();
++  // Fold accented characters to ASCII equivalents
++  const normalized = input.normalize("NFD").replace(/[̀-ͯ]/g, "");
++
++  const lowered = normalized.toLowerCase();
+   const replaced = lowered.replace(/[^a-z0-9]/g, "-");
+-  return replaced;
++
++  // Collapse runs of hyphens to single hyphen
++  const collapsed = replaced.replace(/-+/g, "-");
++
++  // Remove leading and trailing hyphens
++  const trimmed = collapsed.replace(/^-|-$/g, "");
++
++  return trimmed;
+ }

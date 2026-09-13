@@ -1,0 +1,38 @@
+diff --git a/overlaps/core.py b/overlaps/core.py
+index 89d84e0..9351731 100644
+--- a/overlaps/core.py
++++ b/overlaps/core.py
+@@ -22,12 +22,27 @@ def find_overlaps(bookings: list[Booking]) -> list[tuple[str, str]]:
+     intervals intersect. A booking fully inside a longer one clashes with it;
+     a booking that ends exactly when another starts does not.
+     """
++    events = []
++    for b in bookings:
++        events.append((b.start, 0, b))
++        events.append((b.end, 1, b))
++    events.sort(key=lambda e: (e[0], e[1]))
++
+     pairs: list[tuple[str, str]] = []
+-    for i in range(len(bookings)):
+-        a = bookings[i]
+-        for j in range(i + 1, len(bookings)):
+-            b = bookings[j]
+-            if overlaps(a, b):
+-                pairs.append((a.id, b.id) if a.id < b.id else (b.id, a.id))
++    active_by_room: dict[str, list[Booking]] = {}
++
++    for time, event_type, booking in events:
++        if event_type == 0:
++            room = booking.room
++            if room not in active_by_room:
++                active_by_room[room] = []
++            for active in active_by_room[room]:
++                if active.start < booking.end and booking.start < active.end:
++                    pair = (active.id, booking.id) if active.id < booking.id else (booking.id, active.id)
++                    pairs.append(pair)
++            active_by_room[room].append(booking)
++        else:
++            active_by_room[booking.room].remove(booking)
++
+     pairs.sort()
+     return pairs

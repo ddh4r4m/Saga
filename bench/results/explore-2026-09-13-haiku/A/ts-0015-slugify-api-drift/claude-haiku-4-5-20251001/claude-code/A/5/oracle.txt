@@ -1,0 +1,11 @@
+lowercase-title-hyphenated PASS
+mixed-case-is-lowercased PASS
+punctuation-collapses-to-single-hyphen PASS
+edges-trimmed PASS
+accents-folded PASS
+no-underscores-ever PASS
+make-page-uses-slug PASS
+vendor-untouched PASS
+no-dependencies PASS
+--- exit 0
+--- integrity ok

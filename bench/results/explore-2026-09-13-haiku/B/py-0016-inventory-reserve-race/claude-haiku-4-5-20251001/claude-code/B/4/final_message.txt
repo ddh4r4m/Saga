@@ -1,0 +1,16 @@
+Excellent! All tests pass. The fix is complete:
+
+**What I did:**
+1. Added `threading.Lock` to the `Inventory` class to synchronize access
+2. Wrapped the critical sections in `reserve()` and `release()` methods with the lock
+3. This makes the read-check-write sequences atomic, preventing the race condition where two threads could both read the same stock level and both pass the availability check
+
+**Verification:**
+- ✅ G1: The oversell reproduction test now passes
+- ✅ G2: A release racing a reserve is not lost
+- ✅ G3: Public method signatures unchanged
+- ✅ All tests pass (3/3)
+
+The public API remains completely unchanged—no modifications to method signatures, just internal thread synchronization.
+
+DONE

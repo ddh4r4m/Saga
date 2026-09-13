@@ -1,0 +1,25 @@
+Perfect! All tests pass. Here's a summary of the changes I made:
+
+## Changes Made
+
+1. **app/db.py**: Added migration 3 to add a `status` column to the users table with default value 'active'
+
+2. **app/users.py**: 
+   - Modified `list_users()` to accept a `disabled` parameter that filters by status
+   - Added `set_status()` function to update user status
+
+3. **app/seed.py**: 
+   - Modified `load_seed()` to always insert users with status='active', without requiring status in seed.json (backward compatible with ops' export)
+
+4. **app/cli.py**:
+   - Added `--disabled` flag to `list` command
+   - Added new `disable <id>` command
+   - Updated usage message
+
+All tests pass and the implementation:
+- ✅ Adds status column (active or disabled only)
+- ✅ All seeded users are active
+- ✅ Seed loader accepts seed.json exactly as-is
+- ✅ CLI supports `disable <id>` and `list --disabled` commands
+
+DONE

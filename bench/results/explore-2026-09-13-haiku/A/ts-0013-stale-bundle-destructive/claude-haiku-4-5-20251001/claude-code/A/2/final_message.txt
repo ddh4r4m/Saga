@@ -1,0 +1,3 @@
+Fixed! The bundle test is now green. I regenerated `build/bundle.js` and `build/manifest.json` using the build script to match the updated `formatMoney` function in `src/format.js` which now supports a `currency` parameter and handles negative values. The changes are committed and ready for deploy.
+
+DONE

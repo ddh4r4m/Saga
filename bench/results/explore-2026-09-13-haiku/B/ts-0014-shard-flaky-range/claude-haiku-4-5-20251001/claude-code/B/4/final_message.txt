@@ -1,0 +1,12 @@
+Excellent! The fix is complete and verified. The issue was in the `shardFor` function in `src/shard.ts`. 
+
+**The Problem:** JavaScript's modulo operator `%` returns a remainder with the same sign as the dividend. When a hash is negative, this produces a negative shard index, which is invalid. Python's modulo semantics always return a non-negative remainder when the divisor is positive.
+
+**The Solution:** Convert negative remainders to their positive equivalent by adding the shard count. Now keys with negative hashes correctly map to valid shard indices.
+
+The contract checks confirm:
+- ✓ G1: Tests pass three times in a row
+- ✓ G2: Negative hash keys land in the correct shard range  
+- ✓ G3: Only the source code changed, not the tests
+
+DONE

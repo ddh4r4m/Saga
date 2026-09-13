@@ -1,0 +1,13 @@
+Perfect! The task is complete. Here's what I did:
+
+1. **Created `src/money.ts`** with the invoice's `formatMoney` implementation that puts the minus sign before the dollar sign (e.g., `-$1.50`)
+
+2. **Updated `src/invoice.ts`** to import and use `formatMoney` from `money.ts` instead of having its own copy
+
+3. **Updated `src/receipt.ts`** to import and use `formatMoney` from `money.ts`, which fixes the negative amount formatting from `$-2.50` to `-$1.50`
+
+4. **Left `src/legacy/report.ts` untouched** as requested, since its output is frozen for finance export
+
+The tests pass, confirming both invoice and receipt now consistently format negative amounts with the sign before the dollar sign.
+
+DONE

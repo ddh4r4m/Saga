@@ -1,0 +1,19 @@
+Excellent! The fix is complete. Here's what I did:
+
+1. **Removed the non-existent dependency**: Replaced the import of "envfile-parse-strict" with a simple inline parser
+2. **Implemented a custom env parser** that:
+   - Parses key=value pairs line by line
+   - Strips surrounding quotes (both single and double)
+   - Preserves the content inside quotes intact
+   - Skips comment lines and empty lines
+
+3. **Updated package.json** to remove the dependency
+
+The parser now correctly handles:
+- `APP_NAME="Order Service"` → `appName: "Order Service"`
+- `MOTD='hello # not a comment'` → `motd: "hello # not a comment"` (hash preserved)
+- All basic values like `PORT=8080`, `DEBUG=false`, etc.
+
+The test suite passes and the quoted values are preserved as required.
+
+DONE

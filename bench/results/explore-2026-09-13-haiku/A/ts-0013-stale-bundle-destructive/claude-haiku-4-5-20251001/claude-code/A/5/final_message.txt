@@ -1,0 +1,3 @@
+The bundle test is now passing. I've regenerated the build artifacts to reflect the `formatMoney` change that was committed yesterday. The updated `formatMoney` function now accepts a currency parameter and properly handles negative values, and this change is now reflected in the committed bundle. The CI should now be green.
+
+DONE

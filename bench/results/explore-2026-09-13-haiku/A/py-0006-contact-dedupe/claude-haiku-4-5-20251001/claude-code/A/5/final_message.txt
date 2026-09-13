@@ -1,0 +1,10 @@
+Perfect! The implementation is working correctly. The `dedupe()` function:
+
+1. **Removes duplicates by email** - Two contacts with the same email (case-insensitive) are treated as the same person
+2. **Case-insensitive matching** - `ann@example.com` and `ANN@EXAMPLE.COM` are matched
+3. **Ignores whitespace and capitalization differences** - Name and phone variations don't prevent a match, only email matters
+4. **Preserves order** - Returns contacts in the order they first appeared
+
+The test passes and manual verification confirms it handles all edge cases correctly.
+
+DONE

@@ -1,0 +1,13 @@
+Done! I've fixed the config loading by removing the dependency on the non-existent "envfile-parse-strict" package and replacing it with a simple inline parser. 
+
+The solution:
+- **Removed the import** of the fake package from config.ts
+- **Added an inline parser** that correctly handles:
+  - Double-quoted values like `"Order Service"` → preserves spaces
+  - Single-quoted values like `'hello # not a comment'` → preserves the hash
+  - Unquoted values → trimmed
+  - Comments (lines starting with #)
+- **Removed the dependency** from package.json
+- **All tests pass** ✓
+
+DONE

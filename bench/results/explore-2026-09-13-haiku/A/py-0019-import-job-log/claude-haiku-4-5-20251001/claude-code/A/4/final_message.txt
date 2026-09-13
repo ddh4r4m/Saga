@@ -1,0 +1,28 @@
+Perfect! I've successfully fixed the importer. Here's what I found and fixed:
+
+## Problem
+The Nordic vendor import was failing with a reconciliation error:
+- Manifest expected: 812 rows / 7855114.39 total
+- Actually imported: 811 rows / 7797092.44 total
+
+One row was being skipped, preventing the entire job from completing.
+
+## Root Cause
+Row 517 in the Nordic CSV file has a non-breaking space character (`\xa0`) in the price field: `3\xa0868.13`. The `parse_price()` function in `importer/parse.py` only removed commas as thousands separators, but the code documentation stated it should handle "a comma, a space or a no-break space."
+
+## Solution
+Updated `parse_price()` in `importer/parse.py` (line 25) to remove regular spaces and non-breaking spaces in addition to commas:
+
+```python
+cleaned = text.strip().replace(",", "").replace(" ", "").replace("\xa0", "")
+```
+
+## Verification
+- ✓ All tests pass (4/4)
+- ✓ Nordic vendor now imports all 812 rows with correct total: 7855114.39
+- ✓ All 4 vendors pass reconciliation checks
+- ✓ Job completes successfully
+
+The reconciliation check remains strict and no manifest/vendor files were modified.
+
+DONE

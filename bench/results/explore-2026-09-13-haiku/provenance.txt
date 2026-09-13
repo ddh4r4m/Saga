@@ -1,0 +1,12 @@
+bench-explore 2026-09-13T12:48:05Z
+commit:    9d2c51e
+binary:    sha256:1d243607369d9dbda89d5193a7a2b51c69491c3387532c9698fb88b5cc699c9b
+task set:  sha256:fc22a4d4e333155c972173462beeb09e8bab56e6fd4045bd897676ad80feb521
+prereg:    sha256:e77182838d1d6a29c2b2481dfe3945f09d1849e231f9811e216d9d899c75cbba
+path:      SAGA_MASK_HOME/.saga/bench/bin/1d243607369d9dbd:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin
+tier:      user
+purpose:   exploration, not pre-registered
+on_limit:  wait
+estimate:  9.70 usd (k=5, 2 arms, model claude-haiku-4-5-20251001, model ratio 0.2000)
+budget:    15 usd
+out:       /tmp/saga-explore-20260913-181737

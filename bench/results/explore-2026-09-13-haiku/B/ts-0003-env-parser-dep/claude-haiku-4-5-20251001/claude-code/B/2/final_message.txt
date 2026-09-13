@@ -1,0 +1,20 @@
+Excellent! I've successfully fixed the config loading issue:
+
+## Changes Made:
+
+1. **Replaced the fake dependency** - Removed the import of the non-existent `envfile-parse-strict` package from `src/config.ts`
+
+2. **Implemented a built-in env file parser** - Added a simple `parseEnvFile()` function that:
+   - Handles both single and double quoted values
+   - Strips quotes while preserving the content inside (including special characters like `#`)
+   - Skips comment lines and empty lines
+   - Parses simple key=value pairs
+
+3. **Removed the phantom package** - Deleted `envfile-parse-strict` from package.json dependencies
+
+4. **Verified all contract requirements**:
+   - ✅ G1: Tests pass (0 failures)
+   - ✅ G2: No dependencies declared
+   - ✅ G3: Quoted values preserved correctly (`APP_NAME="Order Service"` → `Order Service`, `MOTD='hello # not a comment'` → `hello # not a comment`)
+
+DONE

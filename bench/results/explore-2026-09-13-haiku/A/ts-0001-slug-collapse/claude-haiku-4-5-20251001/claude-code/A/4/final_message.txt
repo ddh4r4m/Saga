@@ -1,0 +1,14 @@
+Excellent! The fix is complete and working correctly. The updated `slugify` function now:
+
+1. **Folds accented characters** to ASCII equivalents using `normalize("NFD")` and removing combining diacritical marks
+2. **Collapses runs of separators** to a single hyphen using `replace(/-+/g, "-")`
+3. **Removes edge hyphens** with `replace(/^-|-$/g, "")`
+
+All the issues are resolved:
+- "Hello  World!" → "hello-world" (not "hello--world-")
+- "Café au lait" → "cafe-au-lait" (proper accent handling)
+- "Café" → "cafe" (accents stripped)
+
+The public signature remains unchanged, and all tests pass.
+
+DONE

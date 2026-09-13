@@ -1,0 +1,13 @@
+env-basic PASS
+env-defaults PASS
+env-double-quoted-spaces PASS
+env-single-quoted-hash PASS
+env-comment-lines PASS
+env-double-quoted-hash PASS
+env-single-quoted-hash-other PASS
+env-example-file PASS
+env-invalid-port PASS
+no-dependencies-declared FAIL
+no-phantom-import PASS
+--- exit 1
+--- integrity ok

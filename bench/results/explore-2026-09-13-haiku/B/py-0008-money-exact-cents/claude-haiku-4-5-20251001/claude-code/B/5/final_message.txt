@@ -1,0 +1,23 @@
+Perfect! All contract requirements are met. Let me verify what I've done:
+
+## Summary of Changes
+
+1. **Money class refactoring** (`pricing/money.py`):
+   - Changed from a frozen dataclass storing `amount` as float to a regular class storing `cents` as integer
+   - Converts input float amounts (e.g., 0.10) to integer cents (e.g., 10) via `round(amount * 100)`
+   - Added `amount` property to maintain backward compatibility
+   - Updated arithmetic operations (`__add__`, `__mul__`, `__neg__`) to work with integer cents
+   - Added `__eq__` and `__hash__` methods for proper equality comparison
+
+2. **CSV formatting fix** (`pricing/report.py`):
+   - Added `.2f` formatting to ensure the CSV output always shows two decimal places (0.30 instead of 0.3)
+
+## Results
+
+- ✅ **G1**: Unit tests pass and CSV shows two decimal places
+- ✅ **G2**: Cents are held as an integer (Money(0.10)*3 gives `int 30`)
+- ✅ **G3**: Display format, tax rounding, and CSV layout remain unchanged
+
+The floating-point precision issue is now resolved by using integer arithmetic. Three widgets at 0.10 now correctly total to exactly 0.30 cents (30 cents) without any drift.
+
+DONE

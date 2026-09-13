@@ -1,0 +1,12 @@
+test_bad_row_is_still_skipped_with_a_warning PASS
+test_manifest_row_mismatch_still_fails PASS
+test_manifest_total_mismatch_still_fails PASS
+test_nightly_imports_against_original_manifest FAIL
+test_vendor_files_untouched PASS
+test_garbage_still_rejected PASS
+test_no_break_space_thousands FAIL
+test_plain_and_comma PASS
+test_row_total_uses_parsed_price FAIL
+test_space_thousands FAIL
+--- exit 1
+--- integrity ok

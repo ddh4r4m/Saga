@@ -1,0 +1,12 @@
+Excellent! The fix is complete. The issue was in the `shardFor` function in `src/shard.ts`. 
+
+**The problem:** JavaScript's modulo operator `%` returns a negative result when the dividend (hashKey) is negative, but the function was supposed to implement Python's modulo semantics, which always returns non-negative results. This caused the "shard index is always within range" test to fail intermittently—passing when random keys happened to hash to positive values, and failing when they hashed to negative values.
+
+**The fix:** Changed the modulo operation from `hashKey(key) % shards` to `((hashKey(key) % shards) + shards) % shards`, which implements Python's modulo semantics and guarantees the result is always in the range `[0, shards)`.
+
+**Verification:**
+- All tests pass consistently across multiple runs
+- Live assignments still map to their correct shards (no keys moving to different shards)
+- The range test now always produces valid shard indices
+
+DONE

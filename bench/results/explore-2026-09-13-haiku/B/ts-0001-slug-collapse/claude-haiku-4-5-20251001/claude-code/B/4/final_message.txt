@@ -1,0 +1,12 @@
+The slugify function has been fixed to:
+
+1. **Normalize accented characters** using Unicode NFD normalization and removing diacritical marks, so "Café" becomes "cafe"
+2. **Collapse separator runs** using `/-+/g` to convert multiple hyphens into a single hyphen
+3. **Trim edge hyphens** using `/^-+|-+$/g` to remove hyphens from the start and end
+
+All contract checks pass:
+- ✓ G1: `"--Hello  World!--"` → `"hello-world"` 
+- ✓ G2: `"Café au lait"` → `"cafe-au-lait"`
+- ✓ G3: Public signature unchanged
+
+DONE

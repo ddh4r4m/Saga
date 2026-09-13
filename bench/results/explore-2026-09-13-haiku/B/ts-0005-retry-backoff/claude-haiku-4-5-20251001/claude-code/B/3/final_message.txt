@@ -1,0 +1,18 @@
+Excellent! The fix is complete. The issue was in the retry backoff formula on line 27 of `src/retry.ts`. 
+
+**What was wrong:**
+The code implemented a linear backoff: `baseMs * (i + 1) + random()`, which caused retries to fire too early.
+
+**What I fixed:**
+Changed to the exponential formula documented in the README: `baseMs * Math.pow(2, i) * (1 + random())`, which:
+- Grows waits exponentially with each retry (2^i multiplier)
+- Applies jitter as a multiplicative factor (1 + r where r ∈ [0,1)) instead of just adding a small constant
+
+**Verification:**
+- ✅ The test passes: waits are now [150, 300, 600] as expected (with baseMs=100, random=0.5)
+- ✅ Contract check G1: Test passes unmodified
+- ✅ Contract check G2: With r=0, waits are exactly baseMs * 2^i (100, 200, 400)
+
+The payment gateway will now receive properly-spaced exponential backoff retries instead of nearly-linear ones.
+
+DONE

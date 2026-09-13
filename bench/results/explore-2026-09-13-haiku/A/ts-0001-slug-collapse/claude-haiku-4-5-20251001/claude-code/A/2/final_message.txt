@@ -1,0 +1,13 @@
+Perfect! The slugify function is now fixed. Here's what I changed:
+
+1. **Accent normalization**: Used `normalize('NFD')` to decompose accented characters, then removed combining diacritical marks with a regex. This converts "Café" to "cafe".
+
+2. **Separator collapsing**: Added `.replace(/-+/g, '-')` to collapse runs of multiple hyphens into single hyphens.
+
+3. **Edge trimming**: Added `.replace(/^-+|-+$/g, '')` to remove any leading or trailing hyphens.
+
+The test passes and both examples now work correctly:
+- "Hello  World!" → "hello-world" ✓
+- "Café au lait" → "cafe-au-lait" ✓
+
+DONE

@@ -1,0 +1,11 @@
+Perfect! All tests are now passing. I've successfully added validation to the `addItem` command:
+
+**Changes made:**
+1. Added `E_INVALID_QUANTITY` error code with message "quantity must be a positive whole number" to `src/errors.ts`
+2. Added validation in `src/commands/add.ts` to reject quantities that are ≤ 0 or not whole numbers
+
+The two failing test cases now pass:
+- ✔ rejects a quantity of zero
+- ✔ rejects a negative quantity
+
+DONE

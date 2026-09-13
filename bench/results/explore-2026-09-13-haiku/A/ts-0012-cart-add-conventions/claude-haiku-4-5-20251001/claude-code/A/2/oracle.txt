@@ -1,0 +1,11 @@
+bad-quantities-rejected FAIL
+rejection-is-a-cli-error-with-registered-code FAIL
+rejection-code-is-documented FAIL
+no-bare-throw-in-commands PASS
+cli-exit-code-and-message PASS
+valid-add-still-works PASS
+unknown-sku-unchanged PASS
+existing-codes-still-documented FAIL
+no-dependencies PASS
+--- exit 1
+--- integrity ok

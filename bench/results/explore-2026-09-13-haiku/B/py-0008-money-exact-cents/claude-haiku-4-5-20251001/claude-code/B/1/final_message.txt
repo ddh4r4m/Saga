@@ -1,0 +1,15 @@
+Excellent! The implementation is complete and all requirements are satisfied:
+
+## Summary of changes:
+
+1. **Modified `pricing/money.py`**: Refactored the Money class to store cents as an integer instead of storing the amount as a float. The constructor converts float inputs to cents via `round(amount * 100)`, and an `amount` property provides backward compatibility by computing `cents / 100`.
+
+2. **Updated arithmetic operations**: The `__add__`, `__mul__`, and `__neg__` methods now work with cents directly, eliminating floating-point precision issues.
+
+3. **Added equality and hashing**: Implemented `__eq__` and `__hash__` methods based on the integer cents value, ensuring correct comparisons between Money objects.
+
+4. **Fixed CSV formatting in `pricing/report.py`**: Updated the output to explicitly format amounts with two decimal places (`.2f`).
+
+The result: Three dimes now sum to exactly 0.30 (stored as 30 cents) with no floating-point drift, while maintaining identical display formatting, tax rounding, and CSV layout as before.
+
+DONE

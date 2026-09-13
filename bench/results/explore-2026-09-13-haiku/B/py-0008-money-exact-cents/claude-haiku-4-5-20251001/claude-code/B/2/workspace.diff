@@ -1,0 +1,82 @@
+diff --git a/pricing/format.py b/pricing/format.py
+index 42b1b31..ec41fad 100644
+--- a/pricing/format.py
++++ b/pricing/format.py
+@@ -3,5 +3,5 @@ from .money import Money
+ 
+ 
+ def format_money(m: Money) -> str:
+-    sign = "-" if m.amount < 0 else ""
+-    return f"{sign}${abs(m.amount):,.2f}"
++    sign = "-" if m.cents < 0 else ""
++    return f"{sign}${abs(m.cents) / 100:,.2f}"
+diff --git a/pricing/money.py b/pricing/money.py
+index f586e26..d783a78 100644
+--- a/pricing/money.py
++++ b/pricing/money.py
+@@ -1,19 +1,35 @@
+ """Money value object."""
+-from dataclasses import dataclass
+ 
+ 
+-@dataclass(frozen=True)
+ class Money:
+-    amount: float
++    def __init__(self, amount: float):
++        self.cents = round(amount * 100)
++
++    def __eq__(self, other):
++        if not isinstance(other, Money):
++            return NotImplemented
++        return self.cents == other.cents
++
++    def __hash__(self):
++        return hash(self.cents)
++
++    def __repr__(self):
++        return f"Money({self.cents / 100})"
+ 
+     def __add__(self, other: "Money") -> "Money":
+-        return Money(self.amount + other.amount)
++        result = Money(0)
++        result.cents = self.cents + other.cents
++        return result
+ 
+     def __mul__(self, qty: int) -> "Money":
+-        return Money(self.amount * qty)
++        result = Money(0)
++        result.cents = self.cents * qty
++        return result
+ 
+     def __neg__(self) -> "Money":
+-        return Money(-self.amount)
++        result = Money(0)
++        result.cents = -self.cents
++        return result
+ 
+ 
+ ZERO = Money(0.0)
+diff --git a/pricing/report.py b/pricing/report.py
+index 4545891..dd104e2 100644
+--- a/pricing/report.py
++++ b/pricing/report.py
+@@ -5,5 +5,6 @@ from .cart import Line, line_total
+ def to_csv(lines: list[Line]) -> str:
+     rows = ["name,qty,total"]
+     for name, price, qty in lines:
+-        rows.append(f"{name},{qty},{line_total(price, qty).amount}")
++        money = line_total(price, qty)
++        rows.append(f"{name},{qty},{money.cents / 100:.2f}")
+     return "\n".join(rows) + "\n"
+diff --git a/pricing/tax.py b/pricing/tax.py
+index d7b6447..ec2bbc2 100644
+--- a/pricing/tax.py
++++ b/pricing/tax.py
+@@ -4,4 +4,6 @@ from .money import Money
+ 
+ def apply_tax(subtotal: Money, rate: float) -> Money:
+     """Return subtotal plus tax, rounded to the cent."""
+-    return Money(round(subtotal.amount * (1 + rate), 2))
++    result = Money(0)
++    result.cents = round(subtotal.cents * (1 + rate))
++    return result

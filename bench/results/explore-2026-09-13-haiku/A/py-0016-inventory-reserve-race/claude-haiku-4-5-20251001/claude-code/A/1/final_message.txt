@@ -1,0 +1,15 @@
+Perfect! I've fixed the thread safety issue in the Inventory class. Here's what I did:
+
+**The Problem:** The `reserve` method had a classic race condition where two threads could both read the same stock level, both pass the check, and both deduct from inventory, resulting in overselling. The same issue existed in the `release` method.
+
+**The Solution:** I added a `threading.Lock` to the Inventory class and protected the critical sections in both `reserve` and `release` methods. This ensures that the read-check-write operations are atomic.
+
+**Changes made:**
+1. Added `import threading` at the top
+2. Added `self._lock = threading.Lock()` in `__init__` (private attribute, doesn't change public API)
+3. Wrapped the critical section in `reserve()` with `with self._lock:` 
+4. Wrapped the critical section in `release()` with `with self._lock:`
+
+**Test results:** All 3 tests pass, including the previously failing `test_concurrent_reserves_do_not_oversell` test. The test now correctly ensures that when two threads try to reserve 3 units from 5 available, exactly one succeeds and one gets an `OutOfStock` exception, leaving 2 units in stock.
+
+DONE

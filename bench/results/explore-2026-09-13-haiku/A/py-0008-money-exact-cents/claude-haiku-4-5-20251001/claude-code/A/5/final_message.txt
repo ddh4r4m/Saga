@@ -1,0 +1,19 @@
+## Summary
+
+I've successfully fixed the floating-point precision issue by converting the Money class to store cents as integers internally. Here's what changed:
+
+**pricing/money.py:**
+- Changed from storing `amount: float` to storing `cents: int`
+- Constructor converts dollars (float input) to cents using `round(dollars * 100)`
+- Added an `amount` property that returns `cents / 100` for backward compatibility
+- Updated arithmetic operations (`__add__`, `__mul__`, `__neg__`) to work directly with cents
+- Added proper equality and comparison operators that compare cents values
+
+**pricing/report.py:**
+- Updated CSV output to format the amount to 2 decimal places with `:.2f`
+
+The fix eliminates floating-point drift completely. Now three widgets at 0.10 produce exactly 0.30 (not 0.30000000000000004), and comparisons like `total == Money(0.30)` work correctly. All user-facing behavior remains unchanged: display format, tax rounding, and CSV layout are identical.
+
+All tests pass ✓
+
+DONE

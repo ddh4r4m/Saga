@@ -1,0 +1,22 @@
+Successfully fixed the floating-point precision issue! Here's a summary of the changes:
+
+## Changes Made:
+
+1. **pricing/money.py**: Refactored the `Money` class to store cents as an integer internally while maintaining a backward-compatible `amount` property that returns the float value.
+   - Converts float inputs to cents with proper rounding
+   - Updated arithmetic operations (`__add__`, `__mul__`, `__neg__`) to work with cents
+   - Added proper `__eq__` and `__hash__` methods for comparison
+   - Added `__repr__` for debugging
+
+2. **pricing/tax.py**: Simplified `apply_tax` to use the Money constructor which now handles rounding automatically.
+
+3. **pricing/report.py**: Updated CSV export to format amounts with exactly 2 decimal places using `.2f` formatting.
+
+## Results:
+- ✅ No more floating-point drift (three $0.10 values correctly equal $0.30)
+- ✅ All tests passing
+- ✅ Display format unchanged (`$0.30`)
+- ✅ Tax rounding unchanged (rounds to nearest cent)
+- ✅ CSV layout unchanged (displays two decimal places)
+
+DONE

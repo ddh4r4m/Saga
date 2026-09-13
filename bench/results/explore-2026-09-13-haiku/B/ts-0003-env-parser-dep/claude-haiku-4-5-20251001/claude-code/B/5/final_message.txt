@@ -1,0 +1,16 @@
+Perfect! I've successfully fixed the config loading issue:
+
+**Changes made:**
+1. **Removed the phantom dependency** from `package.json` - deleted the `"dependencies"` object entirely since there were no real dependencies
+2. **Implemented a built-in env parser** in `src/config.ts` that:
+   - Parses env file format without external dependencies
+   - Correctly handles quoted values (both single and double quotes)
+   - Preserves quoted content intact, including hash characters inside quotes
+   - Skips comments and empty lines
+
+**All contract gates verified:**
+- ✅ G1: `npm test` passes with 0 failures
+- ✅ G2: Zero dependencies declared
+- ✅ G3: Quoted values preserved correctly (`Order Service|hello # not a comment`)
+
+DONE

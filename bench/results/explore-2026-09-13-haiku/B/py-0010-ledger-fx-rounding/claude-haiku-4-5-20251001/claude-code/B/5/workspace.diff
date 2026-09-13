@@ -1,0 +1,10 @@
+diff --git a/ledger/fx.py b/ledger/fx.py
+index ba10a28..bcc58f4 100644
+--- a/ledger/fx.py
++++ b/ledger/fx.py
+@@ -3,4 +3,4 @@
+ 
+ def convert(cents: int, rate: float) -> int:
+     """Convert an amount in minor units at rate, returning minor units."""
+-    return int(cents * rate)
++    return round(cents * rate)

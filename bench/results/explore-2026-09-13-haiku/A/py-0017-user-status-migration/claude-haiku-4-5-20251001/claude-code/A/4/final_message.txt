@@ -1,0 +1,30 @@
+Excellent! I've successfully implemented user status functionality. Here's a summary of the changes:
+
+## Changes Made
+
+1. **Database Migration** (`app/db.py`):
+   - Added migration #3 to add `status` column to users table with default value "active"
+
+2. **Seed Loader** (`app/seed.py`):
+   - Updated to insert all seeded users with `status = "active"`
+   - Continues to accept `data/seed.json` in its original format (without status field)
+
+3. **User Module** (`app/users.py`):
+   - Updated `list_users()` to accept optional `disabled` parameter that filters by status
+   - Added `set_status(conn, user_id, status)` function to update user status
+
+4. **CLI** (`app/cli.py`):
+   - Updated `format_user()` to display status
+   - Added `disable <id>` command to disable users
+   - Added `--disabled` flag to `list` command to show only disabled users
+   - Updated usage messages
+
+## Test Results
+
+All 4 tests pass:
+- ✅ Seed loads 12 users
+- ✅ All seeded users have status "active"
+- ✅ Users can be disabled via `set_status()`
+- ✅ `list_users(disabled=True)` returns only disabled users
+
+DONE

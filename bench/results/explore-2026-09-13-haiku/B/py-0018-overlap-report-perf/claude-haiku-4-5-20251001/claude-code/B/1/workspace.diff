@@ -1,0 +1,49 @@
+diff --git a/overlaps/core.py b/overlaps/core.py
+index 89d84e0..4a5c137 100644
+--- a/overlaps/core.py
++++ b/overlaps/core.py
+@@ -23,11 +23,38 @@ def find_overlaps(bookings: list[Booking]) -> list[tuple[str, str]]:
+     a booking that ends exactly when another starts does not.
+     """
+     pairs: list[tuple[str, str]] = []
+-    for i in range(len(bookings)):
+-        a = bookings[i]
+-        for j in range(i + 1, len(bookings)):
+-            b = bookings[j]
+-            if overlaps(a, b):
+-                pairs.append((a.id, b.id) if a.id < b.id else (b.id, a.id))
++
++    # Create events: (time, is_start, booking_id, booking)
++    # is_start=True for start events, False for end events
++    # Sort by time, then by is_start (False before True so ends process first)
++    events = []
++    for booking in bookings:
++        events.append((booking.start, True, booking.id, booking))
++        events.append((booking.end, False, booking.id, booking))
++
++    events.sort(key=lambda e: (e[0], e[1]))
++
++    # Track active bookings by room
++    active_by_room: dict[str, list[Booking]] = {}
++
++    for time, is_start, booking_id, booking in events:
++        if not is_start:
++            # End event: remove from active
++            if booking.room in active_by_room:
++                active_by_room[booking.room].remove(booking)
++        else:
++            # Start event: check against all active bookings in same room
++            if booking.room not in active_by_room:
++                active_by_room[booking.room] = []
++
++            for active_booking in active_by_room[booking.room]:
++                # They overlap (same room, start1 < end2 and start2 < end1)
++                # We know start1 < start2 (or equal), and start2 < end1 is already true
++                # since active_booking is still active
++                pair = (active_booking.id, booking.id) if active_booking.id < booking.id else (booking.id, active_booking.id)
++                pairs.append(pair)
++
++            active_by_room[booking.room].append(booking)
++
+     pairs.sort()
+     return pairs

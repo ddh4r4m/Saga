@@ -1,0 +1,19 @@
+Perfect! I've successfully created a comprehensive test module for `merge_intervals`. Here's what was delivered:
+
+**Test Coverage:**
+- 19 tests covering all documented behaviors from the docstring
+- Tests for overlapping interval merging
+- Tests for touching intervals (e.g., (1,3) and (3,5) → (1,5))
+- Tests for intervals contained inside larger ones
+- Tests for unsorted input with sorted output
+- Tests for empty lists and single intervals
+- Tests for input immutability
+- Tests for invalid intervals (start > end) raising ValueError
+- Edge cases including negative numbers and zero spans
+
+**Contract Verification:**
+- ✅ G1: All 19 tests pass
+- ✅ G2: 12 test functions with required naming patterns (touching, containing, inside, unsorted, order, empty, single, mutation, modification, invalid)
+- ✅ G3: intervals.py remains untouched
+
+DONE

@@ -1,0 +1,12 @@
+Perfect! The test now passes. The issue was in the backoff formula on line 27 of `src/retry.ts`. 
+
+**The fix:** Changed from linear backoff `baseMs * (i + 1) + random()` to exponential backoff `baseMs * Math.pow(2, i) * (1 + random())`.
+
+This ensures the wait times follow the documented formula:
+- Retry 0: 100 × 2⁰ × (1 + 0.5) = 150ms
+- Retry 1: 100 × 2¹ × (1 + 0.5) = 300ms  
+- Retry 2: 100 × 2² × (1 + 0.5) = 600ms
+
+The third retry now fires at the correct time according to the payment gateway team's requirements.
+
+DONE

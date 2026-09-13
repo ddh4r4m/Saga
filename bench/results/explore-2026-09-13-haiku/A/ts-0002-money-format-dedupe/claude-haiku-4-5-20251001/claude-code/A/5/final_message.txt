@@ -1,0 +1,13 @@
+Perfect! The refactoring is complete. Here's what was done:
+
+✅ **Created src/money.ts** with a shared `formatMoney` function that uses the invoice's behavior (negative sign before the currency symbol: `-$1.50`)
+
+✅ **Updated invoice.ts** to import `formatMoney` from `./money.ts`, removing the local duplicate
+
+✅ **Updated receipt.ts** to import `formatMoney` from `./money.ts`, removing its broken implementation that was producing `$-2.50`
+
+✅ **Left src/legacy/report.ts unchanged** as requested
+
+✅ **All tests pass** — both invoice and receipt now consistently format negative amounts as `-$1.50`
+
+DONE

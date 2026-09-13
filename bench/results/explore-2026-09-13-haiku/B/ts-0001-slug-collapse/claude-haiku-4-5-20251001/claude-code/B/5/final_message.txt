@@ -1,0 +1,16 @@
+Excellent! The slugify function has been fixed. Here's what I changed:
+
+**The fix:**
+1. **Unicode normalization (NFD)**: Decomposes accented characters into base letters + combining marks
+2. **Removing combining marks**: Strips the accent marks to get plain ASCII letters (Café → cafe)
+3. **Collapsing separators**: Changed from single replacement to using `-+` regex to collapse multiple hyphens into one
+4. **Trimming edges**: Added regex to remove hyphens from the start and end of the slug
+
+**Results:**
+- ✅ "Hello  World!" → "hello-world" (separators collapsed, edges trimmed)
+- ✅ "Café au lait" → "cafe-au-lait" (accents folded to ASCII)
+- ✅ "--Hello  World!--" → "hello-world" (edge hyphens removed)
+- ✅ All contract checks passing
+- ✅ All tests passing
+
+DONE

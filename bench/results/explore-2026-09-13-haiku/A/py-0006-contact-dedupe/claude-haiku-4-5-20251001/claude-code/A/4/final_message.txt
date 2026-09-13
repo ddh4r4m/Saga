@@ -1,0 +1,11 @@
+Perfect! The `dedupe` function is now implemented and working correctly. It:
+
+- **Removes duplicate contacts** by tracking seen email addresses
+- **Handles capitalization differences** by normalizing emails to lowercase
+- **Handles whitespace padding** by stripping each email
+- **Matches by email** as specified
+- **Preserves list order** by keeping the first occurrence of each unique email
+
+The implementation passes all tests including the provided test case and handles edge cases for case-insensitivity and whitespace normalization.
+
+DONE

@@ -1,0 +1,7 @@
+Fixed! The issue was that the new vendor version of `slugify` (2.0.0) changed its API to accept an options object instead of a separator string. The call `slugify(title, "-")` was being ignored, so it defaulted to using underscores.
+
+The fix updates `pageSlug()` in `src/pages.ts` to use the correct API: `slugify(title, { separator: "-", lower: true })`. This ensures page slugs are generated with hyphens as expected, preserving existing links.
+
+All tests now pass.
+
+DONE

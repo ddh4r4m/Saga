@@ -1,0 +1,32 @@
+## Summary
+
+I've successfully refactored the Money class to store cents as integers instead of floats, eliminating floating-point precision drift while keeping the API and display format unchanged.
+
+### Changes made:
+
+1. **pricing/money.py**: 
+   - Changed `amount` storage from `float` to `Union[float, int]`
+   - Added `__post_init__` to convert float dollars to integer cents on initialization
+   - All arithmetic operations (`__add__`, `__mul__`, `__neg__`) now work with exact integer cents
+
+2. **pricing/format.py**: 
+   - Updated to convert cents back to dollars for display formatting
+   - Maintains the same `$X.XX` format
+
+3. **pricing/tax.py**: 
+   - Updated to work with integer cents
+   - Tax calculation and rounding now operates on cents directly
+
+4. **pricing/report.py**: 
+   - Updated CSV export to convert cents to dollars for output
+   - CSV values now display exactly (e.g., `0.30` instead of `0.30000000000000004`)
+
+### Results:
+- ✅ Three widgets at $0.10 now equal exactly $0.30 (30 cents internally)
+- ✅ All arithmetic is exact with no floating-point drift
+- ✅ Display format unchanged: `$0.30`
+- ✅ Tax rounding unchanged: still rounds to the nearest cent
+- ✅ CSV layout unchanged: still `name,qty,total` with two decimal places
+- ✅ All tests pass
+
+DONE

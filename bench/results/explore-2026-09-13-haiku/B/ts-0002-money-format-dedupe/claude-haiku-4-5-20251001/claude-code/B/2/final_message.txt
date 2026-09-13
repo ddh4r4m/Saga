@@ -1,0 +1,16 @@
+Perfect! I've successfully completed the refactoring. Here's what was done:
+
+1. **Created `src/money.ts`** - Extracted the `formatMoney` function using the invoice's implementation (which correctly formats negative amounts as `-$1.50` instead of `$-2.50`)
+
+2. **Updated `src/invoice.ts`** - Removed the local `formatMoney` function and imported it from `src/money.ts`
+
+3. **Updated `src/receipt.ts`** - Removed its incorrect `formatMoney` implementation and imported the corrected version from `src/money.ts`
+
+4. **Verified all contract checks pass:**
+   - ✅ G1: One `formatMoney` in `src/money.ts` imported by both `invoice.ts` and `receipt.ts`
+   - ✅ G2: All tests pass (receipt now formats refunds like the invoice does)
+   - ✅ G3: `src/legacy` remains untouched
+
+The receipt now consistently formats negative amounts as `-$1.50` (matching the invoice behavior), resolving the formatting discrepancy.
+
+DONE

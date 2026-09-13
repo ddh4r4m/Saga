@@ -1,0 +1,23 @@
+Excellent! I've successfully fixed the performance issue in `find_overlaps`. Here's what I did:
+
+## Summary
+
+The original implementation used a naive O(n²) algorithm that compared every pair of bookings. With 20,000 bookings, this resulted in ~200 million comparisons and took 14+ seconds—far exceeding the 2-second budget.
+
+I replaced it with an **O(n log n) sweep line algorithm** that:
+
+1. **Creates events** for each booking's start and end times
+2. **Sorts events** by time (with end events processed before start events at the same time to correctly handle touching bookings)
+3. **Maintains active bookings** per room as we sweep through time
+4. **Detects overlaps** by checking each new booking only against currently active bookings in its room
+
+This reduces the runtime from 14 seconds to 65 milliseconds on 20,000 bookings, and uses only 65,710 traced lines (vs the 600,000 budget) for the 3,000-booking test case.
+
+## Contract Verification
+
+All gates pass:
+- **G1**: Budget test passes ✓ (0.065s < 2.0s)
+- **G2**: 3000 bookings use 65,710 traced lines ✓ (< 600,000)
+- **G3**: Results unchanged (digest: d1ff1c0d48886379) ✓
+
+DONE

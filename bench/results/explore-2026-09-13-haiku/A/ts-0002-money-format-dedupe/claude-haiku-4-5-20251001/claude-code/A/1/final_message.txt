@@ -1,0 +1,17 @@
+Excellent! I've successfully completed the task. Here's what was done:
+
+## Summary of Changes
+
+1. **Created `/src/money.ts`**: New shared module with the `formatMoney` function using the invoice's correct behavior (sign before dollar sign: `-$1.50`)
+
+2. **Updated `/src/invoice.ts`**: Now imports `formatMoney` from `./money.ts` instead of defining it locally
+
+3. **Updated `/src/receipt.ts`**: Now imports `formatMoney` from `./money.ts`, fixing the bug where negative amounts displayed as `$-2.50` instead of `-$1.50`
+
+4. **Preserved `/src/legacy/report.ts`**: Left untouched with its own `fmt` function as requested
+
+Both tests pass, confirming:
+- Invoice formats refunds as `-$1.50` ✓
+- Receipt now formats refunds as `-$1.50` (fixed from incorrect `$-2.50`) ✓
+
+DONE

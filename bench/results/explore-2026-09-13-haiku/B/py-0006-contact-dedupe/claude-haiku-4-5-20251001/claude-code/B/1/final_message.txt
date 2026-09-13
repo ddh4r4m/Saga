@@ -1,0 +1,14 @@
+All contract checks are passing successfully:
+
+- **G1**: Entries with the same email collapse to one, ignoring case and surrounding whitespace ✓
+- **G2**: Entries with empty emails are never merged ✓  
+- **G3**: First occurrence is kept unchanged, order is preserved, input is not mutated ✓
+
+The `dedupe()` function has been implemented in `contacts/merge.py` and:
+- Normalizes emails by lowercasing and stripping whitespace before comparison
+- Only deduplicates contacts with non-empty emails
+- Keeps the first occurrence of each unique email
+- Returns a new list without mutating the input
+- Preserves the original order
+
+DONE

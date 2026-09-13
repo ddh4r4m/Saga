@@ -1,0 +1,19 @@
+Excellent! All contract requirements are satisfied:
+
+**Summary of the fix:**
+
+The race condition occurred in the Inventory class where the get-check-set sequence wasn't atomic. Two threads could both read the stock value before either wrote it back, causing overselling.
+
+**Solution:** Added internal thread synchronization using a `threading.Lock` to protect all critical sections:
+- `reserve()`: Locked during the read-check-write sequence to prevent overselling
+- `release()`: Locked during the read-modify-write sequence  
+- `available()`: Locked during the read to ensure consistency
+
+The public API remains completely unchanged—all three methods have identical signatures and behavior. The locking is an implementation detail internal to the class.
+
+**Verification:**
+- ✅ G1: Concurrent reserves no longer oversell (test passes)
+- ✅ G2: Releases racing with reserves work correctly
+- ✅ G3: Public methods unchanged
+
+DONE

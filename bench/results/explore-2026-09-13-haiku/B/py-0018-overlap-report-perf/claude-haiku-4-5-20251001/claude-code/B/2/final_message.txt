@@ -1,0 +1,23 @@
+Excellent! I've successfully optimized the `find_overlaps` function to scale from O(n²) to O(n log n). Here's what I did:
+
+## Summary of Changes
+
+**Problem**: The nightly clash report was timing out after ~1 hour instead of finishing in seconds. The O(n²) nested loop algorithm was checking every pair of bookings.
+
+**Solution**: Implemented a sweep line algorithm that:
+1. Sorts bookings by start time (once: O(n log n))
+2. Processes bookings in order, tracking only "active" bookings per room
+3. For each booking, checks only against the small set of active bookings in the same room
+4. Removes ended bookings from the active set
+
+**Performance**: 
+- 20,000 bookings now complete in ~55ms (vs. >1 hour before)
+- 3,000 bookings trace only 72,490 lines (vs. 600,000 limit)
+- Results are identical (digest matches exactly)
+
+**Contract Verification**:
+✅ G1: Budget test passes (20,000 bookings < 2.0 seconds)
+✅ G2: Line tracing budget met (72,490 < 600,000 lines)
+✅ G3: Results unchanged (digest d1ff1c0d48886379)
+
+DONE

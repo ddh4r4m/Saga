@@ -1,0 +1,24 @@
+Excellent! I've successfully implemented user status management. Here's what was done:
+
+**Changes made:**
+
+1. **app/db.py** — Added migration 3 to add a `status` column to the users table with a default value of "active"
+
+2. **app/users.py** — 
+   - Modified `list_users()` to accept an optional `disabled` parameter that filters by status
+   - Added `set_status()` function to update a user's status
+
+3. **app/cli.py** — 
+   - Added `disable <id>` command
+   - Added `--disabled` flag to `list` command to show only disabled users
+
+4. **data/seed.json** — No changes needed; it continues to work as-is since the migration provides the "active" default for all seeded users
+
+**Verification:**
+- All 4 tests in `tests/test_users.py` pass
+- Seeded users automatically get status="active"
+- `set_status()` properly changes user status
+- `list_users(disabled=True)` returns only disabled users
+- CLI commands work: `list`, `list --disabled`, `disable <id>`
+
+DONE

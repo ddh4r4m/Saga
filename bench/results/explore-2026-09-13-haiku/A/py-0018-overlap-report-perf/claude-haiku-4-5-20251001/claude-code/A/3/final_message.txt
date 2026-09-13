@@ -1,0 +1,14 @@
+Excellent! The fix is complete. I've successfully restored the sweep line algorithm for `find_overlaps` that scales as O(n log n) as documented in `docs/perf.md`.
+
+**What was changed:**
+- Replaced the O(n²) pairwise comparison algorithm with a sweep line event-based algorithm
+- The new implementation creates start/end events for each booking and sorts them by time
+- End events are processed before start events at the same time (to handle half-open intervals correctly)
+- Only active bookings in the same room are compared, avoiding unnecessary O(n²) comparisons
+
+**Results:**
+- Budget test: Now completes 20,000 bookings in ~0.067 seconds (previously took 14.3 seconds)
+- All tests pass with identical results to the previous implementation
+- Handles half-open intervals correctly (booking ending at T doesn't clash with booking starting at T)
+
+DONE

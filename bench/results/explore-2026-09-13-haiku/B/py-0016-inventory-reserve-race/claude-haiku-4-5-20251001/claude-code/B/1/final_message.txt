@@ -1,0 +1,23 @@
+Excellent! All contract requirements are met. Here's what I fixed:
+
+## The Race Condition
+The `reserve` and `release` methods had a non-atomic check-then-act pattern:
+- Thread A reads stock (e.g., 5 units)
+- Thread B reads stock (also 5 units) 
+- Both threads pass validation (5 >= 3)
+- Both threads write back decreased stock (both set to 2)
+- Result: 6 units reserved but stock shows 2 (oversold)
+
+## The Fix
+I added a `threading.Lock` to the Inventory class and protected the critical sections:
+- `reserve`: wrapped the read-check-write sequence with `with self._lock:`
+- `release`: wrapped the read-add-write sequence with `with self._lock:`
+
+This ensures only one thread can execute the critical section at a time, making operations atomic.
+
+## Verification
+✅ All tests pass (including the race condition reproduction)  
+✅ All saga gate checks pass (G1, G2, G3)  
+✅ Public API signatures unchanged  
+
+DONE

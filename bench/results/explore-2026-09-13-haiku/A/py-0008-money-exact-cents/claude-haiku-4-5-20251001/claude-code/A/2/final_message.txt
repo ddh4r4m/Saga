@@ -1,0 +1,23 @@
+Perfect! The fix is complete and all tests pass. Here's what I changed:
+
+## Summary of Changes
+
+**1. `pricing/money.py`** - Converted to store cents as integers:
+   - Changed internal storage from `amount: float` to `cents: int`
+   - Added `__init__` that converts float dollars to integer cents (e.g., 0.10 → 10)
+   - Added `amount` property to convert cents back to dollars for display and compatibility
+   - Updated arithmetic operations to work with integer cents
+   - Implemented `__eq__` and `__hash__` for proper object comparison (fixes the precision comparison issue)
+
+**2. `pricing/report.py`** - Ensured CSV shows two decimal places:
+   - Changed from `{line_total(price, qty).amount}` to `{amount:.2f}` formatting
+
+## Results
+✅ Three dimes (0.10 + 0.10 + 0.10) now equal exactly 0.30 with no drift
+✅ Equality comparison works correctly: `Money(0.30) == Money(0.10 * 3)` is now `True`
+✅ Display format preserved: shows as "$0.30" 
+✅ CSV format preserved: outputs "0.30" (two decimals)
+✅ Tax rounding still works correctly
+✅ All tests pass
+
+DONE

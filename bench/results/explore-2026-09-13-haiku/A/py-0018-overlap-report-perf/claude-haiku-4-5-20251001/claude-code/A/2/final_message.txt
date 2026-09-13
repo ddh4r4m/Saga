@@ -1,0 +1,23 @@
+Perfect! The fix is complete and working correctly. Here's what I did:
+
+## Summary
+
+I replaced the O(n²) pairwise comparison algorithm in `find_overlaps` with an **O(n log n) sweep line algorithm**:
+
+1. **Create events**: Each booking generates a start event and an end event
+2. **Sort by time**: Events are sorted chronologically (end events before start events at the same time, preserving half-open interval semantics)
+3. **Process events**: 
+   - When a booking starts, check it against all active bookings in the same room
+   - When a booking ends, remove it from the active set
+4. **Return results**: Sorted list of clashing pairs (same format as before)
+
+This maintains **exactly the same results** as the original implementation while achieving the O(n log n) scaling required by `docs/perf.md`.
+
+**Test results:**
+- All 4 tests pass ✓
+- Budget test (20,000 bookings): **0.078 seconds** (vs. 2.0 second limit) ✓
+- Simple clash detection: Works ✓
+- Half-open intervals: Correctly respected ✓
+- Room filtering: Works ✓
+
+DONE

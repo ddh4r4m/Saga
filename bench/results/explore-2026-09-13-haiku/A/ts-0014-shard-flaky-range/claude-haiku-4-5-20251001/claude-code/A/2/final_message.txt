@@ -1,0 +1,13 @@
+## Summary
+
+I've identified and fixed the issue. The problem was in the **code**, not the test.
+
+**Root cause:** The `shardFor` function in `src/shard.ts:16` was using JavaScript's native modulo operator (`%`), which returns negative values when the dividend is negative. However, the comment explicitly states the function should implement "Python's % semantics," which always returns non-negative results when the divisor is positive.
+
+**The fix:** Changed the modulo operation from `hashKey(key) % shards` to `((h % shards) + shards) % shards`, which ensures the result is always in the correct range `[0, shards)`.
+
+**Verification:** All 20 consecutive test runs now pass consistently, confirming the fix eliminates the flakiness. Both tests pass:
+- "live assignments do not move" ✔
+- "shard index is always within range" ✔
+
+DONE

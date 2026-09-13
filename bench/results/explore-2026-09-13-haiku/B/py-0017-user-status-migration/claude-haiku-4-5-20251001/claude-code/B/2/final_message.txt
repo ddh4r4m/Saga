@@ -1,0 +1,24 @@
+Perfect! All requirements have been implemented and verified:
+
+**Changes made:**
+
+1. **app/db.py**: Added migration 3 to add a `status` column to the users table with default value 'active'
+
+2. **app/users.py**: 
+   - Updated `list_users()` to accept a `disabled` parameter (defaults to False)
+   - Added `set_status()` function to update a user's status
+
+3. **app/cli.py**: 
+   - Added `disable <id>` command to disable a user
+   - Added `--disabled` flag to `list` command to show only disabled users
+
+**Verification:**
+- ✅ All 4 tests in tests/test_users.py pass
+- ✅ Migration works correctly with version-2 databases
+- ✅ All seeded users are active by default
+- ✅ set_status() correctly updates user status
+- ✅ list_users() filters correctly with disabled flag
+- ✅ seed.json file remains untouched
+- ✅ All contract gates (G1, G2, G3) verified by saga gate check
+
+DONE

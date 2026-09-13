@@ -1,0 +1,5 @@
+Perfect! The build is now fixed. The issue was a trailing space in `schema/order.json` on line 12: the type was `"integer "` instead of `"integer"`. This caused the schema parser to treat it as an unknown type, which generated a validator that rejects all values, making all 14 order record validation checks fail.
+
+The build now completes successfully with all 63 checks passing.
+
+DONE

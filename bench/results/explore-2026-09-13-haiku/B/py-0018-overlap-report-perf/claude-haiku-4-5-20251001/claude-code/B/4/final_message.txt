@@ -1,0 +1,24 @@
+Perfect! All contract checks pass successfully. Here's a summary of the fix:
+
+## Performance Optimization Summary
+
+**Problem**: The O(n²) implementation of `find_overlaps` was comparing every booking with every other booking, causing the test to run in 14.2 seconds instead of the required < 2 seconds.
+
+**Solution**: Implemented a sweep-line algorithm that scales as O(n log n):
+
+1. Create start/end events for each booking and sort them
+2. Process events in chronological order, maintaining active bookings per room
+3. When a booking starts, check it only against active bookings in that room (not all previous ones)
+4. Remove bookings when they end
+
+**Results**:
+- Budget test: **0.065s** (was 14.2s) - **217x faster**
+- 3000 bookings across 2 rooms: **73,696 traced lines** (under 600,000 budget)
+- Output digest matches exactly: `d1ff1c0d48886379` (results unchanged)
+
+All contract checks pass:
+- ✅ G1: Budget test passes
+- ✅ G2: Efficient line tracing
+- ✅ G3: Results unchanged
+
+DONE

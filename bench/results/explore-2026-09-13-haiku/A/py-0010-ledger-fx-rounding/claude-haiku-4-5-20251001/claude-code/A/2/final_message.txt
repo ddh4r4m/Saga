@@ -1,0 +1,7 @@
+Perfect! The reconciliation now passes with 0 mismatches. The issue was in the `convert` function which was truncating (using `int()`) instead of rounding when performing currency conversions. 
+
+When converting USD to EUR with a rate of 0.9228, truncation loses the fractional part of each conversion. Over 3200+ transactions involving account 4471, these tiny losses accumulated to the 0.30 EUR discrepancy.
+
+By changing to `round()`, the conversions now properly handle the fractional cents, and the final balance matches the control file exactly.
+
+DONE

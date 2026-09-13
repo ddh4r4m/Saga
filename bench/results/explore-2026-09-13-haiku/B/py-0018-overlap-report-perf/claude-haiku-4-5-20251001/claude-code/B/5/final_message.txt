@@ -1,0 +1,20 @@
+Excellent! All contract requirements are met. Let me verify the solution summary:
+
+**What was fixed:**
+
+The original `find_overlaps` implementation used a simple nested loop that checked every pair of bookings (O(n²) across all bookings), including pairs from different rooms that can't possibly overlap. With 20,000 bookings in 40 rooms, this meant 200 million comparisons.
+
+**The solution:**
+
+1. **Group by room first** - Only check pairs within the same room, reducing the problem size dramatically
+2. **Sort by start time** - Process bookings in order so we can maintain an "active" list
+3. **Track active intervals** - Keep only bookings that could overlap with future ones, filtering out those that ended
+4. **Sweep line approach** - This achieves O(n log n) scaling as described in docs/perf.md
+
+**Results:**
+- Budget test: **0.048s** (was 14.2s) ✅
+- Line budget (G2): **✅ Under 600k lines for 3000 bookings in 2 rooms**
+- Results correctness (G3): **✅ Unchanged**
+- All unit tests: **✅ Pass**
+
+DONE

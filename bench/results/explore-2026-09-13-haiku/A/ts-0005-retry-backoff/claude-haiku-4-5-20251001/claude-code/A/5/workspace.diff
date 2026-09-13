@@ -1,0 +1,13 @@
+diff --git a/src/retry.ts b/src/retry.ts
+index 1ba4618..2432344 100644
+--- a/src/retry.ts
++++ b/src/retry.ts
+@@ -24,7 +24,7 @@ export async function retry<T>(fn: () => Promise<T>, options: RetryOptions): Pro
+     } catch (err) {
+       lastError = err;
+       if (i + 1 < options.attempts) {
+-        const wait = options.baseMs * (i + 1) + random();
++        const wait = options.baseMs * Math.pow(2, i) * (1 + random());
+         await sleep(wait);
+       }
+     }

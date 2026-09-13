@@ -1,0 +1,16 @@
+## Summary
+
+I've successfully fixed the race condition in the Inventory class. The problem was that the `reserve()` method had a non-atomic read-check-write sequence that could be interleaved when called concurrently.
+
+**The fix**: Added thread-safe locking using per-SKU locks to make the critical sections atomic:
+- Added `_locks` dictionary to maintain one lock per SKU
+- Added `_locks_lock` to safely create/access SKU locks
+- Wrapped the critical sections in both `reserve()` and `release()` with their SKU's lock
+
+**Results**:
+- The race condition test now passes consistently
+- All existing tests still pass  
+- Public API unchanged (no method signatures modified)
+- Allows concurrent operations on different SKUs for good performance
+
+DONE

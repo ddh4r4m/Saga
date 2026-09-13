@@ -1,0 +1,8 @@
+Perfect! All tests pass. I've fixed the issue by:
+
+1. **Added a new error code** in `src/errors.ts`: `E_INVALID_QUANTITY` with the message "quantity must be a positive whole number"
+2. **Added validation** in `src/commands/add.ts`: The `addItem` function now checks if `qty <= 0` and rejects it before processing
+
+The validation happens before the SKU is even checked, ensuring any zero or negative quantity is caught immediately with a clear error message containing the word "quantity" that the tests expect.
+
+DONE

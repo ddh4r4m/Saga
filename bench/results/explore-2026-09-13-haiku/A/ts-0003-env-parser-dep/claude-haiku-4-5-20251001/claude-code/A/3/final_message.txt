@@ -1,0 +1,8 @@
+Excellent! The parser correctly handles:
+- Unquoted values: `PORT=8080`, `DEBUG=false`
+- Double-quoted values with spaces: `APP_NAME="Order Service"`
+- Single-quoted values with hashes inside: `MOTD='hello # not a comment'`
+
+The config loading is working again without any external dependencies. The build box can run tests without needing any network access.
+
+DONE

@@ -1,0 +1,7 @@
+Perfect! The build now passes. The issue was a **trailing space in the `quantity` field type** in `schema/order.json`. The type was `"integer "` instead of `"integer"`, which caused the generator to treat it as an unknown type and reject all values, resulting in 14 validation failures for the order records.
+
+The fix was simple: remove the trailing space from line 12 of `schema/order.json`.
+
+**Build status**: ✅ All 63 checks passed, 41 validators generated successfully.
+
+DONE

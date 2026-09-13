@@ -1,0 +1,16 @@
+Excellent! All contract checks pass. Here's what I fixed:
+
+1. **Removed the phantom dependency**: Deleted `"envfile-parse-strict": "^2.1.0"` from package.json
+2. **Implemented a simple env parser**: Added `parseEnvFile()` function directly in config.ts that:
+   - Splits the input by newlines
+   - Skips empty lines and comments (lines starting with #)
+   - Parses KEY=VALUE format
+   - Handles quoted values (both single and double quotes)
+   - Strips the quotes but preserves the content, including special characters like # inside quotes
+
+The solution passes all three contract checks:
+- **G1**: Tests pass with 0 failures ✓
+- **G2**: No dependencies declared (count = 0) ✓
+- **G3**: Quoted values survive intact, including "Order Service" and "hello # not a comment" ✓
+
+DONE

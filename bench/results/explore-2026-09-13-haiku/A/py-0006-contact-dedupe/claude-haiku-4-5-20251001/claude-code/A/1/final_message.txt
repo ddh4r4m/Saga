@@ -1,0 +1,11 @@
+Perfect! The `dedupe()` function has been successfully implemented in `contacts/merge.py`. 
+
+The implementation:
+- Normalizes emails with `.lower().strip()` to handle capitalization and whitespace differences across feeds
+- Tracks seen emails in a set for efficient O(1) lookups
+- Keeps only the first occurrence of each unique email
+- Preserves the original order of the contacts
+
+The test confirms that duplicate entries with the same email are correctly collapsed to one entry.
+
+DONE

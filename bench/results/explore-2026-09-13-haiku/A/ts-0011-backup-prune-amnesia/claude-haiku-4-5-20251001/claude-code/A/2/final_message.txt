@@ -1,0 +1,9 @@
+Done. The fix addresses both issues:
+
+1. **Weekly rule bug (line 42)**: Changed `slice(1, policy.keepWeekly)` to `slice(0, policy.keepWeekly)`. This fixes the off-by-one error where the current week was being skipped. Now `keepWeekly 4` correctly keeps 4 weeks (including the current one), not 3. The finance volume will now get all 8 weekly snapshots as expected.
+
+2. **Pinned tag protection (line 43)**: Added `&& !b.tags.includes("pinned")` to ensure snapshots tagged as legal holds are never returned for deletion, regardless of policy or age.
+
+The test passes, the signature is unchanged, and the change is minimal and focused.
+
+DONE

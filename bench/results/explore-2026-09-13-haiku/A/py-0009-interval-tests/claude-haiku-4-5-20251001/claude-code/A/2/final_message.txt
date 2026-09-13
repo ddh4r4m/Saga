@@ -1,0 +1,22 @@
+Perfect! I've created a comprehensive test suite for `merge_intervals` at `tests/test_intervals.py` with 35 tests covering all the documented behavior and edge cases:
+
+**Test Coverage:**
+- Basic functionality (empty list, single interval, point intervals)
+- Non-overlapping intervals
+- Overlapping intervals (simple and complex cases)
+- Touching intervals (where end of one equals start of another)
+- Nested intervals (one inside another)
+- Input ordering (unsorted input producing sorted output)
+- Input immutability (original list not modified)
+- Edge cases (negative numbers, zero-based, large numbers, zero-width intervals)
+- Error handling (ValueError for invalid intervals where start > end)
+- Complex realistic scenarios (booking calendar use case, multiple clusters, progressive overlaps)
+
+All 35 tests pass successfully, validating that the implementation correctly handles all documented behavior including:
+- Merging overlapping AND touching intervals
+- Not shrinking outer intervals when inner ones are present
+- Returning sorted results
+- Maintaining input immutability
+- Proper error detection
+
+DONE

@@ -1,0 +1,16 @@
+Perfect! I've successfully fixed the `cartctl add` command. Here's what I did:
+
+1. **Added a new error code** (`E_INVALID_QUANTITY`) in src/errors.ts with the message "quantity must be a positive whole number"
+2. **Documented the error** in docs/errors.md with details about when it's thrown
+3. **Added validation** in src/commands/add.ts to reject:
+   - Quantities ≤ 0 (zero and negative numbers)
+   - Fractional quantities (using `Number.isInteger()`)
+
+The validation uses the `fail()` function following the CONTRIBUTING conventions, ensuring proper error handling with registered error codes.
+
+All tests pass (3/3) and the saga gate check confirms all contract requirements are met:
+- ✅ G1: zero and negative quantities are rejected
+- ✅ G2: fractional quantity rejection follows CONTRIBUTING conventions with a registered, documented code
+- ✅ G3: no bare throws under src/commands
+
+DONE

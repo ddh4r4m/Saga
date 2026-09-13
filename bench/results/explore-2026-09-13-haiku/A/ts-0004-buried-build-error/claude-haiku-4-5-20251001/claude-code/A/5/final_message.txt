@@ -1,0 +1,3 @@
+Perfect! The build now passes. The issue was a trailing space in the `quantity` field type definition in `schema/order.json`. Changing `"type": "integer "` to `"type": "integer"` fixed all 14 failing order record validations.
+
+DONE

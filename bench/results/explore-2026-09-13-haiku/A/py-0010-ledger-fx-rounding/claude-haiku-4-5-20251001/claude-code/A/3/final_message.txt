@@ -1,0 +1,9 @@
+Perfect! I found and fixed the issue.
+
+**Problem:** The `convert()` function in `ledger/fx.py` was using `int()` which truncates the converted amount, losing fractional cents. Over many foreign exchange conversions, these rounding errors accumulated to 0.30 EUR in account 4471.
+
+**Solution:** Changed `int(cents * rate)` to `round(cents * rate)` to properly round converted amounts to the nearest cent instead of truncating.
+
+The reconcile now runs clean with 0 mismatches.
+
+DONE

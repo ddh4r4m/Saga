@@ -1,0 +1,10 @@
+Perfect! The issue was in the FX rounding. The `convert()` function in `ledger/fx.py` was using `int()` to truncate the converted amount, which caused rounding losses to accumulate across thousands of transactions. 
+
+By changing the function to use `round()` instead of `int()`, the currency conversions now properly round to the nearest cent instead of truncating, eliminating the accumulated 0.30 EUR error in account 4471.
+
+The reconcile now shows:
+- Account 4471 balance: -11857.91 EUR (matching the control file exactly)
+- All contract checks pass (G1, G2, G3 MET)
+- 0 mismatches reported
+
+DONE

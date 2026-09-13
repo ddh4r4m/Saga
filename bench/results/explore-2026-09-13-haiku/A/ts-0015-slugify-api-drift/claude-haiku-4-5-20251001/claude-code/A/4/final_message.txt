@@ -1,0 +1,3 @@
+Excellent! Both tests are now passing. The issue was that the vendor bump to `slugify` 2.0.0 changed the API from accepting the separator as a direct string parameter to requiring an options object. By updating line 11 in `src/pages.ts` to pass `{ separator: "-", lower: true }`, the page slugs are now generated with hyphens instead of underscores, maintaining backward compatibility with existing links.
+
+DONE

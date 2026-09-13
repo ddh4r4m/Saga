@@ -1,0 +1,3 @@
+Excellent! All contract checks pass. The issue was a simple typo in `schema/order.json`: the `quantity` field had type `"integer "` (with a trailing space) instead of `"integer"`. This caused the validator generator to emit `() => false` for that field, making all order record validations fail. Removing the trailing space fixed all 14 failing checks.
+
+DONE

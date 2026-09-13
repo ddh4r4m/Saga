@@ -1,0 +1,21 @@
+Excellent! All contract requirements are satisfied. Let me verify the fix one more time by reviewing what was done:
+
+**Summary of changes:**
+
+1. **Removed the fake dependency**: Deleted the import of the non-existent `envfile-parse-strict` package from `config.ts`
+
+2. **Implemented a simple env parser**: Added a `parseEnvFile()` function directly in `config.ts` that:
+   - Parses KEY=VALUE format lines
+   - Handles double-quoted values like `APP_NAME="Order Service"`
+   - Handles single-quoted values like `MOTD='hello # not a comment'`
+   - Preserves hashes inside quotes (they're not treated as comments)
+   - Strips comments from unquoted values
+
+3. **Cleaned up package.json**: Removed the `dependencies` section entirely (0 dependencies, 0 devDependencies as required)
+
+**All contract checks pass:**
+- ✓ G1: Config loads without the phantom package (tests pass)
+- ✓ G2: No dependencies declared (0 total)
+- ✓ G3: Quoted values survive, including hashes inside quotes
+
+DONE

@@ -1,0 +1,76 @@
+diff --git a/pricing/money.py b/pricing/money.py
+index f586e26..451e8f9 100644
+--- a/pricing/money.py
++++ b/pricing/money.py
+@@ -1,19 +1,53 @@
+ """Money value object."""
+-from dataclasses import dataclass
+ 
+ 
+-@dataclass(frozen=True)
+ class Money:
+-    amount: float
++    __slots__ = ("cents",)
++
++    def __init__(self, dollars: float | int):
++        object.__setattr__(self, "cents", round(dollars * 100))
++
++    @property
++    def amount(self) -> float:
++        return self.cents / 100
+ 
+     def __add__(self, other: "Money") -> "Money":
+-        return Money(self.amount + other.amount)
++        result = Money.__new__(Money)
++        object.__setattr__(result, "cents", self.cents + other.cents)
++        return result
+ 
+     def __mul__(self, qty: int) -> "Money":
+-        return Money(self.amount * qty)
++        result = Money.__new__(Money)
++        object.__setattr__(result, "cents", self.cents * qty)
++        return result
+ 
+     def __neg__(self) -> "Money":
+-        return Money(-self.amount)
++        result = Money.__new__(Money)
++        object.__setattr__(result, "cents", -self.cents)
++        return result
++
++    def __eq__(self, other: object) -> bool:
++        if not isinstance(other, Money):
++            return NotImplemented
++        return self.cents == other.cents
++
++    def __hash__(self) -> int:
++        return hash(self.cents)
++
++    def __repr__(self) -> str:
++        return f"Money({self.amount})"
++
++    def __lt__(self, other: "Money") -> bool:
++        return self.cents < other.cents
++
++    def __le__(self, other: "Money") -> bool:
++        return self.cents <= other.cents
++
++    def __gt__(self, other: "Money") -> bool:
++        return self.cents > other.cents
++
++    def __ge__(self, other: "Money") -> bool:
++        return self.cents >= other.cents
+ 
+ 
+ ZERO = Money(0.0)
+diff --git a/pricing/report.py b/pricing/report.py
+index 4545891..27fba10 100644
+--- a/pricing/report.py
++++ b/pricing/report.py
+@@ -5,5 +5,6 @@ from .cart import Line, line_total
+ def to_csv(lines: list[Line]) -> str:
+     rows = ["name,qty,total"]
+     for name, price, qty in lines:
+-        rows.append(f"{name},{qty},{line_total(price, qty).amount}")
++        total = line_total(price, qty)
++        rows.append(f"{name},{qty},{total.amount:.2f}")
+     return "\n".join(rows) + "\n"

@@ -1,0 +1,9 @@
+Perfect! All contract checks are now passing. The issue was in the `shardFor` function in `src/shard.ts`. 
+
+**The problem:** JavaScript's `%` operator returns negative values for negative dividends, while Python's `%` always returns non-negative remainder when the divisor is positive. When a key hashed to a negative number, the test would randomly fail because `shardFor` would return an invalid shard index outside the range [0, shards).
+
+**The fix:** I updated the modulo operation to use `((hash % shards) + shards) % shards`, which ensures Python-like behavior and guarantees non-negative results for all inputs.
+
+This fixes the flakiness by ensuring all keys map to valid shard indices consistently.
+
+DONE

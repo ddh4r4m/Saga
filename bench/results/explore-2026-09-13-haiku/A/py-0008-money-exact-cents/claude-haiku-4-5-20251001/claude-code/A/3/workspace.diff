@@ -1,0 +1,77 @@
+diff --git a/pricing/format.py b/pricing/format.py
+index 42b1b31..2a3eb30 100644
+--- a/pricing/format.py
++++ b/pricing/format.py
+@@ -3,5 +3,7 @@ from .money import Money
+ 
+ 
+ def format_money(m: Money) -> str:
+-    sign = "-" if m.amount < 0 else ""
+-    return f"{sign}${abs(m.amount):,.2f}"
++    cents = abs(m.cents)
++    sign = "-" if m.cents < 0 else ""
++    dollars = cents / 100
++    return f"{sign}${dollars:,.2f}"
+diff --git a/pricing/money.py b/pricing/money.py
+index f586e26..ece35be 100644
+--- a/pricing/money.py
++++ b/pricing/money.py
+@@ -4,16 +4,29 @@ from dataclasses import dataclass
+ 
+ @dataclass(frozen=True)
+ class Money:
+-    amount: float
++    cents: int
++
++    def __init__(self, dollars: float):
++        object.__setattr__(self, "cents", round(dollars * 100))
++
++    @property
++    def amount(self) -> float:
++        return self.cents / 100
+ 
+     def __add__(self, other: "Money") -> "Money":
+-        return Money(self.amount + other.amount)
++        m = Money.__new__(Money)
++        object.__setattr__(m, "cents", self.cents + other.cents)
++        return m
+ 
+     def __mul__(self, qty: int) -> "Money":
+-        return Money(self.amount * qty)
++        m = Money.__new__(Money)
++        object.__setattr__(m, "cents", self.cents * qty)
++        return m
+ 
+     def __neg__(self) -> "Money":
+-        return Money(-self.amount)
++        m = Money.__new__(Money)
++        object.__setattr__(m, "cents", -self.cents)
++        return m
+ 
+ 
+ ZERO = Money(0.0)
+diff --git a/pricing/report.py b/pricing/report.py
+index 4545891..27fba10 100644
+--- a/pricing/report.py
++++ b/pricing/report.py
+@@ -5,5 +5,6 @@ from .cart import Line, line_total
+ def to_csv(lines: list[Line]) -> str:
+     rows = ["name,qty,total"]
+     for name, price, qty in lines:
+-        rows.append(f"{name},{qty},{line_total(price, qty).amount}")
++        total = line_total(price, qty)
++        rows.append(f"{name},{qty},{total.amount:.2f}")
+     return "\n".join(rows) + "\n"
+diff --git a/pricing/tax.py b/pricing/tax.py
+index d7b6447..8d18a12 100644
+--- a/pricing/tax.py
++++ b/pricing/tax.py
+@@ -4,4 +4,7 @@ from .money import Money
+ 
+ def apply_tax(subtotal: Money, rate: float) -> Money:
+     """Return subtotal plus tax, rounded to the cent."""
+-    return Money(round(subtotal.amount * (1 + rate), 2))
++    cents = round(subtotal.cents * (1 + rate))
++    m = Money.__new__(Money)
++    object.__setattr__(m, "cents", cents)
++    return m

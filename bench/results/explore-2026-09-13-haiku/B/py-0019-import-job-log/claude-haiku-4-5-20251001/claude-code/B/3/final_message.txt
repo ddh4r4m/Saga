@@ -1,0 +1,20 @@
+Perfect! I've successfully fixed the nordic import issue. Here's a summary of what I found and fixed:
+
+## Root Cause
+The nordic vendor's row 517 contained a price with a non-breaking space (U+00A0) as a thousands separator: `'3\xa0868.13'`. The `parse_price()` function in `importer/parse.py` only removed commas but ignored other whitespace characters used as locale-specific thousand separators, causing that row to be skipped.
+
+## The Fix
+Updated the `parse_price()` function to also remove regular spaces and non-breaking spaces:
+```python
+cleaned = text.strip().replace(",", "").replace(" ", "").replace("\xa0", "")
+```
+
+This matches the function's own documentation which states vendors use "a comma, a space or a no-break space" as thousands separators.
+
+## Verification
+- ✅ Test `test_nightly_fixture_imports_cleanly` now passes (G1)
+- ✅ Manifest reconciliation remains strict (G2)  
+- ✅ Vendor files and manifest unchanged (G3)
+- ✅ All saga gate checks pass
+
+DONE

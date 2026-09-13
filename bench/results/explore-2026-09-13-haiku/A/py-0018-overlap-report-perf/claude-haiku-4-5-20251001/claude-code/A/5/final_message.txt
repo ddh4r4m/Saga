@@ -1,0 +1,19 @@
+Perfect! The fix is complete and all tests pass.
+
+## Summary
+
+I've fixed the performance regression in `find_overlaps` by replacing the O(n²) algorithm with an O(n log n) sweep line algorithm:
+
+**The Problem**: The original nested loop compared every pair of bookings (200 million comparisons for 20,000 bookings), taking 14.4 seconds.
+
+**The Solution**: An event-based sweep line approach that:
+1. Creates start/end events for each booking
+2. Sorts events by time (ends before starts at the same time)
+3. Processes events sequentially, maintaining a set of active bookings per room
+4. Only compares new bookings against currently active ones in the same room
+
+**Performance**: 20,000 bookings now process in **0.034s** (was 14.4s) — a **420x speedup** — comfortably meeting the 2-second budget. The algorithm scales as O(n log n) as documented in `docs/perf.md`, and produces identical results.
+
+All tests pass, including the previously failing budget test.
+
+DONE

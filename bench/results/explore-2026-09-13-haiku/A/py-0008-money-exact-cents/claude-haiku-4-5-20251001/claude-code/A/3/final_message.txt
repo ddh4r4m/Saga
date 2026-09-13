@@ -1,0 +1,30 @@
+Excellent! I've successfully fixed the floating-point precision issue. Here's a summary of the changes:
+
+## Changes Made
+
+**1. Money class (money.py)**
+- Changed from storing `amount: float` to `cents: int` 
+- Custom `__init__` converts dollar amounts to integer cents using `round(dollars * 100)`
+- Added `amount` property that returns dollars by dividing cents by 100
+- Updated arithmetic operations (`__add__`, `__mul__`, `__neg__`) to work with integer cents
+
+**2. Tax calculation (tax.py)**
+- Updated to round operations on integer cents: `round(subtotal.cents * (1 + rate))`
+- Ensures precision by working entirely with integers
+
+**3. CSV export (report.py)**
+- Updated formatting to display cents as dollars with 2 decimals: `{total.amount:.2f}`
+
+**4. Display formatting (format.py)**
+- Updated to work with integer cents and format correctly for display
+
+## Verification
+
+✓ Three widgets at $0.10 each now equals exactly $0.30 (30 cents)
+✓ Equality comparisons work correctly: `cart_total([("widget", Money(0.10), 3)]) == Money(0.30)` returns `True`
+✓ CSV output maintains 2 decimal places: `widget,3,0.30`
+✓ Display formatting unchanged: `$0.30`, `$1,000.00`, `-$5.25`
+✓ Tax rounding works correctly
+✓ All tests pass
+
+DONE

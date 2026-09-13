@@ -1,0 +1,14 @@
+Perfect! The fix is complete. I've corrected the exponential backoff formula in the retry implementation.
+
+**What was fixed:**
+- **Before:** `options.baseMs * (i + 1) + random()` (linear backoff)
+- **After:** `options.baseMs * Math.pow(2, i) * (1 + random())` (exponential backoff)
+
+This now properly implements the documented formula where waits grow exponentially with jitter:
+- Retry 0: 100ms × 2^0 × (1 + r) = 100 × (1 + r)
+- Retry 1: 100ms × 2^1 × (1 + r) = 200 × (1 + r)
+- Retry 2: 100ms × 2^2 × (1 + r) = 400 × (1 + r)
+
+The test passes, and all contract checks are satisfied.
+
+DONE

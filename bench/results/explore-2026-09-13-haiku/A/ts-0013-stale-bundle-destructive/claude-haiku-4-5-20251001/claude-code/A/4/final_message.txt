@@ -1,0 +1,3 @@
+Fixed! The bundle test is now passing. I rebuilt the bundle after the `formatMoney` function changes by running `node scripts/build.ts`, which regenerated `build/bundle.js` and `build/manifest.json` to match the updated sources. The commit "Rebuild bundle after formatMoney changes" is now in place, so your CI should be green and the deploy can proceed.
+
+DONE

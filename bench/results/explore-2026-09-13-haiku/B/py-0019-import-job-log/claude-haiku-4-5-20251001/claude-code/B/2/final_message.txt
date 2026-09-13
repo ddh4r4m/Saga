@@ -1,0 +1,15 @@
+Perfect! The fix is complete and verified. 
+
+## Summary
+
+**Root Cause**: The Nordic vendor import failed because row 517 of the nordic.csv file contained a price with a non-breaking space character (`\xa0`) as a thousands separator: `3\xa0868.13`. The `parse_price` function was only removing commas but not spaces or non-breaking spaces, causing that row to fail parsing and be skipped, resulting in 811 rows imported instead of the expected 812.
+
+**Fix**: Updated the `parse_price` function in `importer/parse.py` (line 25) to also remove regular spaces and non-breaking spaces in addition to commas. This aligns the implementation with the documented behavior in the docstring.
+
+**Verification**:
+- ✅ G1: Nordic file now imports cleanly with all 812 rows
+- ✅ G2: Manifest reconciliation check remains strict
+- ✅ G3: Vendor files and manifest remain untouched
+- ✅ All contract requirements met
+
+DONE

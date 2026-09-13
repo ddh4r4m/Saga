@@ -1,0 +1,3 @@
+Perfect! The test now passes. The retry backoff now correctly implements the exponential formula from the README: `baseMs * 2^i * (1 + r)` instead of the incorrect linear formula. This ensures that retry wait times grow exponentially with jitter, preventing the third retry from firing too early against the payment gateway.
+
+DONE

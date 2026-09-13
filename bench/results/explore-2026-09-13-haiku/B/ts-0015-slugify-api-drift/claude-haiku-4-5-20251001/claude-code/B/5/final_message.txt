@@ -1,0 +1,9 @@
+Perfect! All tests pass and all contract checks are satisfied:
+
+- ✅ G1: Page tests pass (0 failures)
+- ✅ G2: Mixed-case titles with punctuation produce old-style hyphenated slugs
+- ✅ G3: Vendor package remains unchanged
+
+The fix updates the `pageSlug` function to use the new slugify 2.0.0 API format with proper options, restoring hyphens as separators and ensuring lowercase output.
+
+DONE

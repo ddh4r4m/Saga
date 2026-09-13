@@ -1,0 +1,17 @@
+Perfect! The fix is complete and all checks pass. Here's what was changed:
+
+**The two critical fixes:**
+
+1. **Pinned snapshot protection (lines 41-43)**: Added a loop that marks all snapshots tagged "pinned" as protected from deletion, before policy rules are applied. This ensures they're never deleted, regardless of age or policy.
+
+2. **Weekly retention bug (line 47)**: Changed `weeks.slice(1, policy.keepWeekly)` to `weeks.slice(0, policy.keepWeekly)`. This includes the current week in the count, fixing the bug where `keepWeekly 4` only kept 3 snapshots. The incorrect comment explaining why we started at index 1 has been removed—the assumption that dailies always cover the current week is false when `keepDaily: 0`.
+
+**What stayed the same:**
+- Function signature (positional callers unaffected)
+- Sort order and return type (scheduler diffs will work correctly)  
+- Daily rule, isoWeek function, and helpers
+- Test case (now passes)
+
+The test now passes, and all contract gates are met.
+
+DONE

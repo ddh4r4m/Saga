@@ -1,0 +1,16 @@
+Perfect! All tests are now passing. I've successfully fixed the issue by:
+
+1. **Added a new error code** in `src/errors.ts` for invalid quantities: `E_INVALID_QTY: "quantity must be a positive whole number"`
+
+2. **Added validation** in `src/commands/add.ts` to reject non-positive quantities:
+   - Uses `Number.isInteger(qty) || qty <= 0` to check if the quantity is not a positive whole number
+   - Calls `fail("E_INVALID_QTY")` to throw an error with a message containing "quantity"
+
+The two previously failing tests now pass:
+- ✔ rejects a quantity of zero
+- ✔ rejects a negative quantity
+
+And the existing test still passes:
+- ✔ adds a line
+
+DONE

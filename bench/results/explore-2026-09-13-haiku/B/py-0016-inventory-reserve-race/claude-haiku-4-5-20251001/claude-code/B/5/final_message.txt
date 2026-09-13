@@ -1,0 +1,12 @@
+Excellent! The fix is complete and all checks pass. Here's what I did:
+
+**The Problem:** The race condition occurred because the `reserve` and `release` methods performed non-atomic read-modify-write operations. Two threads could both read the same stock value before either one wrote back the updated value, causing overselling.
+
+**The Solution:** I added a `threading.Lock` to the Inventory class and wrapped the critical sections in both `reserve` and `release` with the lock. This makes the read-modify-write operations atomic, preventing concurrent threads from interfering with each other.
+
+**Results:**
+- ✓ G1: Oversell reproduction test passes
+- ✓ G2: Release racing reserve test passes  
+- ✓ G3: Public method signatures unchanged
+
+DONE

@@ -1,0 +1,3 @@
+Perfect! The build now passes. The issue was a trailing space in `schema/order.json` line 12: the type was defined as `"integer "` instead of `"integer"`. This caused the validator to reject all order records as invalid because the type didn't match. It was buried in the build output since the error messages just listed failed checks without showing the root cause.
+
+DONE

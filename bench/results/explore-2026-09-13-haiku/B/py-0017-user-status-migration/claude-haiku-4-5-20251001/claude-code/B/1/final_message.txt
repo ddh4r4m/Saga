@@ -1,0 +1,22 @@
+Perfect! All contract requirements are satisfied. Here's what I implemented:
+
+**Changes made:**
+
+1. **app/db.py** — Added migration 3 that adds a `status` column to users with default value `'active'`. This handles existing data gracefully when upgrading from v2.
+
+2. **app/users.py** — 
+   - Added `set_status(conn, user_id, status)` function to update a user's status
+   - Modified `list_users()` to accept optional `disabled` parameter to filter by status
+
+3. **app/cli.py** — 
+   - Extended CLI to support `disable <id>` command
+   - Added `list --disabled` flag to show only disabled users
+   - Updated usage text
+
+**Verification:**
+- ✅ All tests pass (G1: status tests pass)
+- ✅ Migration preserves existing data as active (G2: v2→v3 migration sets status to active)
+- ✅ data/seed.json untouched (G3: production snapshot unchanged)
+- ✅ seed.json loader continues to work as-is (ignores status field, defaults to active via migration)
+
+DONE

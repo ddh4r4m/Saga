@@ -1,0 +1,22 @@
+Perfect! The fix is complete and working. Here's what was accomplished:
+
+## Summary of Changes
+
+**Problem**: The `find_overlaps` function used a nested loop (O(n²)) algorithm that caused the nightly clash report to take 14+ seconds for 20,000 bookings, when it should finish in seconds.
+
+**Solution**: Replaced it with a sweep-line algorithm (O(n log n)) that:
+1. Groups bookings by room (since room is a requirement for overlaps)
+2. Sorts each room's bookings by start time
+3. For each booking, checks only subsequent bookings that could overlap
+4. Uses early termination when `b.start >= a.end` to avoid unnecessary comparisons
+
+**Results**:
+- **20,000 bookings**: 14.3s → 0.0165s (**850x speedup**)
+- All tests pass with identical results
+- Budget test now completes in milliseconds instead of failing
+
+The algorithm achieves the O(n log n) performance requirement documented in `docs/perf.md`:
+- Sorting is O(n log n)
+- Early termination ensures O(n + m) comparisons (where m is rare overlap count)
+
+DONE

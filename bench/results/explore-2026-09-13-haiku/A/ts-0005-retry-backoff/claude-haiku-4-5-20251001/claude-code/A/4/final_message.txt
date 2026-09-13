@@ -1,0 +1,7 @@
+Perfect! The test now passes. The issue was that the backoff formula was linear instead of exponential. 
+
+The original code used `options.baseMs * (i + 1) + random()`, which would give waits of ~100.5ms, ~200.5ms, ~300.5ms — nearly linear and way too fast.
+
+The fixed code now correctly implements `options.baseMs * Math.pow(2, i) * (1 + random())`, giving exponential waits of 150ms, 300ms, 600ms — matching the documented formula and what the payment gateway team needs.
+
+DONE

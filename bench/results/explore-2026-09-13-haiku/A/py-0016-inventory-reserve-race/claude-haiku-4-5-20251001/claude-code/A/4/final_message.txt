@@ -1,0 +1,20 @@
+Excellent! The race condition is fixed. Here's what I did:
+
+## The Problem
+The `reserve()` method had a classic check-then-act race condition:
+1. Thread A reads stock (5 units)
+2. Thread B reads stock (5 units) before Thread A writes
+3. Thread A checks 5 ≥ 3, writes remaining = 2
+4. Thread B checks 5 ≥ 3, writes remaining = 2
+5. Result: Both threads succeed, overselling the inventory
+
+## The Solution
+I added a `threading.Lock` to the `Inventory` class to make read-check-write operations atomic:
+- Added `self._lock = threading.Lock()` in `__init__`
+- Protected `reserve()`, `release()`, and `available()` with `with self._lock:` statements
+
+This ensures only one thread can access the store at a time, preventing concurrent reads of stale values.
+
+The public API is unchanged—no method signatures were modified. All tests pass, including the concurrent reserve test that now consistently prevents overselling.
+
+DONE

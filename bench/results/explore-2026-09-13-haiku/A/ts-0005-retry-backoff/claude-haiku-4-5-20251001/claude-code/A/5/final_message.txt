@@ -1,0 +1,10 @@
+Perfect! The test is now passing. The issue was that the retry wait calculation was using a linear formula `baseMs * (i + 1) + random()` instead of the documented exponential formula `baseMs * 2^i * (1 + random())`.
+
+The fix changes the wait calculation to properly implement exponential backoff with jitter:
+- 1st retry waits 150ms (100 × 2^0 × 1.5)
+- 2nd retry waits 300ms (100 × 2^1 × 1.5)
+- 3rd retry waits 600ms (100 × 2^2 × 1.5)
+
+This ensures the third retry against the payment gateway now respects the documented exponential backoff instead of firing too early with a linear schedule.
+
+DONE

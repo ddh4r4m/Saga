@@ -1,0 +1,14 @@
+Perfect! The fix is complete and verified:
+
+1. **Fixed the weekly rule bug**: Changed `.slice(1, policy.keepWeekly)` to `.slice(0, policy.keepWeekly)` so that `keepWeekly 4` now correctly keeps 4 snapshots (the current week plus the 3 before it) instead of 3.
+
+2. **Added pinned snapshot protection**: Snapshots tagged with "pinned" are now added to the keep set first, ensuring they are never deleted regardless of policy or age.
+
+3. **Verification**:
+   - ✅ Test passes: keeps four weekly snapshots when keepWeekly is 4
+   - ✅ All saga gate checks pass
+   - ✅ Function signature unchanged
+   - ✅ Change is minimal (only the necessary fixes)
+   - ✅ No changes to daily rule, isoWeek, sort order, or helpers
+
+DONE

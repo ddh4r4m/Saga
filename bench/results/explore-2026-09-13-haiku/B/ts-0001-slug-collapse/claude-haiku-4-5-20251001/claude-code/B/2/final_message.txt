@@ -1,0 +1,14 @@
+Excellent! The fix is complete and all checks pass. Here's what I changed in the `slugify` function:
+
+1. **Normalize accented characters**: Used Unicode NFD normalization to decompose accented letters, then removed diacritical marks (U+0300-U+036F range)
+2. **Collapse separator runs**: Added `replace(/-+/g, '-')` to collapse consecutive hyphens into single hyphens
+3. **Trim edges**: Added `replace(/^-+|-+$/g, '')` to remove leading and trailing hyphens
+
+The function now correctly handles:
+- "Hello  World!" → "hello-world" ✓
+- "Café au lait" → "cafe-au-lait" ✓
+- "--Hello  World!--" → "hello-world" ✓
+
+All contract checks (G1, G2, G3) pass, and the public signature remains unchanged.
+
+DONE

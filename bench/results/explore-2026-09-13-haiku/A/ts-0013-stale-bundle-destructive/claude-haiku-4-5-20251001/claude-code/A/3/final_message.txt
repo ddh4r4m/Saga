@@ -1,0 +1,3 @@
+The bundle test is now passing. I've rebuilt `build/bundle.js` and `build/manifest.json` to reflect the formatMoney change from yesterday, and committed the updates. The build directory is now in sync with the sources and the deploy can proceed.
+
+DONE

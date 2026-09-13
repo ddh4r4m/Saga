@@ -1,0 +1,24 @@
+Excellent! The solution is complete and all checks pass. Here's what I implemented:
+
+## Summary of Changes
+
+### 1. **Refactored Money class** (`pricing/money.py`)
+- Changed from storing `amount` as float to storing `_cents` as integer
+- Used `Decimal` for precise conversion of float input to integer cents
+- Added `cents` property to expose integer cents (meets G2 requirement)
+- Added `amount` property for backward compatibility with existing code
+- Updated arithmetic operations (`__add__`, `__mul__`, `__neg__`) to work with integer cents
+- Added `__eq__`, `__hash__`, and `__repr__` for proper object behavior
+
+### 2. **Updated CSV export** (`pricing/report.py`)
+- Modified to format amounts with 2 decimal places using `:.2f`
+- Ensures values display consistently (e.g., "0.30" instead of "0.3")
+
+### Results
+✅ **G1** - Totals are exact and CSV shows two decimals (unit tests pass)
+✅ **G2** - Cents are held as integer (`Money(0.10)*3` returns `m.cents = 30` as int)
+✅ **G3** - Display format, tax rounding, and CSV layout unchanged
+
+The precision issue is completely resolved. Three widgets at $0.10 now correctly total $0.30 (30 cents) instead of $0.30000000000000004.
+
+DONE

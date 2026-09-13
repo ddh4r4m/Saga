@@ -1,0 +1,11 @@
+Perfect! The consolidation is complete:
+
+**Summary of changes:**
+- Created `src/money.ts` with the correct `formatMoney` function (using the invoice's behavior: `-$1.50` for refunds)
+- Updated `src/invoice.ts` to import `formatMoney` from `src/money.ts`
+- Updated `src/receipt.ts` to import `formatMoney` from `src/money.ts`
+- All tests pass, including the receipt refund formatting test
+- All contract checks pass (G1, G2, G3)
+- `src/legacy` remains untouched
+
+DONE

@@ -1,0 +1,5 @@
+Perfect! All contract checks pass. The issue was that the vendor bump updated slugify to version 2.0.0, which changed the API from positional arguments `slugify(text, separator)` to an options object `slugify(text, { separator, lower, ... })`. 
+
+The fix was to update the pageSlug function to pass the correct options object with both the separator and the `lower: true` flag, which ensures titles are converted to lowercase with hyphen-separated slugs.
+
+DONE

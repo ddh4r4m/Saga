@@ -1,0 +1,16 @@
+Perfect! The implementation is complete and all checks pass:
+
+**Summary of changes:**
+- Converted `Money` from storing `amount` as a float to storing `cents` as an integer
+- Updated `__init__` to convert float amounts to cents by multiplying by 100 and rounding
+- Added proper `__eq__` and `__hash__` implementations for correct equality comparisons
+- Updated `__add__`, `__mul__`, and `__neg__` to work with integer cents
+- Updated `format.py` to display cents correctly with two decimal places
+- Updated `tax.py` to work with integer cents
+- Updated `report.py` to format cents as dollars in CSV output
+
+The floating point drift issue is now resolved: three widgets at $0.10 now correctly sum to exactly $0.30 (30 cents as an integer) instead of 0.30000000000000004, and the comparison `Money(0.30) == total` now returns `True`.
+
+All user-facing output (display format, tax rounding, CSV layout) remains unchanged.
+
+DONE

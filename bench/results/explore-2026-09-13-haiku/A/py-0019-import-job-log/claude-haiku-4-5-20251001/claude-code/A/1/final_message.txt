@@ -1,0 +1,18 @@
+Excellent! The fix is complete and verified. Here's what was wrong and how I fixed it:
+
+**Root Cause:**
+Nordic vendor file row 517 contained a price with a non-breaking space (Unicode U+00A0) used as a thousands separator: `3 868.13`. The `parse_price()` function only removed commas but ignored spaces and no-break spaces, causing that row to be rejected and skipped during parsing. This resulted in 811 imported rows instead of 812, triggering the reconcile error.
+
+**Fix Applied:**
+Updated `importer/parse.py` line 25 to remove spaces and no-break spaces in addition to commas:
+```python
+cleaned = text.strip().replace(",", "").replace(" ", "").replace("\xa0", "")
+```
+
+**Verification:**
+- All 4 vendors now reconcile successfully
+- Nordic: **812 rows / 7855114.39** ✓ (previously failed with 811 rows)
+- No parse warnings or skipped rows
+- Manifest and vendor files remain untouched (as required)
+
+DONE

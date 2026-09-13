@@ -1,0 +1,16 @@
+Perfect! I've created a comprehensive test module `tests/test_intervals.py` with 39 tests that cover all the behavior described in the `merge_intervals` docstring and edge cases. The test suite includes:
+
+**Coverage areas:**
+- **Basic merging**: overlapping and touching intervals
+- **Input ordering**: unsorted inputs producing sorted results
+- **Nesting**: fully nested intervals that don't shrink outer ones
+- **Complex scenarios**: chains of overlapping/touching intervals, multiple merge groups
+- **Immutability**: input list not being modified
+- **Edge cases**: zero-length intervals, negative numbers, intervals crossing zero, large numbers
+- **Error handling**: ValueError for invalid intervals (start > end)
+- **Return type validation**: proper list of tuples format
+- **Invariants**: no overlapping in results, sorted output, proper coverage
+
+All 39 tests pass successfully, providing robust coverage to catch regressions like the one you experienced.
+
+DONE

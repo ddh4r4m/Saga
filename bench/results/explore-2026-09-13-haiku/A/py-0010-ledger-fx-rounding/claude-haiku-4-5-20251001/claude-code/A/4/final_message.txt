@@ -1,0 +1,11 @@
+Excellent! The fix is complete. The reconciliation now passes with 0 mismatches.
+
+**Summary of the issue:**
+The `convert()` function in `ledger/fx.py` was truncating currency conversions using `int()` instead of properly rounding them with `round()`. When converting USD amounts to EUR using the rate 0.9228, this truncation caused small errors that accumulated to 0.30 EUR across all transactions involving account 4471.
+
+The control file expected proper rounding, but the posting code was using truncation, resulting in the 30 EUR cent mismatch.
+
+**The fix:**
+Changed line 6 in `ledger/fx.py` from `return int(cents * rate)` to `return round(cents * rate)`.
+
+DONE

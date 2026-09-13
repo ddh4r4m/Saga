@@ -1,0 +1,9 @@
+Fixed! The issue was that the vendor bump upgraded slugify to version 2.0.0, which changed the API. The old version accepted the separator as a string (e.g., `slugify(title, "-")`), but the new version requires an options object.
+
+**The fix:** Updated the `pageSlug` function to pass the correct options object:
+- Before: `slugify(title, "-")`
+- After: `slugify(title, { separator: "-", lower: true })`
+
+This ensures page slugs use hyphens (not underscores) and are always lowercase, so existing links continue to work. Both tests now pass.
+
+DONE

@@ -1,0 +1,9 @@
+All contract requirements are verified and met:
+
+✅ **G1**: Tests pass consistently (0 failures)  
+✅ **G2**: Negative hash key `session:1:919` correctly maps to `shard16:13`, `shard10:1`  
+✅ **G3**: Only code changed, test file unchanged
+
+The fix ensures that the `shardFor` function implements proper Python-style modulo semantics, so keys with negative hashes always land in valid shard ranges [0, shards).
+
+DONE

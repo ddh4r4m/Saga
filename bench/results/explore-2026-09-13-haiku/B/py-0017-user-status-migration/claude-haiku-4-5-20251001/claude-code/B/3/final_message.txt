@@ -1,0 +1,29 @@
+Perfect! All tests pass and all contract checks are verified. Here's a summary of the changes I made:
+
+## Implementation Summary
+
+**1. Database Migration** (`app/db.py`)
+- Added migration v3 that adds a `status` column to the users table with a default value of `'active'`
+
+**2. Users API** (`app/users.py`)
+- Updated `list_users()` to accept a `disabled` parameter that filters by status
+- Added `set_status(conn, user_id, status)` function to change user status
+
+**3. CLI Commands** (`app/cli.py`)
+- Added `disable <id>` command to disable a user
+- Updated `list` command to support `--disabled` flag to show only disabled users
+- Updated usage messages
+
+**4. Data Handling**
+- `data/seed.json` remains unchanged (as required by ops)
+- When the seed loader inserts users, they automatically get `status='active'` from the migration default
+
+**Verification:**
+- ✅ All 4 tests in `tests/test_users.py` pass
+- ✅ All contract checks pass (G1, G2, G3)
+- ✅ Seeded users are active by default
+- ✅ `set_status()` works correctly
+- ✅ `list_users(disabled=True)` filters as expected
+- ✅ CLI commands work (`list`, `list --disabled`, `disable <id>`)
+
+DONE

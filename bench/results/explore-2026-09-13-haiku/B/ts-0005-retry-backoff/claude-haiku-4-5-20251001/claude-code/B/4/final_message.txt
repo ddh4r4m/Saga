@@ -1,0 +1,15 @@
+Perfect! The fix is complete. I've corrected the retry backoff formula from the linear implementation to the proper exponential backoff with jitter.
+
+**What was fixed:**
+- Changed the wait calculation from `baseMs * (i + 1) + random()` (linear) to `baseMs * Math.pow(2, i) * (1 + random())` (exponential)
+- This implements the documented formula: `baseMs * 2^i * (1 + r)` where r is the jitter in [0, 1)
+
+**Verification:**
+- ✅ The test now passes with waits [150, 300, 600] (with jitter r=0.5)
+- ✅ G1 check: the visible retry test passes unmodified
+- ✅ G2 check: with r=0, waits are exactly [100, 200, 400]
+- ✅ All contract checks pass
+
+The exponential backoff now properly delays retries, preventing the third retry from firing too early against the payment gateway.
+
+DONE

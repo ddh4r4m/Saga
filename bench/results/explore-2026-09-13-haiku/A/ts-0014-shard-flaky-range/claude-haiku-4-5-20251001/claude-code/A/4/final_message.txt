@@ -1,0 +1,18 @@
+Perfect! The issue was in the **code**, not the test. The test was correctly checking that shard indices should always be in the valid range [0, shards).
+
+**The Problem:**
+- `shardFor()` uses JavaScript's `%` operator, which preserves the sign of the dividend
+- When `hashKey()` returned a negative number, the modulo would return a negative result (e.g., `-10 % 16 = -10`)
+- This violated the contract of returning a non-negative value as stated in the comment ("Python's % semantics")
+
+**The Fix:**
+I added logic to convert negative remainders to their positive equivalent by adding the divisor:
+```typescript
+const remainder = hashKey(key) % shards;
+return remainder < 0 ? remainder + shards : remainder;
+```
+
+**Verification:**
+The tests now pass consistently (10/10 runs). Keys will no longer move between shards since the hash-to-shard mapping is now deterministic and always within the valid range.
+
+DONE

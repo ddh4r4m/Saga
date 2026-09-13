@@ -1,0 +1,13 @@
+The fix is complete and verified. Here's what was changed:
+
+**Two key fixes to src/prune.ts:**
+
+1. **Fixed the weekly retention bug (line 48)**: Changed `weeks.slice(1, policy.keepWeekly)` to `weeks.slice(0, policy.keepWeekly)`. The old code was incorrectly skipping the current week (index 0), causing it to keep `keepWeekly - 1` snapshots instead of `keepWeekly`. This is why the finance volume had 7 snapshots instead of the expected 8.
+
+2. **Added pinned snapshot protection (lines 41-44)**: Added a check that marks all snapshots with the "pinned" tag as kept, ensuring legal holds are never deleted regardless of the retention policy.
+
+The test now passes, confirming that with keepDaily 0 and keepWeekly 4 on 35 nightly snapshots spanning 5 ISO weeks, exactly 4 snapshots are preserved (the newest from each of the 4 newest weeks: 2026-08-16, 2026-08-23, 2026-08-30, 2026-09-06).
+
+The function signature and return type remain unchanged, so all existing callers will work without modification.
+
+DONE
