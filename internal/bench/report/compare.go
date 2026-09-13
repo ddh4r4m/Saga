@@ -163,6 +163,8 @@ func Compare(a, b *Archive, epsilon float64) (*Report, error) {
 	r.Manifests = map[string]string{armA: a.Hash, armB: b.Hash}
 	sa.GateConfig, sb.GateConfig = gateConfigNote(a.Dir, a.Rows), gateConfigNote(b.Dir, b.Rows)
 	sa.Approvals, sb.Approvals = approvalsNote(a.Dir, a.Rows), approvalsNote(b.Dir, b.Rows)
+	sa.ExposedRuns, sa.TracedRuns = ComponentExposure(a.Dir, a.Rows)
+	sb.ExposedRuns, sb.TracedRuns = ComponentExposure(b.Dir, b.Rows)
 	r.Arms[armA], r.Arms[armB] = sa, sb
 	r.armOrder = []string{armA, armB}
 	r.armMeta = map[string]run.Arm{}
@@ -240,7 +242,10 @@ func Compare(a, b *Archive, epsilon float64) (*Report, error) {
 	if k < 5 {
 		r.Negative = append(r.Negative, map[string]any{"kind": "k_below_5", "k": k, "note": "K < 5: no claim is licensed (ADR 0001)"})
 	}
-	r.Negative = append(r.Negative, map[string]any{"kind": "component_unused", "note": "not evaluated: this runner records no component usage; treat every treatment arm as no-exposure until the trace carries component events"})
+	// Kill-rule condition 2: did the treatment arm reach the component at
+	// all? Read from the archived hook traces rather than declared
+	// unevaluable (pilot of 2026-09-13 report defect 3).
+	r.Negative = append(r.Negative, componentUsage(r, map[string]*Archive{armA: a, armB: b}))
 	if r.Primary == nil {
 		// The pre-registration named something this report cannot
 		// compute. Falling back silently would print a primary nobody

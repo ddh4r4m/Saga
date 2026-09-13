@@ -1,158 +1,599 @@
 {
   "$comment": "saga.bench.report/1 (bench-spec section 9.4). A single-arm report carries primary = null; compare fills primary and secondary with paired deltas, each with a bootstrap CI and a Wilcoxon block.",
   "type": "object",
-  "required": ["schema", "manifest", "tier", "preregistration_sha256", "arms", "primary", "secondary", "per_solved", "instability", "negative", "exclusions", "contamination", "detector_precision", "reproduce"],
+  "required": [
+    "schema",
+    "manifest",
+    "tier",
+    "preregistration_sha256",
+    "arms",
+    "primary",
+    "secondary",
+    "per_solved",
+    "instability",
+    "negative",
+    "exclusions",
+    "contamination",
+    "detector_precision",
+    "reproduce"
+  ],
   "additionalProperties": false,
   "properties": {
-    "schema": {"const": "saga.bench.report/1"},
-    "manifest": {"type": "string"},
-    "manifests": {"type": "object", "additionalProperties": {"type": "string"}},
-    "tier": {"enum": ["smoke", "user", "dev", "publish"]},
-    "created": {"type": ["string", "null"]},
-    "task_set_sha256": {"type": ["string", "null"]},
-    "warnings": {"$comment": "conditions a reader must see before the numbers; never change a metric", "type": "array", "items": {"type": "string"}},
-    "primary_source": {"$comment": "docs/12 2.1: where the primary metric came from, e.g. \"preregistration.md sha256:...\"; absent when the report fell back to the default", "type": "string"},
-    "preregistration_sha256": {"$comment": "docs/12 row 15: the manifest pre-registration hash, null when the run was not pre-registered", "type": ["string", "null"]},
-    "task_set_frozen": {"$comment": "docs/12 row 15: whether the run matched TASKSET.sha256; absent when the corpus has no freeze artefact", "type": "boolean"},
-    "k": {"type": "integer"},
-    "bootstrap_seed": {"type": "integer"},
-    "bootstrap_resamples": {"type": "integer"},
-    "isolation": {"type": ["string", "null"]},
-    "total_cost_usd": {"type": ["number", "null"]},
+    "schema": {
+      "const": "saga.bench.report/1"
+    },
+    "manifest": {
+      "type": "string"
+    },
+    "manifests": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "tier": {
+      "enum": [
+        "smoke",
+        "user",
+        "dev",
+        "publish"
+      ]
+    },
+    "created": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "task_set_sha256": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "warnings": {
+      "$comment": "conditions a reader must see before the numbers; never change a metric",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "primary_source": {
+      "$comment": "docs/12 2.1: where the primary metric came from, e.g. \"preregistration.md sha256:...\"; absent when the report fell back to the default",
+      "type": "string"
+    },
+    "preregistration_sha256": {
+      "$comment": "docs/12 row 15: the manifest pre-registration hash, null when the run was not pre-registered",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "task_set_frozen": {
+      "$comment": "docs/12 row 15: whether the run matched TASKSET.sha256; absent when the corpus has no freeze artefact",
+      "type": "boolean"
+    },
+    "k": {
+      "type": "integer"
+    },
+    "bootstrap_seed": {
+      "type": "integer"
+    },
+    "bootstrap_resamples": {
+      "type": "integer"
+    },
+    "isolation": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "total_cost_usd": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
     "arms": {
       "type": "object",
       "additionalProperties": {
         "type": "object",
-        "required": ["runs", "tasks", "k", "model", "harness", "pass_at_1", "pass_at_1_ci95", "clean_pass_at_1", "pass_k", "instability", "medians", "per_solved", "false_done", "false_done_reason", "regression_rate", "regression_rate_pass", "regression_rate_fail", "scope_violation_rate", "scope_files_median", "cheat_rate", "integrity_fail_rate", "integrity_fail_count", "outcomes", "blocked_reach_attempts", "guard_denies", "overhead", "overhead_reason", "per_task"],
+        "required": [
+          "runs",
+          "tasks",
+          "k",
+          "model",
+          "harness",
+          "pass_at_1",
+          "pass_at_1_ci95",
+          "clean_pass_at_1",
+          "pass_k",
+          "instability",
+          "medians",
+          "per_solved",
+          "false_done",
+          "false_done_reason",
+          "regression_rate",
+          "regression_rate_pass",
+          "regression_rate_fail",
+          "scope_violation_rate",
+          "scope_files_median",
+          "cheat_rate",
+          "integrity_fail_rate",
+          "integrity_fail_count",
+          "outcomes",
+          "blocked_reach_attempts",
+          "guard_denies",
+          "overhead",
+          "overhead_reason",
+          "per_task"
+        ],
         "additionalProperties": false,
         "properties": {
-          "runs": {"type": "integer"},
-          "tasks": {"type": "integer"},
-          "k": {"type": "integer"},
-          "model": {"type": "string"},
-          "harness": {"type": "string"},
-          "pass_at_1": {"type": "number"},
-          "pass_at_1_ci95": {"type": "array", "items": {"type": "number"}},
-          "clean_pass_at_1": {"type": "number"},
-          "pass_k": {"type": "object", "additionalProperties": {"type": "number"}},
-          "instability": {"type": "number"},
-          "medians": {"type": "object", "additionalProperties": {"type": ["number", "null"]}},
-          "means": {"type": "object", "additionalProperties": {"type": ["number", "null"]}},
+          "runs": {
+            "type": "integer"
+          },
+          "tasks": {
+            "type": "integer"
+          },
+          "k": {
+            "type": "integer"
+          },
+          "model": {
+            "type": "string"
+          },
+          "harness": {
+            "type": "string"
+          },
+          "pass_at_1": {
+            "type": "number"
+          },
+          "pass_at_1_ci95": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "clean_pass_at_1": {
+            "type": "number"
+          },
+          "pass_k": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "instability": {
+            "type": "number"
+          },
+          "medians": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "means": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
           "per_solved": {
             "type": "object",
-            "required": ["tokens", "usd"],
+            "required": [
+              "tokens",
+              "usd"
+            ],
             "additionalProperties": false,
             "properties": {
-              "tokens": {"type": ["number", "null"]},
-              "usd": {"type": ["number", "null"]}
+              "tokens": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "usd": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
             }
           },
-          "false_done": {"type": ["number", "null"]},
-          "false_done_reason": {"type": ["string", "null"]},
-          "false_done_structural": {"type": ["number", "null"]},
-          "no_claim_rate": {"type": "number"},
+          "false_done": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "false_done_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "false_done_structural": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "no_claim_rate": {
+            "type": "number"
+          },
           "claim_contradiction_rate": {
             "type": "object",
-            "required": ["runs_with_claims", "oracle_fail", "oracle_pass"],
+            "required": [
+              "runs_with_claims",
+              "oracle_fail",
+              "oracle_pass"
+            ],
             "additionalProperties": false,
             "properties": {
-              "runs_with_claims": {"type": "integer", "minimum": 0},
-              "oracle_fail": {"type": ["number", "null"]},
-              "oracle_pass": {"type": ["number", "null"]}
+              "runs_with_claims": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "oracle_fail": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "oracle_pass": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
             }
           },
-          "regression_rate": {"type": "number"},
-          "regression_rate_pass": {"type": ["number", "null"]},
-          "regression_rate_fail": {"type": ["number", "null"]},
-          "scope_violation_rate": {"type": "number"},
-          "scope_files_median": {"type": "number"},
-          "cheat_rate": {"type": ["number", "null"]},
-          "integrity_fail_rate": {"type": ["number", "null"]},
-          "integrity_fail_count": {"type": "integer"},
-          "outcomes": {"type": "object", "additionalProperties": {"type": "integer"}},
-          "blocked_reach_attempts": {"type": "integer"},
-          "approvals": {"$comment": "ADR 0010: where a gate arm's baseline approvals came from, and that no run created one", "type": "string"},
-          "gate_config": {"$comment": "whether the gate read the protocol config at the base commit, with its hash; absent for an arm without a gate", "type": "string"},
-          "guard_denies": {"$comment": "safety-hook denials over the arm (docs/12 row 6); the hook is identical in every arm", "type": "integer"},
+          "regression_rate": {
+            "type": "number"
+          },
+          "regression_rate_pass": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "regression_rate_fail": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "scope_violation_rate": {
+            "type": "number"
+          },
+          "scope_files_median": {
+            "type": "number"
+          },
+          "cheat_rate": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "integrity_fail_rate": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "integrity_fail_count": {
+            "type": "integer"
+          },
+          "outcomes": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "blocked_reach_attempts": {
+            "type": "integer"
+          },
+          "approvals": {
+            "$comment": "ADR 0010: where a gate arm's baseline approvals came from, and that no run created one",
+            "type": "string"
+          },
+          "gate_config": {
+            "$comment": "whether the gate read the protocol config at the base commit, with its hash; absent for an arm without a gate",
+            "type": "string"
+          },
+          "guard_denies": {
+            "$comment": "safety-hook denials over the arm (docs/12 row 6); the hook is identical in every arm",
+            "type": "integer"
+          },
           "overhead": {
             "$comment": "docs/12 commitment 7: measured hook overhead for this arm; null with overhead_reason when no run recorded hook wall time",
-            "type": ["object", "null"],
-            "required": ["runs", "median_invocations", "by_event", "median_wall_share", "median_injected_tokens_est", "timed_out"],
+            "type": [
+              "object",
+              "null"
+            ],
+            "required": [
+              "runs",
+              "median_invocations",
+              "by_event",
+              "median_wall_share",
+              "median_injected_tokens_est",
+              "timed_out"
+            ],
             "additionalProperties": false,
             "properties": {
-              "runs": {"type": "integer", "minimum": 0},
-              "median_invocations": {"type": "number", "minimum": 0},
+              "runs": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "median_invocations": {
+                "type": "number",
+                "minimum": 0
+              },
               "by_event": {
                 "type": "object",
                 "additionalProperties": {
                   "type": "object",
-                  "required": ["runs", "invocations", "p50_ms", "p95_ms", "max_ms", "timed_out"],
+                  "required": [
+                    "runs",
+                    "invocations",
+                    "p50_ms",
+                    "p95_ms",
+                    "max_ms",
+                    "timed_out"
+                  ],
                   "additionalProperties": false,
                   "properties": {
-                    "runs": {"type": "integer", "minimum": 0},
-                    "invocations": {"type": "integer", "minimum": 0},
-                    "p50_ms": {"type": "integer", "minimum": 0},
-                    "p95_ms": {"type": "integer", "minimum": 0},
-                    "max_ms": {"type": "integer", "minimum": 0},
-                    "timed_out": {"type": "integer", "minimum": 0}
+                    "runs": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "invocations": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "p50_ms": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "p95_ms": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "max_ms": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "timed_out": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
                   }
                 }
               },
-              "median_wall_share": {"type": ["number", "null"], "minimum": 0},
-              "median_injected_tokens_est": {"type": "number", "minimum": 0},
-              "timed_out": {"type": "integer", "minimum": 0}
+              "median_wall_share": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "median_injected_tokens_est": {
+                "type": "number",
+                "minimum": 0
+              },
+              "timed_out": {
+                "type": "integer",
+                "minimum": 0
+              }
             }
           },
-          "overhead_reason": {"type": ["string", "null"]},
+          "overhead_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "per_task": {
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["task", "n", "c", "pass_rate", "median_tokens", "median_cost_usd", "median_wall_s", "median_turns"],
+              "required": [
+                "task",
+                "n",
+                "c",
+                "pass_rate",
+                "median_tokens",
+                "median_cost_usd",
+                "median_wall_s",
+                "median_turns"
+              ],
               "additionalProperties": false,
               "properties": {
-                "task": {"type": "string"},
-                "n": {"type": "integer"},
-                "c": {"type": "integer"},
-                "pass_rate": {"type": "number"},
-                "median_tokens": {"type": "number"},
-                "median_cost_usd": {"type": ["number", "null"]},
-                "median_wall_s": {"type": "number"},
-                "median_turns": {"type": "number"}
+                "task": {
+                  "type": "string"
+                },
+                "n": {
+                  "type": "integer"
+                },
+                "c": {
+                  "type": "integer"
+                },
+                "pass_rate": {
+                  "type": "number"
+                },
+                "median_tokens": {
+                  "type": "number"
+                },
+                "median_cost_usd": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "median_wall_s": {
+                  "type": "number"
+                },
+                "median_turns": {
+                  "type": "number"
+                }
               }
             }
+          },
+          "exposed_runs": {
+            "$comment": "pilot 2026-09-13 report defect 3: runs of this treatment arm whose hook trace carries a gate event (kill-rule condition 2)",
+            "type": "integer"
+          },
+          "traced_runs": {
+            "$comment": "runs of this arm that carry a hook trace at all; 0 means component exposure is not evaluable",
+            "type": "integer"
+          },
+          "false_done_unknown": {
+            "$comment": "pilot 2026-09-13 report defect 1: runs carrying no claimed_done verdict; false_done is over the rest",
+            "type": "integer"
+          },
+          "false_done_total": {
+            "type": "integer"
           }
         }
       }
     },
-    "primary": {"type": ["object", "null"]},
+    "primary": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
     "secondary": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["metric", "arms", "A", "B", "delta", "ci95", "wilcoxon"],
+        "required": [
+          "metric",
+          "arms",
+          "A",
+          "B",
+          "delta",
+          "ci95",
+          "wilcoxon"
+        ],
         "additionalProperties": false,
         "properties": {
-          "metric": {"type": "string"},
-          "k": {"type": "integer"},
-          "arms": {"type": "array", "items": {"type": "string"}},
-          "A": {"type": ["number", "null"]},
-          "B": {"type": ["number", "null"]},
-          "delta": {"type": ["number", "null"]},
-          "ci95": {"type": ["array", "null"], "items": {"type": ["number", "null"]}},
-          "wilcoxon": {"type": ["object", "null"]},
-          "equivalence": {"type": ["object", "null"]},
-          "supported": {"type": ["boolean", "null"]}
+          "metric": {
+            "type": "string"
+          },
+          "k": {
+            "type": "integer"
+          },
+          "arms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "A": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "B": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "delta": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "ci95": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "wilcoxon": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "equivalence": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "supported": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
         }
       }
     },
-    "per_solved": {"type": "object", "additionalProperties": {"type": "object"}},
-    "instability": {"type": "object"},
-    "negative": {"type": "array", "items": {"type": "object"}},
-    "exploratory": {"type": "array", "items": {"type": "object"}},
-    "exclusions": {"type": "object", "additionalProperties": {"type": "integer"}},
-    "contamination": {"type": "array", "items": {"type": "object"}},
-    "detector_precision": {"type": "object", "additionalProperties": {"type": ["number", "null"]}},
-    "reproduce": {"type": "array", "items": {"type": "string"}}
+    "per_solved": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object"
+      }
+    },
+    "instability": {
+      "type": "object"
+    },
+    "negative": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "exploratory": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "exclusions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer"
+      }
+    },
+    "contamination": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "detector_precision": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "number",
+          "null"
+        ]
+      }
+    },
+    "reproduce": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
   }
 }

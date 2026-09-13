@@ -46,30 +46,37 @@ type PerSolved struct {
 
 // ArmStats is one arm's summary.
 type ArmStats struct {
-	Runs                int                 `json:"runs"`
-	Tasks               int                 `json:"tasks"`
-	K                   int                 `json:"k"`
-	Model               string              `json:"model"`
-	Harness             string              `json:"harness"`
-	PassAt1             float64             `json:"pass_at_1"`
-	PassAt1CI95         []float64           `json:"pass_at_1_ci95"`
-	CleanPassAt1        float64             `json:"clean_pass_at_1"`
-	PassK               map[string]float64  `json:"pass_k"`
-	Instability         float64             `json:"instability"`
-	Medians             map[string]*float64 `json:"medians"`
-	Means               map[string]*float64 `json:"means"`
-	PerSolved           PerSolved           `json:"per_solved"`
-	FalseDone           *float64            `json:"false_done"`
-	FalseDoneReason     *string             `json:"false_done_reason"`
-	FalseDoneStructural *float64            `json:"false_done_structural"`
-	NoClaimRate         float64             `json:"no_claim_rate"`
-	ClaimContradiction  ClaimContradiction  `json:"claim_contradiction_rate"`
-	RegressionRate      float64             `json:"regression_rate"`
-	RegressionRatePass  *float64            `json:"regression_rate_pass"`
-	RegressionRateFail  *float64            `json:"regression_rate_fail"`
-	ScopeViolationRate  float64             `json:"scope_violation_rate"`
-	ScopeFilesMedian    float64             `json:"scope_files_median"`
-	CheatRate           *float64            `json:"cheat_rate"`
+	Runs            int                 `json:"runs"`
+	Tasks           int                 `json:"tasks"`
+	K               int                 `json:"k"`
+	Model           string              `json:"model"`
+	Harness         string              `json:"harness"`
+	PassAt1         float64             `json:"pass_at_1"`
+	PassAt1CI95     []float64           `json:"pass_at_1_ci95"`
+	CleanPassAt1    float64             `json:"clean_pass_at_1"`
+	PassK           map[string]float64  `json:"pass_k"`
+	Instability     float64             `json:"instability"`
+	Medians         map[string]*float64 `json:"medians"`
+	Means           map[string]*float64 `json:"means"`
+	PerSolved       PerSolved           `json:"per_solved"`
+	FalseDone       *float64            `json:"false_done"`
+	FalseDoneReason *string             `json:"false_done_reason"`
+	// FalseDoneUnknown counts the runs of this arm that carry no
+	// claimed_done verdict, and FalseDoneTotal the arm's runs. The value
+	// above is over the runs that do carry one; the two counts are what
+	// the table prints beside it so a reader can see the coverage rather
+	// than a null (pilot of 2026-09-13 report defect 1).
+	FalseDoneUnknown    int                `json:"false_done_unknown"`
+	FalseDoneTotal      int                `json:"false_done_total"`
+	FalseDoneStructural *float64           `json:"false_done_structural"`
+	NoClaimRate         float64            `json:"no_claim_rate"`
+	ClaimContradiction  ClaimContradiction `json:"claim_contradiction_rate"`
+	RegressionRate      float64            `json:"regression_rate"`
+	RegressionRatePass  *float64           `json:"regression_rate_pass"`
+	RegressionRateFail  *float64           `json:"regression_rate_fail"`
+	ScopeViolationRate  float64            `json:"scope_violation_rate"`
+	ScopeFilesMedian    float64            `json:"scope_files_median"`
+	CheatRate           *float64           `json:"cheat_rate"`
 	// IntegrityFailRate is the share of graded runs whose oracle exit was
 	// produced by a neutered test framework (bench-spec section 5). Such a
 	// run is not a solve, so it never enters pass@1 or cheat_rate, which
@@ -79,6 +86,12 @@ type ArmStats struct {
 	IntegrityFailCount   int            `json:"integrity_fail_count"`
 	Outcomes             map[string]int `json:"outcomes"`
 	BlockedReachAttempts int            `json:"blocked_reach_attempts"`
+	// ExposedRuns is how many of this arm's runs show the component
+	// acting (a `gate` event in the archived hook trace) and TracedRuns
+	// how many carry a hook trace at all. Both 0 for a bare arm, which
+	// has no component to be exposed to.
+	ExposedRuns int `json:"exposed_runs"`
+	TracedRuns  int `json:"traced_runs"`
 	// GuardDenies is the arm's total safety-hook denials. The hook is the
 	// same code with the same command string in every arm (docs/12 row
 	// 6), so this counts what the agent tried, not what the arm allowed;
@@ -372,16 +385,25 @@ func ArmFrom(m *run.Manifest, rows []run.Row) *ArmStats {
 			scopeCounts = append(scopeCounts, float64(r.ScopeViol))
 		}
 	}
+	// A run with no verdict is not a run that claimed done, so it is
+	// simply outside the denominator: nulling the whole column for one
+	// such run threw away 99 verdicts and made section 4 disagree with
+	// the primary in section 3, which the pilot of 2026-09-13 printed
+	// (`false-done: null` beside `A=0.067`). The count of runs without a
+	// verdict is carried instead, and rendered beside the value.
+	a.FalseDoneUnknown = unknown
+	a.FalseDoneTotal = total
 	switch {
-	case unknown > 0:
-		a.FalseDone = nil
-		a.FalseDoneReason = strp(fmt.Sprintf("%d runs carry no claimed_done verdict", unknown))
 	case claimed == 0:
 		a.FalseDone = nil
 		a.FalseDoneReason = strp("no run claimed done")
 	default:
 		a.FalseDone = f6(float64(falseDone) / float64(claimed))
-		a.FalseDoneReason = strp("claimed_done copied from the trace claim event (claims.txt " + run.ClaimsHash[:23] + ", abstain.txt " + run.AbstainHash[:23] + ")")
+		reason := "claimed_done copied from the trace claim event (claims.txt " + run.ClaimsHash[:23] + ", abstain.txt " + run.AbstainHash[:23] + ")"
+		if unknown > 0 {
+			reason = fmt.Sprintf("%d of %d runs carry a claimed_done verdict; %s", total-unknown, total, reason)
+		}
+		a.FalseDoneReason = strp(reason)
 	}
 	if claimedS > 0 {
 		a.FalseDoneStructural = f6(float64(falseDoneS) / float64(claimedS))
@@ -633,7 +655,7 @@ func (r *Report) Markdown() string {
 	w("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
 	for _, id := range order {
 		a := r.Arms[id]
-		w("| %s | %.3f | %.3f, %.3f | %.3f | %.3f | %.3f | %s | %.3f | %.3f | %s | %s | %s | %s | %s | %s | %s |", id, a.PassAt1, a.PassAt1CI95[0], a.PassAt1CI95[1], a.CleanPassAt1, a.PassK[fmt.Sprint(a.K)], a.Instability, fmtF(a.FalseDone), a.RegressionRate, a.ScopeViolationRate, fmtF(a.CheatRate), fmtF(a.Medians["tokens"]), fmtF(a.Medians["cost_usd"]), fmtF(a.Medians["wall_s"]), fmtF(a.Medians["turns"]), fmtInf(a.PerSolved.Tokens), fmtInf(a.PerSolved.USD))
+		w("| %s | %.3f | %.3f, %.3f | %.3f | %.3f | %.3f | %s | %.3f | %.3f | %s | %s | %s | %s | %s | %s | %s |", id, a.PassAt1, a.PassAt1CI95[0], a.PassAt1CI95[1], a.CleanPassAt1, a.PassK[fmt.Sprint(a.K)], a.Instability, fmtFalseDone(a), a.RegressionRate, a.ScopeViolationRate, fmtF(a.CheatRate), fmtF(a.Medians["tokens"]), fmtF(a.Medians["cost_usd"]), fmtF(a.Medians["wall_s"]), fmtF(a.Medians["turns"]), fmtInf(a.PerSolved.Tokens), fmtInf(a.PerSolved.USD))
 	}
 	for _, id := range order {
 		if a := r.Arms[id]; a.FalseDoneReason != nil {
@@ -720,7 +742,7 @@ func (r *Report) Markdown() string {
 	w("| model drift behind a stable id | snapshot and fingerprint recorded as null with reasons in harness.json; single cell, no merge across snapshots |")
 	w("| contamination | created dates are post-cutoff only if the price table declares cutoffs; not checked in this runner, contamination list is %d long |", len(r.Contamination))
 	w("| oracle wrong or gameable | every task passed verify-task at its content hash before the run; cheating scan ran on every row |")
-	w("| control arm reaches the component | not applicable: no component blocks are configured in this runner |")
+	w("| control arm reaches the component | %s |", controlReachNote(r))
 	w("| run-to-run variance | K=%d; pass^k, per-task medians and bootstrap CIs are printed above |", r.K)
 	w("| isolation | %s: package caches and the operator's harness config are replaced, the host is shared (badge refused) |", deref(r.Isolation))
 	w("")
@@ -1074,6 +1096,131 @@ func shortHash(h string) string {
 		h = h[:16]
 	}
 	return "sha256:" + h
+}
+
+// componentUsage is the kill-rule condition 2 entry: the share of each
+// treatment arm's runs in which the component was observed acting. Only
+// an arm with no hook trace at all is still "not evaluated".
+func componentUsage(r *Report, archives map[string]*Archive) map[string]any {
+	out := map[string]any{"kind": "component_unused"}
+	arms := map[string]any{}
+	unevaluated := []string{}
+	for id, a := range r.Arms {
+		meta := r.armMeta[id]
+		if len(meta.Components) == 0 {
+			continue // a bare arm has no component to be exposed to
+		}
+		if a.TracedRuns == 0 {
+			unevaluated = append(unevaluated, id)
+			continue
+		}
+		arms[id] = map[string]any{"exposed": a.ExposedRuns, "runs": a.TracedRuns}
+	}
+	sort.Strings(unevaluated)
+	out["arms"] = arms
+	if len(arms) == 0 {
+		out["note"] = "not evaluated: no treatment arm in this archive carries a hook trace"
+		return out
+	}
+	parts := make([]string, 0, len(arms))
+	ids := make([]string, 0, len(arms))
+	for id := range arms {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		a := r.Arms[id]
+		parts = append(parts, fmt.Sprintf("arm %s exposed in %d of %d runs", id, a.ExposedRuns, a.TracedRuns))
+	}
+	note := strings.Join(parts, "; ") + " (a run is exposed when its hook trace carries a gate event)"
+	if len(unevaluated) > 0 {
+		note += "; not evaluated for " + strings.Join(unevaluated, ", ") + " (no hook trace)"
+	}
+	out["note"] = note
+	return out
+}
+
+// ComponentExposure counts, for one treatment arm, how many of its runs
+// show the component actually acting: a gate arm's run is exposed when
+// its archived hook trace carries at least one `gate` event, which is
+// the hook running in the agent's own session. Runs is 0 when no run of
+// the arm has a hook trace at all, which is the only case that still
+// reads "not evaluated".
+//
+// Kill-rule condition 2 (docs/12 §8) asks whether the treatment arm ever
+// reached the component. The report of the pilot of 2026-09-13 answered
+// "not evaluated" although every one of its 100 arm B runs carried gate
+// Stop events, because nothing read them (report defect 3).
+func ComponentExposure(dir string, rows []run.Row) (exposed, runs int) {
+	for _, r := range rows {
+		matches, _ := filepath.Glob(filepath.Join(dir, r.Task, "*", r.Harness, r.Arm, fmt.Sprint(r.I), "hook-trace.jsonl"))
+		for _, m := range matches {
+			raw, err := os.ReadFile(m)
+			if err != nil {
+				continue
+			}
+			runs++
+			for _, line := range strings.Split(string(raw), "\n") {
+				if line == "" {
+					continue
+				}
+				var ev struct {
+					Type string `json:"type"`
+				}
+				if json.Unmarshal([]byte(line), &ev) == nil && ev.Type == "gate" {
+					exposed++
+					break
+				}
+			}
+			break
+		}
+	}
+	return exposed, runs
+}
+
+// controlReachNote answers the threat from what the run recorded: the
+// blocks the manifest lists for each control arm, and the total reaches
+// those blocks turned away. The "no component blocks are configured"
+// wording stood in the report of the pilot of 2026-09-13 while section
+// 2 of the same report listed four blocks for arm A, because the line
+// was fixed text and read nothing (report defect 2).
+func controlReachNote(r *Report) string {
+	var parts []string
+	ids := make([]string, 0, len(r.Arms))
+	for id := range r.Arms {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	any := false
+	for _, id := range ids {
+		meta, ok := r.armMeta[id]
+		if !ok || len(meta.BlocksInControl) == 0 {
+			continue
+		}
+		reaches := 0
+		if a := r.Arms[id]; a != nil {
+			reaches = a.BlockedReachAttempts
+		}
+		any = true
+		parts = append(parts, fmt.Sprintf("arm %s blocks %s, %d reach attempts", id, strings.Join(meta.BlocksInControl, ", "), reaches))
+	}
+	if !any {
+		return "not applicable: the manifest lists no control blocks for any arm"
+	}
+	return strings.Join(parts, "; ") + " (a reach is the PATH shim logging a call and exiting 127)"
+}
+
+// fmtFalseDone renders the column with its coverage when any run of the
+// arm carries no claimed_done verdict, so a reader sees what the value
+// is over instead of a bare number or a null.
+func fmtFalseDone(a *ArmStats) string {
+	if a.FalseDone == nil {
+		return "null"
+	}
+	if a.FalseDoneUnknown == 0 {
+		return fmt.Sprintf("%.3f", *a.FalseDone)
+	}
+	return fmt.Sprintf("%.3f (%d of %d runs carry a verdict)", *a.FalseDone, a.FalseDoneTotal-a.FalseDoneUnknown, a.FalseDoneTotal)
 }
 
 func gateConfigNote(dir string, rows []run.Row) string {
