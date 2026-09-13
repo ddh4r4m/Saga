@@ -15,7 +15,7 @@
 | 11 | [Red-team review](11-red-team-review.md) | Adversarial review: five failure arguments, overstated claims, recommended scope cut and ship conditions |
 | 12 | [Experiment protocol](12-experiment-protocol.md) | Pre-registration of the eight-week experiment: hypotheses, arms, task set, budget, kill rule, analysis plan, readiness checklist, timeline |
 | 13 | [Week 1 status](13-week1-status.md) | Night of 2026-09-06: what is established, the numbers that exist, what is the owner's to do, and the process record |
-| 14 | [Pilot morning](14-pilot-morning.md) | Night of 2026-09-13: the void pilot, the three defects fixed live, what the owner does in the morning |
+| 14 | [Pilot morning](14-pilot-morning.md) | 2026-09-13: the void pilot, the defects fixed live, the completed pilot and its pre-registered null reading, what is the owner's to decide |
 
 ## Layer specifications
 

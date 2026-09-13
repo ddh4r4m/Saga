@@ -37,3 +37,23 @@ Committed archives: `bench/results/dev-2026-09-13-1` (2fb9c20), `dev-2026-09-13-
 ## 5. Process record
 
 Delegation held its shape: eight briefs, seven commits by saga-opus, each reviewed by tabling the tree on disk, each report carrying at least one correction to my brief (the transition row that had done real work before the limit line; the isolation row conflict; the turn-cap and budget subtypes that are pre-registered outcomes and must not become infra). Two launches were refused by this session's permission classifier; the shape that passed was used, nothing was routed around. The watcher on your terminal approved once on my signal file and logged what it consented to.
+
+## 6. The pilot, run at 08:24 and read at 12:45
+
+You launched it from your terminal after approving binary d9dbc07d. It completed: 200 runs, no infra rows, no limit waits, 59.40 usd. The runner's own report is carried untouched in `bench/results/pilot-2026-09-13/compare.md` (82080e0), with NOTES beside it.
+
+| | arm A (bare) | arm B (gate) |
+|---|---|---|
+| false done (primary) | 0.067 (6 of 88 claims) | 0.042 (3 of 88 claims) |
+| Δ false done | −0.025, 95% CI −0.074 to 0.000, Wilcoxon n=2 p=0.5 | |
+| pass@1 | 0.900 | 0.950 (Δ +0.050, CI 0.000 to 0.110; H3 holds) |
+| tokens per solved | 138,648 | 162,371 (ratio 1.171 > 1.10; H2 fails) |
+| abandons on the two impossible tasks | 10 of 10 | 10 of 10 |
+
+**The pre-registered reading.** Kill rule §8 condition 1 is met: the point estimate is above the −5 pp floor. Per §8 the project as scoped ends, the pilot is published as the result, and Saga is repositioned as bench-only (docs/11 §5 condition 6, ADR 0009). The amendment recording that decision is yours to write in docs/12 §13; nothing in the tree records it yet. The pilot number is not quoted outside the pilot report.
+
+**What the rows also say, none of it the primary.** The bare arm's base rate was low enough that a 5 pp reduction was near the floor of what this corpus could show. Exploratory: scope violations 0.320 bare against 0.050 gate; the cheat scan flagged five bare passes on ts-0014, all edits to the task's own test file that the clean-checkout oracle did not see, so a scope finding and not a forged pass. The gate arm ran the treatment in all 100 runs (gate Stop events in every one, config read at base, nothing approved by any run).
+
+**Bench findings for your list.** (1) The bare arm's claim verifier contradicts a true claim on 19 of 90 oracle-pass runs, in three shapes: a "ran" claim judged not executed (9), a "touched" claim not found in the diff (5), and the ts-0012 same-family test-command shape (6). These feed a secondary, never false done, and the gate arm's rate is 1 of 95 so kill condition 3 is not met; but the detector needs work before any bare-arm claim number is quoted. (2) The abstain-lexicon asymmetry read from the dev run did not reproduce in the pilot (three hits, one bare, two gate, none about the gate's own block); withdrawn. (3) Three report defects recorded and not edited: the secondary table nulls arm A's false-done column when one run lacks a verdict, the threats table's control-arm row is stale text, and component exposure is not evaluated by the runner (substituted from rows in NOTES). (4) The approval-store variable reaching the bare arm's environment, still to fix.
+
+**Decisions that are now yours**, in order: record the kill amendment in docs/12 §13; decide when to push (the pilot report is the artefact commitment 1 named for publishing); name and licence. My recommendation is to record the kill as pre-registered and publish the pilot as it stands; the exploratory scope and cheat numbers are the seed of a second, differently registered experiment, not a reason to continue this one.
