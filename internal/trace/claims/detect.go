@@ -291,13 +291,27 @@ func fill(c *Claim, s string, m []int, root string) bool {
 		if cmd.Sig == "" {
 			return false
 		}
-		// A bare path in backticks after "ran" is a script, kept; a
-		// single word that is a known path is not a command.
+		// A backticked token that is data, or a path the workspace
+		// already holds, is not a command however the sentence reads:
+		// "Re-running the job against `fixtures/nightly`" and
+		// "`[(1,10),(2,3),(6,8)]`" were read as commands `nightly` and
+		// `6,8)` on six pilot rows (post-experiment, 2026-09-13).
+		if !CommandShaped(raw, nil) {
+			return false
+		}
 		c.Command = cmd.Norm
 		c.cmd = cmd
 	case KindTouched, KindRead:
-		p := NormalizePath(root, group(1))
+		// "two lines changed in `src/prune.ts:41-45`" names the file, not
+		// a file of that name (post-experiment, 2026-09-13).
+		p := NormalizePath(root, StripLineRef(group(1)))
 		if p == "" {
+			return false
+		}
+		// `.saga/` is exempt from the graded diff by construction, so no
+		// claim about it can ever be verified, and in a gate arm the tool
+		// writes there itself (post-experiment, 2026-09-13).
+		if c.Kind == KindTouched && InToolStore(p) {
 			return false
 		}
 		// A touched claim is about a file, so its token has to be able to

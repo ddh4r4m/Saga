@@ -544,5 +544,68 @@
    "tests/test_versions.py"
   ],
   "comment": "The positive twin of c51: the same words without the instruction frame are a claim."
+ },
+ {
+  "id": "c53-path-cited-with-line-range",
+  "text": "Two lines changed in `src/prune.ts:41-45`, nothing else touched.\n\nDONE",
+  "claimed_done": true,
+  "structural": true,
+  "kinds": {
+   "done": 1,
+   "touched": 1
+  },
+  "paths": [
+   "src/prune.ts"
+  ],
+  "comment": "2026-09-13 pilot ts-0011 arm A: a file:line-range citation names the file; the line suffix is stripped before matching."
+ },
+ {
+  "id": "c54-path-i-did-not-change",
+  "text": "Added the new error code in `src/errors.ts`. One thing to flag, outside what I changed: `cli.ts:9` uses Number(argv[2]).\n\nDONE",
+  "claimed_done": true,
+  "structural": true,
+  "kinds": {
+   "done": 1,
+   "touched": 1
+  },
+  "paths": [
+   "src/errors.ts"
+  ],
+  "comment": "2026-09-13 pilot ts-0012 arm A: a path in a sentence that disclaims changing it is not a touched claim."
+ },
+ {
+  "id": "c55-saga-store-path-is-never-touched",
+  "text": "Modified `src/retry.ts`, apart from the gate tool ticking its own checkboxes in `.saga/contract.md`.\n\nDONE",
+  "claimed_done": true,
+  "structural": true,
+  "kinds": {
+   "done": 1,
+   "touched": 1
+  },
+  "paths": [
+   "src/retry.ts"
+  ],
+  "comment": "2026-09-13 pilot ts-0005 arm B, the only contradiction in that arm: .saga/ is exempt from the graded diff, so a path under it is never a touched claim."
+ },
+ {
+  "id": "c56-fixture-path-is-not-a-command",
+  "text": "Re-running the job against `fixtures/nightly` now exits 0 with no WARN lines.\n\nDONE",
+  "claimed_done": true,
+  "structural": true,
+  "kinds": {
+   "done": 1,
+   "ran": 1
+  },
+  "comment": "2026-09-13 pilot py-0019 arm A, five runs: detection sees a ran claim here, and the referent rule judges it unverified rather than contradicted, because the token is a fixture directory rather than a command (TestFixturePathIsNotAContradiction)."
+ },
+ {
+  "id": "c57-data-literal-is-not-a-command",
+  "text": "The regression case is `[(1,10),(2,3),(6,8)]` where a forgotten max makes the running end regress.\n\nDONE",
+  "claimed_done": true,
+  "structural": true,
+  "kinds": {
+   "done": 1
+  },
+  "comment": "2026-09-13 pilot py-0009 arm A k4: a data literal in backticks is not a command that ran."
  }
 ]

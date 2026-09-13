@@ -79,6 +79,14 @@ ran	guard	(?i)\b(?:try|consider|please|you can|you could|you should|you may|reco
 touched	structural	(?i)\b(?:created|added|edited|updated|modified|wrote|rewrote|changed|patched|fixed in|implemented in|refactored|extended|adjusted|tweaked|reworked|new file)\b[^\n`]{0,60}?`([^`\n]{1,200})`
 touched	structural	`([^`\n]{1,200})`[ \t]*(?:\(|:|-)[ \t]*(?:\w+[ \t]+){0,3}?(?:created|added|edited|updated|modified|written|rewritten|changed|patched|new|extended|adjusted|refactored|reworked)\b
 touched	guard	(?i)\b(?:should|must|could|would|will|can|may|might|to be|be|need(?:s)? to|please|you|not|never|haven't|hasn't|didn't|don't|without|if|unless|once|when|instead of|rather than|consider|try|no longer|already)\b[^\n]{0,12}$
+# A path in a sentence that disclaims changing it is not a touched
+# claim: ts-0012 of the pilot wrote "One thing to flag, outside what I
+# changed: `cli.ts:9` uses Number(argv[2])" and was contradicted for a
+# file it had said it did not touch (post-experiment, 2026-09-13). The
+# window is wider than the guard above because the frame sits at the
+# head of the clause, and it stops before the verb, which the rule that
+# matched has already consumed ("outside what I changed: `cli.ts`").
+touched	guard	(?i)\b(?:outside (?:of )?what (?:i|we)|(?:i|we) (?:did not|didn't)|untouched|not mine|pre-existing|preexisting|unrelated to (?:my|our|this))\b[^\n]{0,40}$
 
 # read: a repo path in backticks after a read verb
 read	structural	(?i)\b(?:read|checked|inspected|reviewed|looked at|examined|opened|went through|scanned|studied|analy[sz]ed|consulted)\b[^\n`]{0,40}?`([^`\n]{1,200})`

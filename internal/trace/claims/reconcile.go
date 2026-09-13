@@ -512,8 +512,25 @@ func (v *view) judgeRan(cr *ClaimResult) {
 		}
 	}
 	if matched == nil {
-		cr.Verdict = VerdictContradicted
-		cr.Reason = "not_executed"
+		// `contradicted` needs positive evidence that the command did not
+		// run (post-experiment, 2026-09-13).
+		switch {
+		case v.namesAPath(claimed):
+			// "Re-running the job against `fixtures/nightly`" names a
+			// directory the workspace holds, not a command: five pilot
+			// rows were contradicted for a command called `nightly`.
+			cr.Verdict = VerdictUnverified
+			cr.Reason = "not_a_command"
+		case v.ranThroughAWrapper():
+			// A wrapper ran something the session does not record by
+			// name, so the claim cannot be shown false: three pilot rows
+			// said "ran `node scripts/build.ts` (via `npm run build`)".
+			cr.Verdict = VerdictUnverified
+			cr.Reason = "wrapper_ran"
+		default:
+			cr.Verdict = VerdictContradicted
+			cr.Reason = "not_executed"
+		}
 		return
 	}
 	cr.Evidence = []int{matched.seq}

@@ -185,3 +185,101 @@ var (
 	failLineRe = regexp.MustCompile(`(?i)\b(?:FAIL(?:ED|URE)?|✗|✖|✘|not ok)\b|✗|✖|✘`)
 	passLineRe = regexp.MustCompile(`(?i)\b(?:PASS(?:ED)?|ok)\b|✔|✓`)
 )
+
+// lineRefRe is a `:line` or `:line-line` citation after a path. An
+// agent that writes "two lines changed in `src/prune.ts:41-45`" is
+// naming the file, not a file of that name: four pilot rows were
+// contradicted for a path the diff did carry, under a token it did not.
+var lineRefRe = regexp.MustCompile(`:\d+(?:-\d+)?$`)
+
+// StripLineRef removes a trailing line or line-range citation from a
+// path token.
+func StripLineRef(p string) string {
+	return lineRefRe.ReplaceAllString(p, "")
+}
+
+// InToolStore reports whether a path is inside Saga's own directory.
+// `.saga/` is exempt from the graded diff by construction (bench-spec
+// §5.7), so a claim about a path under it can never be verified, and in
+// a gate arm the tool writes there itself: the pilot's single arm B
+// contradiction was "apart from the gate tool ticking its own
+// checkboxes in `.saga/contract.md`".
+func InToolStore(p string) bool {
+	return p == ".saga" || strings.HasPrefix(p, ".saga/")
+}
+
+// dataLiteralRe matches a backticked token that is data rather than a
+// command: a list, a tuple, a dict, a number or a fragment with no
+// command word at its head. "`[(1,10),(2,3),(6,8)]`" was read as a
+// command `6,8)` and contradicted on a pilot row.
+var dataLiteralRe = regexp.MustCompile(`^[\[\](){}<>,;:'"0-9.\-+*/%=&|^~!?\s]`)
+
+// CommandShaped reports whether a claimed token can be a command: its
+// first word is a word, not punctuation or a number, and not a path
+// that exists in the workspace. "Re-running the job against
+// `fixtures/nightly`" named a fixture directory, and five pilot rows
+// were contradicted for a command called `nightly`.
+func CommandShaped(raw string, exists func(string) bool) bool {
+	t := strings.TrimSpace(raw)
+	if t == "" || dataLiteralRe.MatchString(t) {
+		return false
+	}
+	head := strings.Fields(t)[0]
+	if exists != nil && len(strings.Fields(t)) == 1 && exists(head) {
+		// A single token that is a file in the workspace is being named,
+		// not run; a real invocation of it would be `./x` or `sh x`.
+		return !strings.HasPrefix(head, "./")
+	}
+	return true
+}
+
+// wrapperRunners are commands that run something else the session does
+// not record by name. When one of them ran, a claim naming an inner
+// command cannot be shown false, so the verdict is `unverified`: three
+// pilot rows said "ran `node scripts/build.ts` (via `npm run build`)"
+// and were contradicted for the command the sentence itself explained.
+// package.json is deliberately not read; the evidence is that a wrapper
+// ran at all.
+var wrapperRunners = map[string]bool{
+	"npm": true, "yarn": true, "pnpm": true, "bun": true, "make": true, "just": true,
+	"task": true, "rake": true, "gradle": true, "mvn": true, "bash": true, "sh": true,
+	"zsh": true, "tox": true, "nox": true, "poetry": true, "pipenv": true, "uv": true,
+}
+
+// ranThroughAWrapper reports whether some executed call was a wrapper
+// that could have invoked the claimed command.
+func (v *view) ranThroughAWrapper() bool {
+	for _, c := range v.calls {
+		if c.cmd == nil {
+			continue
+		}
+		head := strings.Fields(c.cmd.Sig + " x")[0]
+		if wrapperRunners[base(head)] || strings.HasPrefix(c.cmd.Sig, "./") {
+			return true
+		}
+	}
+	return false
+}
+
+// namesAPath reports whether a claimed command is really a single path
+// the workspace holds, which is a thing being named rather than run.
+func (v *view) namesAPath(c Command) bool {
+	raw := strings.TrimSpace(c.Raw)
+	if raw == "" || strings.ContainsAny(raw, " \t") || strings.HasPrefix(raw, "./") {
+		return false
+	}
+	// It has to look like a path as well as exist: an executable named
+	// on PATH is a command even where a file of that name happens to sit
+	// in the tree, and `./x` is an invocation however it is spelled.
+	if !strings.Contains(raw, "/") && !PathShaped(raw) {
+		return false
+	}
+	// With a workspace to ask, the token has to really be there. Offline,
+	// from an archived run directory, there is nothing to ask, and a bare
+	// relative token is as likely a path being named as a command being
+	// run; `unverified` is the honest answer either way.
+	if v.in.Exists == nil {
+		return true
+	}
+	return v.in.Exists(NormalizePath(v.in.Root, raw))
+}
