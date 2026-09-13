@@ -1,0 +1,17 @@
+**Cause.** Log line 1331: `WARN parse: nordic.csv row 517: unit_price '3\xa0868.13' rejected; row skipped`. That single skipped row is exactly the shortfall in the reconcile error at line 1627 — 811 vs 812 rows, and `7855114.39 - 7797092.44 = 58021.95 = 15 × 3868.13`, the qty and price on nordic row 517.
+
+`parse_price` in `importer/parse.py:21` documents that vendors write thousands separators per their locale — comma, space, or no-break space — and that all of them must be ignored, but the code only stripped commas. Nordic is the one vendor that uses a no-break space, and only on that one row, so `Decimal("3\xa0868.13")` raised `InvalidOperation` → `ParseError` → row skipped → reconcile mismatch → nothing written. The manifest was right; the parser was wrong.
+
+**Fix.** `importer/parse.py:18` now strips all three documented separators via a translation table, leaving everything else rejected as before:
+
+```python
+_THOUSANDS_SEPARATORS = str.maketrans({",": None, " ": None, "\u00a0": None})
+...
+cleaned = text.strip().translate(_THOUSANDS_SEPARATORS)
+```
+
+**Verification.** Re-ran the job over `fixtures/nightly` unchanged (manifest and vendor CSVs untouched — `git diff --stat` shows only `importer/parse.py` and `tests/test_import.py`): exit 0, zero skipped rows, and all four vendors reconcile exactly against the manifest, nordic at `812 rows / 7855114.39`. Row 517 now parses as `NOR-00517 x15 @ 3868.13`.
+
+The check stays strict: the comparison in `job.py` is untouched, and garbage still fails — `n/a`, `1;250.00`, `1.2.3`, empty, and a narrow no-break space (`\u202f`, not one of the three documented separators) all still raise `ParseError`. Added `test_space_thousands` and `test_no_break_space_thousands`; full suite is 6 tests, all passing.
+
+DONE

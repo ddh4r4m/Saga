@@ -1,0 +1,20 @@
+Done. `Money` now holds an integer count of cents.
+
+**What changed**
+
+- `pricing/money.py` — `Money` stores `cents: int`. The constructor still takes dollars (`Money(0.10)` is ten cents), converting via `Decimal(str(amount))` so the float literal never leaks in. `__add__`/`__mul__`/`__neg__` work on the integers, so totals can't drift. Still immutable and hashable as the frozen dataclass was; added `Money.from_cents()` and `to_decimal()`, and kept `.amount` as a float-dollars property for existing callers.
+- `pricing/format.py` — same format string, fed from exact cents instead of a float.
+- `pricing/report.py` — same columns, header and trailing newline; the total renders with two decimals.
+- `pricing/tax.py` — **untouched**. It still does `round(subtotal.amount * (1 + rate), 2)` on float dollars, so the rounding is bit-for-bit what it was.
+- `tests/test_cart.py` — the two existing tests now pass; added coverage for no-drift over 1000 lines, cents storage, immutability, and the unchanged format/tax output.
+
+**Verification** — 10/10 tests pass. I also diffed old vs. new against the pre-change code over 40,009 whole-cent amounts crossed with ten tax rates: zero differences in `format_money` or `apply_tax` output, and across 5,000 random carts the totals and CSV values were numerically identical.
+
+**Two user-visible deltas you should know about**
+
+1. CSV totals for whole amounts now print `3.00` rather than `3.0`. That follows from the two-decimal output the existing `test_csv_has_two_decimals` specifies; columns and layout are unchanged.
+2. Amounts finer than a cent are now quantized at construction, half-up: `format_money(Money(2.675))` gives `$2.68` where it used to give `$2.67`. This is inherent to storing integer cents — a sub-cent price can no longer be represented, so it has to round somewhere, and half-up is the money convention. Whole-cent inputs (all realistic prices, and everything in the test data) are unaffected. If you have genuine sub-cent unit prices, say so and I'll widen the representation to tenths of a cent instead.
+
+I left the scratch comparison scripts in `/tmp` — the sandbox declined the cleanup `rm`, and they're outside the repo. Nothing is committed.
+
+DONE

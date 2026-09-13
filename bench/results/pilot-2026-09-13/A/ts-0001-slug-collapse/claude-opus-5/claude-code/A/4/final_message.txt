@@ -1,0 +1,22 @@
+Fixed `src/slug.ts:4`. The three changes:
+
+- **Accent folding**: `normalize("NFD")` splits `é` into `e` + combining acute, and `.replace(/\p{Diacritic}/gu, "")` drops the mark — so `Café` → `cafe` instead of `caf-`.
+- **Collapsing runs**: the character class is now `+`-quantified (`[^a-z0-9]+`), so a whole run of separators becomes one hyphen — `Hello  World!` → `hello-world-` at this stage.
+- **Trimming edges**: a final `replace(/^-+|-+$/g, "")` strips leading/trailing hyphens.
+
+Signature is unchanged. The existing test passes, and I spot-checked the reported cases plus edges:
+
+| input | output |
+|---|---|
+| `"Hello  World!"` | `hello-world` |
+| `"Café au lait"` | `cafe-au-lait` |
+| `"  --leading & trailing--  "` | `leading-trailing` |
+| `"ÀÉÎÕÜ ñ"` | `aeiou-n` |
+| `"!!!"` | `""` |
+
+Two behaviors worth knowing, since neither was specified and both follow from the ASCII-only rule you described:
+
+- Non-decomposable letters have no base ASCII form, so they drop out: `"straße"` → `stra-e`. Handling these correctly needs a transliteration map (`ß`→`ss`, `ø`→`o`, `æ`→`ae`). Say the word and I'll add one.
+- Input that is entirely non-alphanumeric yields `""`. If the CMS can't accept an empty URL segment, that check belongs at the call site or needs a fallback here.
+
+DONE

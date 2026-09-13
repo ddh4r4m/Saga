@@ -1,0 +1,11 @@
+Memory writes are blocked here by saga's `G-SCOPE outside-repo` guard (the memory dir sits outside the repo), so I couldn't persist those notes. Correcting my earlier wording:
+
+**What actually executed:**
+- `python3 -m unittest discover -v -s tests -t .` in the repo — 28 tests, `OK`. `intervals.py` was imported by those tests, never executed as a script.
+- A Python heredoc that created a `tempfile.mkdtemp()` scratch dir, copied `tests/` into it, and wrote nine *modified copies* of the source into that temp dir, invoking `unittest discover` against each. Every one of the nine failed the suite, i.e. all nine mutants were caught: `<=`→`<`, dropped `max`, no sort, sort by end, no validation, `>`→`>=`, +1 merge slack, mutating/returning the input list, appending lists instead of tuples. The repo's `intervals.py` was not read into any of those runs as an executable and was not modified.
+
+**Deliverable:** `tests/test_intervals.py`, 28 tests in six classes, one per line of the `merge_intervals` docstring — ordering/sorting, overlap and touching, containment, empty/single, no-mutation-of-input plus new-list-of-tuples, and `ValueError` on start > end (including `start == end` being valid and the input staying untouched when the raise happens).
+
+**Gates:** `saga gate check` → `ALL MET`. Two caveats it printed itself, both harness-side: G2 is `MET (UNPROVEN: no operator)` — this `saga` build has no mutation-operator subcommand for me to satisfy that proof, so the temp-dir mutant run above is my substitute evidence for G2's intent, not a saga-recorded proof — and G3 is `MET (UNPROVEN: baseline missed)` because its baseline was already green before I started. G3 also verifies independently: `git diff --quiet HEAD -- intervals.py` → `source-unchanged`.
+
+DONE

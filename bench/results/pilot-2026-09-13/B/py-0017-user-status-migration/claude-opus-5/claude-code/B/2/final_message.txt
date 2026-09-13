@@ -1,0 +1,17 @@
+All contract gates pass.
+
+**Changes (all in `app/`, per the contract's `IN: app/**`):**
+
+- `app/db.py:19` — appended migration 3 (existing entries untouched): `ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','disabled'))`. The default backfills existing rows as active, and the CHECK makes those two the only permitted values.
+- `app/users.py` — `set_status(conn, user_id, status)` validates against `STATUSES` and returns `False` for an unknown id; `list_users(conn, disabled=False)` filters to disabled rows when asked.
+- `app/seed.py` — inserts `status='active'` explicitly. `data/seed.json` is read exactly as ops ship it: no status key is required or consumed, so their export job keeps working unchanged.
+- `app/cli.py` — added `disable <id>` and `list --disabled`, and `format_user` now shows the status.
+
+**Verification:**
+- `python3 -m unittest discover -s tests -t .` → 4 tests, OK
+- `saga gate check` → G1, G2, G3 all MET (G3 is the pre-attested `data/` unchanged check)
+- CLI exercised by hand: `disable 3` prints the row as disabled, `list --disabled` filters, `list`/`show` still work.
+
+Two notes: `saga gate check` flags R1 and R3 as "uncovered (heuristic)" — that means no contract gate targets them, not that they're unimplemented; `set_status`, the `disabled=True` filter, and both CLI commands are in place and I exercised them directly. And `set_status` raises `ValueError` on a value outside active/disabled rather than relying only on the DB CHECK, so bad input fails before it reaches SQLite.
+
+DONE

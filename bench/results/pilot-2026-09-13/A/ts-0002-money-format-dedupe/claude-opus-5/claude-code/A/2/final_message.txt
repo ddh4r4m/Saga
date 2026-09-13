@@ -1,0 +1,10 @@
+Both tests pass.
+
+**What changed:**
+- Added `src/money.ts` exporting `formatMoney` — the invoice's version verbatim (sign before `$`, thousands grouping on the absolute value).
+- `src/invoice.ts` and `src/receipt.ts` now import it; both local copies are gone.
+- `src/legacy/report.ts` untouched — its `fmt` stays as-is for the frozen finance export.
+
+One behaviour note beyond the sign fix: the receipt's old formatter had no thousands separator (`Math.floor(cents / 100).toLocaleString("en-US")` did group, actually — but it produced `$-2.50` for negatives and would render `$-1,234.56`-style output). Under the shared version, receipt negatives now render `-$1.50`, and the string is one character wider, so `padStart(10)` in the receipt row leaves one less space of padding for negative amounts. Positive amounts are unchanged.
+
+DONE

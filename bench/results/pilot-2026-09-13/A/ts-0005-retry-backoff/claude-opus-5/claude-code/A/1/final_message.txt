@@ -1,0 +1,12 @@
+Fixed in `src/retry.ts:27`, one line changed and nothing else:
+
+```diff
+- const wait = options.baseMs * (i + 1) + random();
++ const wait = options.baseMs * 2 ** i * (1 + random());
+```
+
+The old code grew the delay linearly (`baseMs * (i+1)`) and added the raw `random()` value — a jitter of under 1ms rather than a multiplier. So with `baseMs: 100` the third retry waited ~300ms instead of the documented 600–1200ms, which is the early hit against the payment gateway.
+
+The new expression is the README formula verbatim: `baseMs * 2^i * (1 + r)`, exponential with up to 100% multiplicative jitter. The test file is untouched (`git status` shows only `src/retry.ts` modified) and `npm test` passes: waits are `[150, 300, 600]` for `r = 0.5`, with 4 calls.
+
+DONE

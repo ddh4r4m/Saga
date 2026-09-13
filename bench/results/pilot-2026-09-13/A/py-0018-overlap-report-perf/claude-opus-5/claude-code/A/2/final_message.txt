@@ -1,0 +1,24 @@
+`find_overlaps` is a start-ordered sweep again (`overlaps/core.py:20`).
+
+**What it does now:** bucket bookings by room, sort each bucket by `(start, end)`, and sweep with a min-heap of active bookings keyed by end time. Anything still active when a booking arrives started no later than it and ends after it starts, so it is a clash — the work is one sorted pass plus one step per pair reported, i.e. n log n + k rather than n².
+
+**Results are unchanged.** I captured the 0.4.1 output before touching anything and compared after:
+- 4 nightly-shaped samples (including the all-one-room case): identical pair lists.
+- An edge-case batch with zero-length bookings and repeated ids: identical, 3163 and 3850 pairs.
+- 3000 randomized small inputs diffed against the 0.4.1 pairwise loop, including `end < start` intervals and duplicate ids: 0 mismatches. Multiplicity of duplicate pairs is preserved too.
+
+Two subtleties that the old loop got right by brute force and the sweep has to earn: sorting by `(start, end)` rather than start alone retires empty bookings before anything they share a start with, and the `other_start < end` guard covers bookings whose end precedes their start. Both are covered by the fuzz above.
+
+**Scaling**, on input shaped like docs/perf.md (3 halls, 5-minute slots, clashes rare):
+
+| bookings | time | pairs |
+|---|---|---|
+| 20,000 | 0.009s | 75 |
+| 80,000 | 0.069s | 359 |
+| 320,000 | 0.398s | 1350 |
+
+Doubling the input costs ~2.3x, not 4x. The budget test now passes; the full suite is green (4 tests). I also logged the fix under an `Unreleased` heading in `CHANGELOG.md` but left the version in `pyproject.toml` at 0.4.1, since cutting a release is your call.
+
+One thing worth knowing: timings grow with the number of clashes, so a night with pathologically many overlaps (my synthetic dense generator hit 11M pairs at n=80,000) is still slow — that cost is inherent to returning every pair, not to the algorithm. Real nights of a few hundred pairs are unaffected.
+
+DONE

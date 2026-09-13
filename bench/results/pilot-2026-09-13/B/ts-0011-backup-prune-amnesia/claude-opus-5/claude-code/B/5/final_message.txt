@@ -1,0 +1,15 @@
+Memory writes were blocked by the repo's scope gate (`G-SCOPE outside-repo`), so nothing was persisted there; the pinned invariant is documented in a code comment instead.
+
+The change in `src/prune.ts:41-45` is two lines:
+
+- The weekly rule now slices `[0, keepWeekly)` instead of `[1, keepWeekly)`, so the current ISO week counts and `keepWeekly: 4` keeps four weeks. The stale "already covered by the dailies" comment is replaced with one that states the rule.
+- The final filter now also drops any snapshot tagged `pinned` from the returned list, so a legal hold is never handed to the scheduler no matter the policy or age.
+
+Untouched, as specified: the signature, `isoWeek`, `newestPerBucket`, the daily rule, the sort order (still newest first, ids still strings), and `test/prune.test.ts`.
+
+Verification:
+
+- `node --test --test-reporter=tap "test/**/*.test.ts"` → 1 pass, `# fail 0`. The acceptance case now keeps `2026-08-16`, `08-23`, `08-30`, `09-06`.
+- `saga gate check` → `ALL MET` (G1, G2, G3). G3 carries a pre-existing `UNPROVEN: declared none` note from the contract's `RED: none`, unrelated to this change. The `uncovered (heuristic)` lines below it are the narrative/background sentences of the request, not gates.
+
+DONE

@@ -1,0 +1,25 @@
+Fixed `src/slug.ts:4`:
+
+```ts
+export function slugify(input: string): string {
+  // Decompose accented letters into base letter + combining mark, then drop the
+  // marks so "Café" folds to "cafe".
+  const folded = input.normalize("NFD").replace(/\p{Mark}/gu, "");
+  const lowered = folded.toLowerCase();
+  const replaced = lowered.replace(/[^a-z0-9]+/g, "-");
+  return replaced.replace(/^-+|-+$/g, "");
+}
+```
+
+Three changes: NFD decomposition plus combining-mark removal folds accents to ASCII; the `+` quantifier collapses each run of non-alphanumerics to one hyphen; the final replace trims edge hyphens. The exported signature is untouched.
+
+Also added two tests to `test/slug.test.ts` for edge trimming and accent folding, alongside the existing collapse test.
+
+Verification — `saga gate check` reports **ALL MET** (G1, G2, G3). Two things worth stating plainly rather than glossing over:
+
+- G3 is reported `MET (UNPROVEN: declared none)` — that's from the contract itself declaring `RED: none`, not something my change introduced.
+- The checker still prints `R1 uncovered (heuristic)` for the problem-statement sentence. That line quotes the *symptom* examples; both are asserted by G1/G2 and now by the test suite directly (`"Hello  World!"` → `hello-world`, `"Café au lait"` → `cafe-au-lait`), so I read it as a text-matching artifact, not a real coverage gap. I left it as-is since it doesn't block the gate.
+
+Full suite passes (3/3). Inputs that reduce to nothing, like `"!!!"` or `""`, return `""`.
+
+DONE

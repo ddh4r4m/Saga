@@ -1,0 +1,18 @@
+A scope hook blocks writes outside the repo, so I skipped saving a memory note.
+
+**Change** — `src/prune.ts:41-45`, two lines in `selectForDeletion`:
+
+- Weekly rule: `weeks.slice(1, keepWeekly)` → `weeks.slice(0, keepWeekly)`, so it keeps the newest `keepWeekly` ISO weeks with the current week included. The stale "already covered by the dailies" comment is replaced. `keepWeekly: 4` now keeps four weekly snapshots, and `keepDaily: 0` volumes keep the current week.
+- Legal hold: snapshots tagged `pinned` are filtered out of the returned list as the last step, so they're never returned no matter the policy or age.
+
+Untouched: the signature, the daily rule, `isoWeek`, `newestPerBucket`, the sort (newest first, string ids), the test, and the docs.
+
+**Verification**
+
+- `node --test --test-reporter=tap "test/**/*.test.ts"` → `# pass 1`, `# fail 0` (the 35-night acceptance case now keeps 08-16, 08-23, 08-30, 09-06).
+- Pinned check: `pinned-deleted false others 0`.
+- `saga gate check` → G1 MET, G2 MET, G3 MET, `ALL MET`. G3 is reported as "UNPROVEN: declared none" because its contract entry declares no RED evidence; it was already checked off before this change.
+
+One note on interaction between the two rules: a pinned snapshot still occupies its daily/weekly bucket, so if it is the newest in a bucket it consumes that slot and older snapshots in the same bucket become deletable. That matches the existing keep logic and errs toward keeping more, not less, but if legal expects a pinned snapshot to be *extra* rather than *counted*, that's a separate decision — say the word and I'll change it.
+
+DONE

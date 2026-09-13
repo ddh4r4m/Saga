@@ -1,0 +1,72 @@
+diff --git a/inventory/reserve.py b/inventory/reserve.py
+index 7c80cd4..e9929ad 100644
+--- a/inventory/reserve.py
++++ b/inventory/reserve.py
+@@ -1,5 +1,7 @@
+ """Stock reservation for checkout."""
+ 
++import threading
++
+ from .store import MemoryStore
+ 
+ 
+@@ -8,27 +10,49 @@ class OutOfStock(Exception):
+ 
+ 
+ class Inventory:
++    """Thread-safe stock reservations.
++
++    Reading the stock level and writing back the new one is a single
++    decision, so it has to happen under one lock: without it two callers
++    can both read the same level, both decide there is enough, and the
++    second write silently erases the first. Locks are per SKU so that
++    orders for unrelated SKUs still run in parallel, which matters when
++    the store is network-backed and its reads are slow.
++    """
++
+     def __init__(self, store: MemoryStore) -> None:
+         self.store = store
++        self._locks: dict[str, threading.Lock] = {}
++        self._locks_guard = threading.Lock()
++
++    def _lock_for(self, sku: str) -> threading.Lock:
++        with self._locks_guard:
++            lock = self._locks.get(sku)
++            if lock is None:
++                lock = self._locks[sku] = threading.Lock()
++            return lock
+ 
+     def reserve(self, sku: str, qty: int) -> int:
+         """Take qty units of sku out of stock; return the units left."""
+         if qty <= 0:
+             raise ValueError("qty must be positive")
+-        available = self.store.get(sku)
+-        if available < qty:
+-            raise OutOfStock(f"{sku}: wanted {qty}, have {available}")
+-        remaining = available - qty
+-        self.store.set(sku, remaining)
+-        return remaining
++        with self._lock_for(sku):
++            available = self.store.get(sku)
++            if available < qty:
++                raise OutOfStock(f"{sku}: wanted {qty}, have {available}")
++            remaining = available - qty
++            self.store.set(sku, remaining)
++            return remaining
+ 
+     def release(self, sku: str, qty: int) -> int:
+         """Put qty units of sku back; return the units now in stock."""
+         if qty <= 0:
+             raise ValueError("qty must be positive")
+-        total = self.store.get(sku) + qty
+-        self.store.set(sku, total)
+-        return total
++        with self._lock_for(sku):
++            total = self.store.get(sku) + qty
++            self.store.set(sku, total)
++            return total
+ 
+     def available(self, sku: str) -> int:
+-        return self.store.get(sku)
++        with self._lock_for(sku):
++            return self.store.get(sku)

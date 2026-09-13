@@ -1,0 +1,9 @@
+`dedupe` in `contacts/merge.py:5` keys each contact on `email.strip().lower()`, keeps the first occurrence untouched, drops later matches, preserves input order, and never merges blank emails. It builds a new list, so the caller's list isn't mutated.
+
+Verification: `saga gate check` and `saga gate status` both report G1, G2, G3 MET (ALL MET); `python3 -m unittest tests.test_merge` passes as part of G1. R1/R2 are the request's narrative sentences flagged by a heuristic, not failing checks.
+
+Two things worth flagging:
+- The earlier Stop-hook failure was not a code regression. `saga gate check` writes EVIDENCE hashes into `.saga/contract.md`, and that write makes the gates it just passed report `UNMET (stale: tree changed since the check)`. Re-running the check cleared it.
+- I tried to save that quirk to my memory directory, but the write was refused by the scope guard (`G-SCOPE outside-repo`) since the memory path sits outside the repo. I left it unsaved rather than working around the guard.
+
+DONE

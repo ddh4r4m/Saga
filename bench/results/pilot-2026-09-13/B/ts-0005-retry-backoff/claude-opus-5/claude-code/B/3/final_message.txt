@@ -1,0 +1,13 @@
+One-line fix in `src/retry.ts:26`:
+
+```ts
+const wait = options.baseMs * 2 ** i * (1 + random());
+```
+
+The old expression `options.baseMs * (i + 1) + random()` was linear in `i` with jitter added as raw milliseconds (under 1ms), so the third retry waited 300ms instead of the documented 400–800ms.
+
+- Test passes unmodified (`waits === [150, 300, 600]` with `random: () => 0.5`), test dir untouched.
+- With `r = 0`, waits are exactly `100,200,400`.
+- `saga gate check`: G1 MET, G2 MET, ALL MET. (It also prints an "R1 uncovered (heuristic)" note about the test having been red — that's the symptom the fix addresses, not a separate check.)
+
+DONE

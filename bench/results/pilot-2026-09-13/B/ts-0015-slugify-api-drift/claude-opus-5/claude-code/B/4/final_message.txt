@@ -1,0 +1,8 @@
+Fixed in `src/pages.ts:10`. The vendor bump to slugify 2.0.0 changed the API: the second argument is an options object (a string separator is no longer accepted, so it was ignored and the new `_` default applied), and lowercasing became opt-in. `pageSlug` now calls `slugify(title, { separator: "-", lower: true })`, which reproduces the 1.x output that existing URLs were built from.
+
+- `node --test` — 2 tests, 0 fail.
+- `pageSlug("Q3 Review: Plans & Budgets (Draft)")` → `q3-review-plans-budgets-draft`.
+- `vendor/` untouched; the change is confined to `src/`.
+- `saga gate check` → ALL MET (G3 reported as `UNPROVEN: declared none`, which is how it was pre-declared in the contract, not something introduced here).
+
+DONE

@@ -1,0 +1,18 @@
+`git diff` confirms only `src/pages.ts` changed; `vendor/` is untouched, per the vendor policy of never patching vendored copies in place.
+
+**What was wrong:** slugify 2.0.0 changed `slugify(text, separator)` to `slugify(text, options)`, so the old `slugify(title, "-")` call passed a string where an object was expected. The separator fell back to the new `_` default, and lowercasing — always on in 1.x — became opt-in.
+
+**Fix** (`src/pages.ts:11`):
+
+```ts
+return slugify(title, { separator: "-", lower: true });
+```
+
+Verification:
+- `node --test` — 2 tests, `# fail 0`
+- `pageSlug("Q3 Review: Plans & Budgets (Draft)")` → `q3-review-plans-budgets-draft`
+- `saga gate check` → ALL MET (G1, G2, G3)
+
+One note: the gate reports G3 as `MET (UNPROVEN: declared none)` — it was already checked off in the contract with no red test, so its pass isn't backed by a failing-first test. The underlying condition does hold, though.
+
+DONE

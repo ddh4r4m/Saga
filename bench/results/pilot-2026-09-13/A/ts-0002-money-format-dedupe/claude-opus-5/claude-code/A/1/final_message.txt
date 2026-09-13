@@ -1,0 +1,10 @@
+Done. Both renderers now share one `formatMoney`.
+
+- **`src/money.ts`** (new): exports `formatMoney` with the invoice's exact behaviour — sign in front of the `$`, thousands grouping via `toLocaleString("en-US")`, magnitude computed from `Math.abs(cents)`.
+- **`src/invoice.ts`**: local copy removed, imports the shared one. Output unchanged.
+- **`src/receipt.ts`**: local copy removed, imports the shared one. Negative amounts now render `-$2.50` instead of the old `$-3.50` — the old version floored the signed value (`Math.floor(-250/100)` → `-3`) while taking the fraction from the absolute value, so it was off by a dollar on any negative non-round amount, not just misplacing the sign. Positive amounts and grouping are unaffected.
+- **`src/legacy/report.ts`**: untouched, still uses its own `fmt`.
+
+`npm test` passes (2/2), including the receipt test asserting it matches the invoice's refund format.
+
+DONE

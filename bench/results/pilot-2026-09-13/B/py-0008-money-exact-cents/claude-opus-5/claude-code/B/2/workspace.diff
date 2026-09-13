@@ -1,0 +1,106 @@
+diff --git a/pricing/format.py b/pricing/format.py
+index 42b1b31..005a38a 100644
+--- a/pricing/format.py
++++ b/pricing/format.py
+@@ -3,5 +3,6 @@ from .money import Money
+ 
+ 
+ def format_money(m: Money) -> str:
+-    sign = "-" if m.amount < 0 else ""
+-    return f"{sign}${abs(m.amount):,.2f}"
++    sign = "-" if m.cents < 0 else ""
++    whole, frac = divmod(abs(m.cents), 100)
++    return f"{sign}${whole:,}.{frac:02d}"
+diff --git a/pricing/money.py b/pricing/money.py
+index f586e26..65ebba4 100644
+--- a/pricing/money.py
++++ b/pricing/money.py
+@@ -1,19 +1,59 @@
+-"""Money value object."""
+-from dataclasses import dataclass
++"""Money value object, held as a whole number of cents."""
++from decimal import Decimal
++
++
++def _to_cents(amount: float) -> int:
++    """Convert an amount in dollars to exact cents."""
++    return int(Decimal(str(amount)).scaleb(2).to_integral_value())
+ 
+ 
+-@dataclass(frozen=True)
+ class Money:
+-    amount: float
++    """An immutable amount of money, exact to the cent."""
++
++    __slots__ = ("cents",)
++
++    def __init__(self, amount: float = 0.0) -> None:
++        object.__setattr__(self, "cents", _to_cents(amount))
++
++    @classmethod
++    def from_cents(cls, cents: int) -> "Money":
++        m = cls.__new__(cls)
++        object.__setattr__(m, "cents", int(cents))
++        return m
++
++    @property
++    def dollars(self) -> float:
++        """The amount in dollars, for callers that need a float."""
++        return self.cents / 100
++
++    def __setattr__(self, name: str, value: object) -> None:
++        raise AttributeError(f"cannot assign to field {name!r}")
+ 
+     def __add__(self, other: "Money") -> "Money":
+-        return Money(self.amount + other.amount)
++        return Money.from_cents(self.cents + other.cents)
+ 
+     def __mul__(self, qty: int) -> "Money":
+-        return Money(self.amount * qty)
++        return Money.from_cents(self.cents * qty)
+ 
+     def __neg__(self) -> "Money":
+-        return Money(-self.amount)
++        return Money.from_cents(-self.cents)
++
++    def __eq__(self, other: object) -> bool:
++        if not isinstance(other, Money):
++            return NotImplemented
++        return self.cents == other.cents
++
++    def __hash__(self) -> int:
++        return hash(self.cents)
++
++    def __str__(self) -> str:
++        """The plain decimal amount, e.g. "0.30" or "-0.05"."""
++        sign = "-" if self.cents < 0 else ""
++        whole, frac = divmod(abs(self.cents), 100)
++        return f"{sign}{whole}.{frac:02d}"
++
++    def __repr__(self) -> str:
++        return f"Money.from_cents({self.cents})"
+ 
+ 
+-ZERO = Money(0.0)
++ZERO = Money.from_cents(0)
+diff --git a/pricing/report.py b/pricing/report.py
+index 4545891..b4e79b9 100644
+--- a/pricing/report.py
++++ b/pricing/report.py
+@@ -5,5 +5,5 @@ from .cart import Line, line_total
+ def to_csv(lines: list[Line]) -> str:
+     rows = ["name,qty,total"]
+     for name, price, qty in lines:
+-        rows.append(f"{name},{qty},{line_total(price, qty).amount}")
++        rows.append(f"{name},{qty},{line_total(price, qty)}")
+     return "\n".join(rows) + "\n"
+diff --git a/pricing/tax.py b/pricing/tax.py
+index d7b6447..f566474 100644
+--- a/pricing/tax.py
++++ b/pricing/tax.py
+@@ -4,4 +4,4 @@ from .money import Money
+ 
+ def apply_tax(subtotal: Money, rate: float) -> Money:
+     """Return subtotal plus tax, rounded to the cent."""
+-    return Money(round(subtotal.amount * (1 + rate), 2))
++    return Money(round(subtotal.dollars * (1 + rate), 2))

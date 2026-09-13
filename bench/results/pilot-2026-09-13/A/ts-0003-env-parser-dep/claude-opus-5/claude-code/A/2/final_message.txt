@@ -1,0 +1,17 @@
+You were right — `envfile-parse-strict` doesn't exist; nothing in the repo or lockfile ever referenced a real package by that name (there's no lockfile at all, and no `node_modules`).
+
+**What I did**
+
+- Added `src/env.ts:1` — a dependency-free `parseEnvFile` that returns `Record<string, string>`. It handles `export` prefixes, blank/comment lines, single- and double-quoted values (escapes apply in double quotes only, shell-style), multi-line quoted values, CRLF, and missing trailing newlines. In the spirit of the name the old import implied, it throws on malformed lines, unterminated quotes, and stray text after a quoted value.
+- `src/config.ts:2` now imports from `./env.ts`; the `as Record<string, string>` cast is gone since the parser is typed.
+- Removed the `dependencies` block from `package.json`. Nothing is installed, so `npm test` runs straight from a fresh clone with no network.
+
+**The quoting cases you called out**
+
+`APP_NAME="Order Service"` → `Order Service`, and `MOTD='hello # not a comment'` → `hello # not a comment`. A `#` only starts a comment in a bare value when it's at the start or follows whitespace, so `TOKEN=pass#word` also survives; `PORT=8080 # the port` is still trimmed to `8080`.
+
+**Verification**
+
+14 tests pass: the original one, plus `test/env.test.ts` covering the parser and three additions to `test/config.test.ts` — one of which reads the real `.env.example` off disk and asserts the whole `Config` object, so the quoted values are checked end-to-end rather than against a copy of the string. I also ran the suite in a clean copy of the tree with no `node_modules`, which passes (exit 0).
+
+DONE

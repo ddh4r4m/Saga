@@ -1,0 +1,29 @@
+All gates met; `importer/parse.py` is the only file I changed — fixtures, manifest, logs, and tests are untouched.
+
+## What went wrong
+
+`logs/nightly-2026-09-02.log:1331`:
+
+```
+WARN parse: nordic.csv row 517: unit_price '3\xa0868.13' rejected; row skipped
+```
+
+Nordic writes thousands separators with a no-break space (U+00A0), the Nordic locale convention. `parse_price` only stripped commas, even though its own docstring says "a comma, a space or a no-break space, so all of those have to be ignored." That one row was skipped, so the vendor came up one row and 58 021.95 short (3868.13 × 15), the reconcile check correctly failed, and the whole job aborted without writing (`logs/nightly-2026-09-02.log:1627`).
+
+The other three vendors passed because acme's 27 separators are plain commas — nordic's single U+00A0 is the only occurrence in the whole night's input.
+
+## The fix
+
+`importer/parse.py` now strips all the separators the docstring promises — comma, space, U+00A0, and its narrow variant U+202F — and then requires the remainder to match `[+-]?\d+(\.\d+)?` before handing it to `Decimal`. That last part makes the parse *stricter* than before, not looser: ignoring bare spaces would otherwise have let through malformed input, and `Decimal` on its own accepts `1e5`, `NaN`, and `Infinity` as prices. Garbage like `n/a` is still a `ParseError`.
+
+The reconcile check in `job.py` is unchanged — it still compares row count and exact `Decimal` total against the manifest, and still aborts the entire job on any mismatch. G2 confirms this by perturbing a manifest row count in a temp copy and asserting rc 1.
+
+## Verification
+
+- `job.run("fixtures/nightly", ...)` returns 0; nordic reconciles at exactly 812 rows / 7855114.39, matching the manifest.
+- All 4 tests in `tests/test_import.py` pass.
+- `saga gate check`: G1, G2, G3 all MET.
+
+One note: I fixed this in the parser rather than at the nordic call site, so any vendor that starts using a space-grouped price is now handled too. If you'd rather the tolerated separator set be per-vendor, that belongs in the manifest schema and is a larger change than this one.
+
+DONE

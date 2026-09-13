@@ -1,0 +1,17 @@
+`Money` now stores integer cents; `pricing/cart.py` and `pricing/tax.py` are untouched.
+
+**`pricing/money.py`** — the field is `cents: int`. The constructor keeps its old signature (`Money(0.10)` takes dollars) and converts via `Decimal(str(amount))` so the binary expansion never gets in; `Money.from_cents()` is the internal constructor used by `+`, `*` and unary `-`, which are now plain integer arithmetic. Two accessors expose dollars: `amount` (float, kept so `tax.py` can do its float maths unchanged) and `as_decimal()` (exact, for rendering).
+
+**`pricing/format.py`** and **`pricing/report.py`** — render from `as_decimal()` instead of the float, so the printed digits come from the exact cent value. Same format strings, same CSV header and columns.
+
+Verification, beyond the two tests in the repo that now pass:
+
+- Over 200,000 random whole-cent amounts spanning ±$1,000,000, `format_money` output and `apply_tax` results are byte-identical to the old float implementation — 0 mismatches. Tax rounding is genuinely untouched: it still computes `round(amount * (1 + rate), 2)` in float and only the storage of the result is now exact.
+- 1000 × `Money(0.01)` sums to exactly `Money(10.00)`; `cart_total([("widget", Money(0.10), 3)]) == Money(0.30)` is True; CSV emits `widget,3,0.30`.
+- I added five regression tests to `tests/test_cart.py` covering drift-free accumulation, cent storage, display format (including grouping, negatives, zero), tax rounding, and a multi-line CSV.
+
+One behaviour change I couldn't avoid, worth flagging: an amount finer than a cent, e.g. `Money(2.675)`, can no longer be held as-is. It now rounds half-up at construction to `$2.68`, where the old float version displayed `$2.67` (binary 2.675 is really 2.67499…). This only affects sub-cent inputs — any whole-cent amount is unaffected — and I chose half-up on the decimal string as the reading a human expects from "2.675". If finance depends on the old truncating-ish behaviour there, say so and I'll switch the conversion to round the binary value instead.
+
+I did not commit anything.
+
+DONE

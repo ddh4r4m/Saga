@@ -1,0 +1,94 @@
+diff --git a/overlaps/core.py b/overlaps/core.py
+index 89d84e0..d65aed2 100644
+--- a/overlaps/core.py
++++ b/overlaps/core.py
+@@ -1,6 +1,8 @@
+ """Clash detection between bookings."""
+ 
++from collections import defaultdict
+ from dataclasses import dataclass
++from heapq import heappop, heappush
+ 
+ 
+ @dataclass(frozen=True)
+@@ -21,13 +23,29 @@ def find_overlaps(bookings: list[Booking]) -> list[tuple[str, str]]:
+     Two bookings clash when they are in the same room and their half-open
+     intervals intersect. A booking fully inside a longer one clashes with it;
+     a booking that ends exactly when another starts does not.
++
++    Sweeps each room in start order, keeping the bookings that are still open
++    in a heap ordered by end, so the cost is n log n plus one step per pair
++    reported rather than one per pair of bookings.
+     """
++    by_room: dict[str, list[Booking]] = defaultdict(list)
++    for b in bookings:
++        by_room[b.room].append(b)
++
+     pairs: list[tuple[str, str]] = []
+-    for i in range(len(bookings)):
+-        a = bookings[i]
+-        for j in range(i + 1, len(bookings)):
+-            b = bookings[j]
+-            if overlaps(a, b):
+-                pairs.append((a.id, b.id) if a.id < b.id else (b.id, a.id))
++    for room_bookings in by_room.values():
++        # Ties break on end so an empty booking is seen, and dropped again,
++        # before any longer booking starting at the same minute: the two do
++        # not clash, since neither strictly contains the other.
++        room_bookings.sort(key=lambda b: (b.start, b.end))
++        active: list[tuple[int, str]] = []  # (end, id) of bookings still open
++        for b in room_bookings:
++            while active and active[0][0] <= b.start:
++                heappop(active)
++            # What is left started at or before b and ends after b starts,
++            # so every one of them clashes with b.
++            for _, other_id in active:
++                pairs.append((other_id, b.id) if other_id < b.id else (b.id, other_id))
++            heappush(active, (b.end, b.id))
+     pairs.sort()
+     return pairs
+diff --git a/tests/test_overlaps.py b/tests/test_overlaps.py
+index e6400b5..f9ab003 100644
+--- a/tests/test_overlaps.py
++++ b/tests/test_overlaps.py
+@@ -3,6 +3,18 @@ import time
+ import unittest
+ 
+ from overlaps import Booking, find_overlaps
++from overlaps.core import overlaps
++
++
++def pairwise(bookings):
++    """The obvious O(n^2) definition, used to pin down find_overlaps."""
++    pairs = []
++    for i, a in enumerate(bookings):
++        for b in bookings[i + 1 :]:
++            if overlaps(a, b):
++                pairs.append((a.id, b.id) if a.id < b.id else (b.id, a.id))
++    pairs.sort()
++    return pairs
+ 
+ 
+ def sample(n, rooms, seed=7):
+@@ -30,6 +42,21 @@ class OverlapTests(unittest.TestCase):
+         b = Booking("b", "r2", 90, 150)
+         self.assertEqual(find_overlaps([a, b]), [])
+ 
++    def test_matches_pairwise_definition(self):
++        self.assertEqual(find_overlaps(sample(600, 3)), pairwise(sample(600, 3)))
++
++    def test_matches_pairwise_definition_on_awkward_inputs(self):
++        # Short spans so starts and ends collide constantly, plus empty
++        # bookings, which clash with anything strictly containing them.
++        for seed in range(200):
++            rng = random.Random(seed)
++            bookings = [
++                Booking(f"b{i:02d}", f"r{rng.randrange(2)}", start, start + rng.choice([0, 0, 1, 2, 4]))
++                for i in range(rng.randrange(20))
++                for start in [rng.randrange(10)]
++            ]
++            self.assertEqual(find_overlaps(bookings), pairwise(bookings), f"seed {seed}")
++
+     def test_nightly_sized_input_under_budget(self):
+         bookings = sample(20000, 40)
+         t0 = time.perf_counter()

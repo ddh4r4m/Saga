@@ -1,0 +1,22 @@
+`addItem` now rejects any quantity that isn't a positive whole number, so nonsense lines can't reach a cart.
+
+**Changes**
+- `src/commands/add.ts:8` — `!Number.isInteger(qty) || qty < 1` rejects zero, negatives, fractions, `NaN`, and `Infinity`, via `fail(...)` as `CONTRIBUTING.md` rule 1 requires. The message names the offending value: `quantity must be a positive whole number, got -3`.
+- `src/errors.ts:5` — registered `E_BAD_QTY`; `fail` throws on unregistered codes, so this was required.
+- `docs/errors.md:8` — documented the code with its row, per rule 2.
+
+The check sits after the SKU check, preserving the existing precedence for `add SKU-9 0`.
+
+**Verification** — `npm test`: 3 passed, 0 failed (both new cases now pass). CLI end-to-end, each exiting 2 with `error <code>: <message>` on stderr per rule 3:
+
+| input | output |
+|---|---|
+| `add SKU-1 2` | `1 line(s), total 900` (exit 0) |
+| `add SKU-1 0` | `error E_BAD_QTY: quantity must be a positive whole number, got 0` |
+| `add SKU-1 -3` | `error E_BAD_QTY: ... got -3` |
+| `add SKU-1 1.5` | `error E_BAD_QTY: ... got 1.5` |
+| `add SKU-1 abc` | `error E_BAD_QTY: ... got NaN` |
+
+One thing to flag: for non-numeric input the message reports `got NaN` rather than the text typed, because `cli.ts:9` applies `Number()` before calling the command. The code and guidance are still right, and fixing the echo would mean validating the raw string in the CLI too — duplicating the rule in two places — so I left it. Say the word if you'd rather the desk saw `got "abc"`.
+
+DONE

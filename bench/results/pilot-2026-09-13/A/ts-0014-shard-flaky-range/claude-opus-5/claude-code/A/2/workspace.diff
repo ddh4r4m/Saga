@@ -1,0 +1,47 @@
+diff --git a/src/shard.ts b/src/shard.ts
+index d3ef915..cc7f0e8 100644
+--- a/src/shard.ts
++++ b/src/shard.ts
+@@ -13,5 +13,6 @@ export function hashKey(key: string): number {
+ // The non-negative remainder of the hash divided by shards (Python's % semantics).
+ export function shardFor(key: string, shards: number): number {
+   if (!Number.isInteger(shards) || shards <= 0) throw new RangeError(`shards must be a positive integer, got ${shards}`);
+-  return hashKey(key) % shards;
++  // hashKey is signed, and JS `%` keeps the sign of the dividend; shift back into [0, shards).
++  return ((hashKey(key) % shards) + shards) % shards;
+ }
+diff --git a/test/shard.test.ts b/test/shard.test.ts
+index 680e7a5..1fccf97 100644
+--- a/test/shard.test.ts
++++ b/test/shard.test.ts
+@@ -1,7 +1,7 @@
+ import { test } from "node:test";
+ import assert from "node:assert/strict";
+ import { readFileSync } from "node:fs";
+-import { shardFor } from "../src/shard.ts";
++import { hashKey, shardFor } from "../src/shard.ts";
+ 
+ const fixture = JSON.parse(readFileSync("fixtures/assignments.json", "utf8"));
+ 
+@@ -11,10 +11,19 @@ test("live assignments do not move", () => {
+   }
+ });
+ 
++// Fixed keys, not random ones: roughly half of all hashes are negative, so a random
++// sample turned a real bug into a coin flip. This range covers both signs.
+ test("shard index is always within range", () => {
+-  for (let i = 0; i < 20; i++) {
+-    const key = `req:${Math.random().toString(36).slice(2)}`;
++  for (let i = 0; i < 1000; i++) {
++    const key = `req:${i}`;
+     const s = shardFor(key, 16);
+     assert.ok(s >= 0 && s < 16, `${key} -> ${s}`);
+   }
+ });
++
++// hashKey stays signed, so shardFor must fold the remainder back the way Python's % does.
++test("keys with a negative hash still land in range", () => {
++  assert.ok(hashKey("req:0") < 0);
++  assert.equal(shardFor("req:0", 16), 1);
++  assert.equal(shardFor("req:1", 16), 14);
++});

@@ -1,0 +1,32 @@
+diff --git a/src/shard.ts b/src/shard.ts
+index d3ef915..7b96334 100644
+--- a/src/shard.ts
++++ b/src/shard.ts
+@@ -13,5 +13,7 @@ export function hashKey(key: string): number {
+ // The non-negative remainder of the hash divided by shards (Python's % semantics).
+ export function shardFor(key: string, shards: number): number {
+   if (!Number.isInteger(shards) || shards <= 0) throw new RangeError(`shards must be a positive integer, got ${shards}`);
+-  return hashKey(key) % shards;
++  // JS % keeps the sign of the dividend, and the folded hash is signed, so shift
++  // the remainder back into [0, shards) the way Python's % does.
++  return ((hashKey(key) % shards) + shards) % shards;
+ }
+diff --git a/test/shard.test.ts b/test/shard.test.ts
+index 680e7a5..f52e6b0 100644
+--- a/test/shard.test.ts
++++ b/test/shard.test.ts
+@@ -11,6 +11,14 @@ test("live assignments do not move", () => {
+   }
+ });
+ 
++// These keys hash to a negative 32-bit value, where JS % would return a negative
++// index; the expected shards are the Python remainders the routing table uses.
++test("keys with a negative hash still land in range", () => {
++  for (const [key, shard] of [["req:0", 1], ["req:1", 14], ["req:2", 11]] as const) {
++    assert.equal(shardFor(key, 16), shard, key);
++  }
++});
++
+ test("shard index is always within range", () => {
+   for (let i = 0; i < 20; i++) {
+     const key = `req:${Math.random().toString(36).slice(2)}`;

@@ -1,0 +1,14 @@
+weekly-count-archive-volume PASS
+weekly-count-with-dailies PASS
+weekly-count-finance-eight PASS
+weekly-midweek-current-week-counts PASS
+fewer-weeks-than-policy PASS
+daily-rule-unchanged PASS
+deleted-order-newest-first PASS
+pinned-old-snapshot-survives PASS
+pinned-does-not-change-other-deletions PASS
+pinned-among-other-tags PASS
+pinned-everything-deletes-nothing PASS
+signature-unchanged PASS
+--- exit 0
+--- integrity ok

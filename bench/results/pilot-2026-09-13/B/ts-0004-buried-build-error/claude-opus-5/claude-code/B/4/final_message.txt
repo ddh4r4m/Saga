@@ -1,0 +1,20 @@
+**Root cause:** a single stray trailing space in `schema/order.json:12` — `"type": "integer "` instead of `"type": "integer"`.
+
+The generator was fine, exactly as you suspected. It does an exact match on the type string, so `"integer "` fell through to the unknown-type branch:
+
+```
+error: schema/order.json#quantity: unknown type "integer ", emitting a validator that rejects everything
+```
+
+That one line was buried among ~60 `warn:` lines about missing descriptions and hundreds of `debug:` self-check lines. Because the emitted `order.quantity` validator rejects every input, and `order.record` depends on it, the self-check cascaded into the 14 FAILED lines about orders. The `1 schema errors` in the fatal line was the real signal; `14 checks failed` was the symptom.
+
+**Fix:** removed the trailing space in `schema/order.json`. No changes to `scripts/build.mjs`.
+
+Verification:
+- `npm run build` → `info: build ok: 41 validators for address, order, product, review, user`, self-check `63 ok, 0 failed`
+- `npm test` → 1 pass, 0 fail
+- `saga gate check` → `ALL MET` (G1 build green; G2 an unknown type like `banana` still exits 1 — the strictness that caught this is intact)
+
+One thing worth flagging for later, not fixed here since it's outside what you asked: the build prints `error:` for an unknown type but continues on to emit a reject-everything validator, so the true failure surfaces only as downstream check failures. Failing fast on a schema error, or repeating the schema errors in the fatal summary, would have made this a one-line diagnosis.
+
+DONE

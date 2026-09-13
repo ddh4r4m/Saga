@@ -1,0 +1,160 @@
+diff --git a/pricing/format.py b/pricing/format.py
+index 42b1b31..cbb4075 100644
+--- a/pricing/format.py
++++ b/pricing/format.py
+@@ -3,5 +3,5 @@ from .money import Money
+ 
+ 
+ def format_money(m: Money) -> str:
+-    sign = "-" if m.amount < 0 else ""
+-    return f"{sign}${abs(m.amount):,.2f}"
++    sign = "-" if m.cents < 0 else ""
++    return f"{sign}${abs(m.to_decimal()):,.2f}"
+diff --git a/pricing/money.py b/pricing/money.py
+index f586e26..ee0f400 100644
+--- a/pricing/money.py
++++ b/pricing/money.py
+@@ -1,19 +1,69 @@
+-"""Money value object."""
+-from dataclasses import dataclass
++"""Money value object, held as a whole number of cents."""
++from decimal import Decimal, ROUND_HALF_UP
++
++CENTS_PER_DOLLAR = 100
++
++Amount = int | float | str | Decimal
++
++
++def _to_cents(amount: Amount) -> int:
++    """Convert a dollar amount to whole cents, rounding halves away from zero."""
++    dollars = Decimal(str(amount))
++    return int((dollars * CENTS_PER_DOLLAR).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+ 
+ 
+-@dataclass(frozen=True)
+ class Money:
+-    amount: float
++    """An immutable amount of money stored as an integer count of cents.
++
++    The constructor still takes dollars, so ``Money(0.10)`` is ten cents, but
++    arithmetic runs on the integer cents and therefore cannot drift.
++    """
++
++    __slots__ = ("cents",)
++
++    def __init__(self, amount: Amount = 0) -> None:
++        object.__setattr__(self, "cents", _to_cents(amount))
++
++    @classmethod
++    def from_cents(cls, cents: int) -> "Money":
++        money = cls.__new__(cls)
++        object.__setattr__(money, "cents", int(cents))
++        return money
++
++    @property
++    def amount(self) -> float:
++        """The value in dollars, for callers that want a float."""
++        return self.cents / CENTS_PER_DOLLAR
++
++    def to_decimal(self) -> Decimal:
++        """The value in dollars, exactly."""
++        return Decimal(self.cents).scaleb(-2)
++
++    def __setattr__(self, name: str, value: object) -> None:
++        raise AttributeError("Money is immutable")
++
++    def __delattr__(self, name: str) -> None:
++        raise AttributeError("Money is immutable")
+ 
+     def __add__(self, other: "Money") -> "Money":
+-        return Money(self.amount + other.amount)
++        return Money.from_cents(self.cents + other.cents)
+ 
+     def __mul__(self, qty: int) -> "Money":
+-        return Money(self.amount * qty)
++        return Money.from_cents(self.cents * qty)
+ 
+     def __neg__(self) -> "Money":
+-        return Money(-self.amount)
++        return Money.from_cents(-self.cents)
++
++    def __eq__(self, other: object) -> bool:
++        if not isinstance(other, Money):
++            return NotImplemented
++        return self.cents == other.cents
++
++    def __hash__(self) -> int:
++        return hash(self.cents)
++
++    def __repr__(self) -> str:
++        return f"Money({self.to_decimal():.2f})"
+ 
+ 
+-ZERO = Money(0.0)
++ZERO = Money(0)
+diff --git a/pricing/report.py b/pricing/report.py
+index 4545891..5151663 100644
+--- a/pricing/report.py
++++ b/pricing/report.py
+@@ -5,5 +5,5 @@ from .cart import Line, line_total
+ def to_csv(lines: list[Line]) -> str:
+     rows = ["name,qty,total"]
+     for name, price, qty in lines:
+-        rows.append(f"{name},{qty},{line_total(price, qty).amount}")
++        rows.append(f"{name},{qty},{line_total(price, qty).to_decimal():.2f}")
+     return "\n".join(rows) + "\n"
+diff --git a/tests/test_cart.py b/tests/test_cart.py
+index c643d5c..15f152d 100644
+--- a/tests/test_cart.py
++++ b/tests/test_cart.py
+@@ -1,7 +1,9 @@
+ import unittest
+-from pricing.money import Money
++from pricing.money import Money, ZERO
+ from pricing.cart import cart_total
++from pricing.format import format_money
+ from pricing.report import to_csv
++from pricing.tax import apply_tax
+ 
+ 
+ class CartTests(unittest.TestCase):
+@@ -10,3 +12,39 @@ class CartTests(unittest.TestCase):
+ 
+     def test_csv_has_two_decimals(self):
+         self.assertEqual(to_csv([("widget", Money(0.10), 3)]), "name,qty,total\nwidget,3,0.30\n")
++
++    def test_totals_do_not_drift_over_many_lines(self):
++        lines = [(f"dime{i}", Money(0.10), 1) for i in range(1000)]
++        self.assertEqual(cart_total(lines), Money(100.00))
++
++    def test_empty_cart_is_zero(self):
++        self.assertEqual(cart_total([]), ZERO)
++
++
++class MoneyTests(unittest.TestCase):
++    def test_stored_as_integer_cents(self):
++        self.assertIsInstance(Money(0.10).cents, int)
++        self.assertEqual(Money(0.10).cents, 10)
++        self.assertEqual(Money.from_cents(10), Money(0.10))
++
++    def test_equal_values_hash_alike(self):
++        self.assertEqual(len({Money(0.10), Money(0.10)}), 1)
++
++    def test_negation_round_trips(self):
++        self.assertEqual(Money(0.10) + -Money(0.10), ZERO)
++
++    def test_is_immutable(self):
++        with self.assertRaises(AttributeError):
++            Money(0.10).cents = 99
++
++
++class DisplayTests(unittest.TestCase):
++    def test_format_is_unchanged(self):
++        self.assertEqual(format_money(Money(1234567.89)), "$1,234,567.89")
++        self.assertEqual(format_money(-Money(1234567.89)), "-$1,234,567.89")
++        self.assertEqual(format_money(ZERO), "$0.00")
++
++    def test_tax_rounding_is_unchanged(self):
++        self.assertEqual(apply_tax(Money(19.99), 0.0825), Money(21.64))
++        self.assertEqual(apply_tax(Money(0.10), 0.05), Money(0.11))
++        self.assertEqual(apply_tax(Money(100), 0.0), Money(100))

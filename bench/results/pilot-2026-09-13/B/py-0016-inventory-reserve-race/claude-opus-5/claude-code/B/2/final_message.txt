@@ -1,0 +1,12 @@
+The race is fixed in `inventory/reserve.py:12` — `store.py` and `tests/` are declared out of bounds by the contract, so the change is confined to `Inventory`.
+
+**What changed:** `reserve`, `release`, and `available` each hold a lock across their read-modify-write, so the `get` → check → `set` window that let both SKU-4471 orders read 5 can no longer interleave. Locks are per-SKU (`_lock_for`, guarded by a small meta-lock for dict creation) rather than one global lock, since the production store is network-backed and a global lock would serialise unrelated checkouts behind every round trip. `RLock` so a future call path that re-enters won't self-deadlock. Public signatures are untouched.
+
+**Verification:**
+- All 3 tests pass, including `test_concurrent_reserves_do_not_oversell`.
+- `saga gate check`: G1, G2, G3 all MET.
+- Extra stress run: 8 threads × 500 reserve/release pairs over two SKUs returns stock exactly to 1000/1000.
+
+One limit worth knowing: this is an in-process lock. It makes a single `Inventory` safe across threads, which is what was asked, but it does not protect against two *processes* (or two web workers) hitting the same RedisStore — that needs an atomic decrement or CAS in the store itself, which is outside this task's scope.
+
+DONE

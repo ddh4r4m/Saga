@@ -1,0 +1,40 @@
+diff --git a/ledger/fx.py b/ledger/fx.py
+index ba10a28..79311b0 100644
+--- a/ledger/fx.py
++++ b/ledger/fx.py
+@@ -1,6 +1,12 @@
+ """Currency conversion of minor-unit amounts."""
++from decimal import Decimal, ROUND_HALF_UP
+ 
+ 
+ def convert(cents: int, rate: float) -> int:
+-    """Convert an amount in minor units at rate, returning minor units."""
+-    return int(cents * rate)
++    """Convert an amount in minor units at rate, returning minor units.
++
++    The product is rounded half-up to the nearest minor unit; truncating would
++    bias every converted leg towards zero and accumulate across the ledger.
++    """
++    product = Decimal(cents) * Decimal(str(rate))
++    return int(product.quantize(Decimal(1), rounding=ROUND_HALF_UP))
+diff --git a/tests/test_fx.py b/tests/test_fx.py
+new file mode 100644
+index 0000000..c54ae82
+--- /dev/null
++++ b/tests/test_fx.py
+@@ -0,0 +1,15 @@
++import unittest
++from ledger.fx import convert
++
++
++class ConvertTests(unittest.TestCase):
++    def test_identity(self):
++        self.assertEqual(convert(4097, 1.0), 4097)
++
++    def test_rounds_up_not_truncates(self):
++        # 3823 * 0.9228 = 3527.86...; truncation would give 3527.
++        self.assertEqual(convert(3823, 0.9228), 3528)
++
++    def test_half_rounds_away_from_zero(self):
++        self.assertEqual(convert(5, 0.5), 3)
++        self.assertEqual(convert(-5, 0.5), -3)

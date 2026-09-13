@@ -1,0 +1,41 @@
+diff --git a/src/slug.ts b/src/slug.ts
+index 65623a4..ff6c177 100644
+--- a/src/slug.ts
++++ b/src/slug.ts
+@@ -2,7 +2,10 @@
+ // Used by the CMS to build article URLs from titles.
+ 
+ export function slugify(input: string): string {
+-  const lowered = input.toLowerCase();
+-  const replaced = lowered.replace(/[^a-z0-9]/g, "-");
+-  return replaced;
++  // NFD splits "é" into "e" + combining acute, so dropping the marks folds
++  // accented letters to their plain ASCII letter.
++  const folded = input.normalize("NFD").replace(/\p{Diacritic}/gu, "");
++  const lowered = folded.toLowerCase();
++  const replaced = lowered.replace(/[^a-z0-9]+/g, "-");
++  return replaced.replace(/^-+|-+$/g, "");
+ }
+diff --git a/test/slug.test.ts b/test/slug.test.ts
+index 8216d16..29971fe 100644
+--- a/test/slug.test.ts
++++ b/test/slug.test.ts
+@@ -5,3 +5,18 @@ import { slugify } from "../src/slug.ts";
+ test("collapses runs of separators", () => {
+   assert.equal(slugify("Hello  World!"), "hello-world");
+ });
++
++test("trims hyphens from both edges", () => {
++  assert.equal(slugify("--Hello  World!--"), "hello-world");
++  assert.equal(slugify("  spaced  "), "spaced");
++});
++
++test("folds accented letters to ASCII", () => {
++  assert.equal(slugify("Café"), "cafe");
++  assert.equal(slugify("Café au lait"), "cafe-au-lait");
++  assert.equal(slugify("naïve résumé"), "naive-resume");
++});
++
++test("yields an empty slug when nothing survives", () => {
++  assert.equal(slugify("!!!"), "");
++});

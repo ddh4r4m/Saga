@@ -1,0 +1,9 @@
+All three gates pass.
+
+- `src/money.ts` — new, holds the single `formatMoney` with the invoice's behaviour (sign before the `$`, grouped whole part, absolute-value cents).
+- `src/invoice.ts`, `src/receipt.ts` — local copies deleted, both now `import { formatMoney } from "./money.ts"`. The receipt's refund line now prints `-$1.50` instead of `$-2.50`.
+- `src/legacy/report.ts` — untouched; its own `fmt` still drives the frozen finance export.
+
+`node --test` passes 2/2, and `saga gate check` reports `ALL MET` (G1, G2, G3). The two `R1`/`R2` lines it prints are heuristic coverage notes on the problem statement, not gates.
+
+DONE

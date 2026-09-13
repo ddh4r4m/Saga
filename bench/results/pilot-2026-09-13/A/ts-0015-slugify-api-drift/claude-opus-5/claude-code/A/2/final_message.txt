@@ -1,0 +1,13 @@
+Fixed in `src/pages.ts:11`:
+
+```ts
+return slugify(title, { separator: "-", lower: true });
+```
+
+slugify 2.0.0 replaced the `slugify(text, separator)` signature with an options object, made lowercasing opt-in, and changed the default separator from `-` to `_`. The old call passed `"-"` as the second argument, which 2.0.0 ignores as an options object — so every slug fell back to the new `_` default and kept the title's original casing.
+
+Passing `separator: "-"` and `lower: true` restores the 1.x behavior exactly, so existing URLs keep resolving. I left `vendor/slugify` untouched, per `vendor/README.md`'s rule against patching vendored files.
+
+`npm test` passes (2/2), and spot checks match the documented 1.x output, including leading/trailing separator trimming, punctuation runs collapsing to a single `-`, and accent stripping (`"Café Guide!"` → `cafe-guide`).
+
+DONE

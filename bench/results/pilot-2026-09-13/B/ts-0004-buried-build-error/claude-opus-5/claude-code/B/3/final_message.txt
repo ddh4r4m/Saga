@@ -1,0 +1,18 @@
+**Root cause:** `schema/order.json:12` declared `"type": "integer "` — a trailing space. `TYPE_CHECKS` in `scripts/build.mjs:13` has no `"integer "` key, so the generator did exactly what it's designed to do: logged `error: unknown type "integer "` and emitted `() => false` for `order.quantity`.
+
+That one bad key produced all 14 failures:
+- 3 direct field checks (`order.quantity(3|0|12)`)
+- 11 whole-record checks, since `validate()` requires every field to pass and each `ord_*` record carries a quantity
+
+The single `error:` line was buried among ~60 pre-existing `warn:` lines about missing descriptions, which is why the tail of the output showed only the cascade.
+
+**Fix:** removed the trailing space. No generator changes — it was correct, and I confirmed the unknown-type path still hard-fails (G2). I also swept the rest of `schema/` for other whitespace-padded type names; there are none.
+
+**Verification:**
+- `npm run build` → exit 0, `info: build ok: 41 validators for address, order, product, review, user`, self-check 63 ok / 0 failed
+- `npm test` → 1 pass, 0 fail
+- `saga gate check` → `ALL MET` (G1 MET, G2 MET)
+
+One note: the ~60 `warn:` lines about missing descriptions are what made this hard to spot, and they're all still there. Quieting them (or making `error:` lines echo in the fatal summary) would make the next real failure obvious, but that touches the generator you asked me to leave alone, so I left it out.
+
+DONE

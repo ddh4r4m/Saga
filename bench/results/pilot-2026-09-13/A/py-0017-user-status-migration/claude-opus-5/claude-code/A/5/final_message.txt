@@ -1,0 +1,11 @@
+All four tests in `tests/test_users.py` pass. What changed:
+
+- **`app/db.py`** — appended migration `3` (existing entries untouched, per the append-only rule): `ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'disabled'))`. The default backfills every pre-existing row as `active`, and the CHECK makes any other value a database-level error, so "active or disabled and nothing else" holds even for writes that bypass `app/users.py`. Verified against a v2 database with rows already in it.
+- **`app/users.py`** — added `set_status(conn, user_id, status)`, which rejects statuses outside `STATUSES` with a `ValueError` and returns `False` when no such user exists, and a `disabled=False` keyword on `list_users`.
+- **`app/seed.py`** — inserts `r.get("status", "active")`. `data/seed.json` is unmodified and still loads exactly as-is (12 users, all active); if a future ops export starts carrying a `status` field, the loader picks it up instead of silently dropping it.
+- **`app/cli.py`** — added `disable <id>` and `list --disabled`, updated the usage string, and added the status to `format_user` so the listings are readable.
+- **`README.md`** — documented the new commands and the status values.
+
+One note on the CLI: `main` builds a fresh in-memory database per invocation when no connection is passed, so `disable 3` from the shell prints the disabled user but the change is gone on the next run. That's pre-existing behaviour (there's no database path anywhere in the app) and outside what you asked for, so I left it; the command works as specified against a caller-supplied connection.
+
+DONE

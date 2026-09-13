@@ -1,0 +1,26 @@
+Writes outside the repo are blocked by the saga scope hook, so I couldn't persist that note to memory — mentioning it here instead: `.saga/observed` is hook-blocked as a human-only act, and memory-dir writes are refused as `outside-repo`.
+
+## What changed
+
+`Money` now holds an integer `cents` field instead of a float `amount`:
+
+- **`pricing/money.py:1`** — frozen dataclass with `cents: int`. The public constructor still takes dollars (`Money(0.10)`) and rounds once to cents at the boundary; `Money.from_cents()` builds from exact cents and is what the arithmetic operators use, so `+`, `*` and unary `-` are pure integer maths and can't drift. Added `parts()` → `(sign, dollars, cents)` so renderers never divide by 100.
+- **`pricing/format.py:1`** — formats from `parts()`: `f"{sign}${dollars:,}.{cents:02d}"`. Output identical (`$1,234.50`, `-$0.05`, `$0.00`, `-$1,234,567.89`).
+- **`pricing/tax.py:1`** — `round(subtotal.cents * (1 + rate))`, same half-even rounding at the same cent granularity as the old `round(dollars, 2)`.
+- **`pricing/report.py:1`** — same `name,qty,total` header and same plain-decimal column, rendered from the integer parts: `widget,3,0.30` instead of `widget,3,0.30000000000000004`.
+
+`.amount` is gone rather than kept as a float property, since a second float view would reopen the drift path; no caller in the repo referenced it after the edits.
+
+## Verification
+
+```
+$ saga gate check
+exact-cents-in-money:G1      MET
+exact-cents-in-money:G2      MET
+exact-cents-in-money:G3      MET (UNPROVEN: declared none)
+ALL MET
+```
+
+Both unit tests pass (`OK`), `Money(0.10)*3` reports `int 30`, and the G3 display/tax/CSV-layout probe prints `$1,234.50 -$0.05 True name,qty,total`. G3's "UNPROVEN" is the contract's pre-existing `RED: none` declaration, not something this change introduced. Negative lines, empty carts, `ZERO`, and the negative-quantity `ValueError` all behave as before. Nothing is committed.
+
+DONE

@@ -1,0 +1,18 @@
+`find_overlaps` is a sweep again (`overlaps/core.py:19`): sort by start, and per room keep a heap of bookings not yet finished, keyed by end. When a booking starts, everything still on that room's heap is a clash with it, so the cost is one sort plus one step per reported pair — n log n + k, which is what docs/perf.md asks for and what the grouping-by-room note rules out fixing any other way.
+
+Two details that keep results byte-identical to 0.4.1:
+
+- **Degenerate intervals.** The heap gives `a.start <= b.start < a.end`, which implies the full predicate only when `b.end > b.start`. A zero- or negative-length booking still clashes with an enclosing one under the existing `overlaps` test, so the second half (`a.start < b.end`) is checked explicitly.
+- **Duplicate ids.** One pair is emitted per pair of bookings, not per pair of ids, so inputs with repeated ids produce the same multiset as before.
+
+Verification:
+
+- All 4 tests pass, including `test_nightly_sized_input_under_budget` (whole suite 0.05s; the brute force extrapolates to ~14s on that same 20k input).
+- Differential test against the 0.4.1 brute force: 4000 randomized small cases mixing zero-length, negative-length, duplicate ids and 1–3 rooms, plus single-room and few-room cases up to n=600 — identical output every time.
+- Scaling on the workload docs/perf.md describes (a handful of rooms, 5-minute slots, a few hundred clashes): 20k→0.009s, 40k→0.017s, 80k→0.039s, 160k→0.087s, 320k→0.183s, i.e. ~2x per doubling.
+
+One thing worth knowing: time still grows with the number of clashes reported, which is unavoidable since they're all in the output. On a pathological night where a large share of bookings genuinely overlap, the pair count itself is quadratic and the report will be slow no matter the algorithm — the docs' "a few hundred pairs" assumption is what keeps it fast.
+
+I put the changelog entry under `Unreleased` rather than cutting 0.4.2 and bumping `pyproject.toml`, since releasing is your call.
+
+DONE

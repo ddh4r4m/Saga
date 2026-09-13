@@ -1,0 +1,11 @@
+build-exit-zero PASS
+quantity-accepts-int PASS
+quantity-rejects-string PASS
+quantity-rejects-fraction PASS
+order-record-validates PASS
+unknown-type-still-errors PASS
+user-email-accepts PASS
+visible-test-present PASS
+order-schema-type-clean PASS
+--- exit 0
+--- integrity ok

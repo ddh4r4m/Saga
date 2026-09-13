@@ -1,0 +1,10 @@
+Fixed in `inventory/reserve.py:19` — `Inventory` now holds a `threading.RLock` and each of `reserve`, `release`, and `available` does its store read-modify-write inside it. The store exposes no compare-and-set (and production swaps in a Redis-backed store with the same three methods), so the check-then-set in `reserve` had to be serialized at this layer; that's what let both SKU-4471 orders read 5 and both pass the stock check.
+
+- `inventory/store.py` and `tests/**` are untouched, per the contract's OUT list; the only edit is `inventory/reserve.py`.
+- Public signatures unchanged.
+- `python3 -m unittest tests.test_reserve`: 3 tests, OK (including the oversell reproduction).
+- `saga gate check`: G1, G2, G3 all MET. G3 reports "UNPROVEN: declared none" — that's the contract's own `RED: none`, not a failure.
+
+One scope note: the lock is per-`Inventory` instance, so two `Inventory` objects sharing one store could still race. Making that safe needs an atomic operation on the store itself, which is out of bounds here.
+
+DONE

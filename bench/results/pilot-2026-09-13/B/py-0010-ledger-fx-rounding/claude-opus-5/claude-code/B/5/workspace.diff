@@ -1,0 +1,48 @@
+diff --git a/ledger/fx.py b/ledger/fx.py
+index ba10a28..0e7b204 100644
+--- a/ledger/fx.py
++++ b/ledger/fx.py
+@@ -1,6 +1,13 @@
+ """Currency conversion of minor-unit amounts."""
++from decimal import Decimal, ROUND_HALF_EVEN
+ 
+ 
+ def convert(cents: int, rate: float) -> int:
+-    """Convert an amount in minor units at rate, returning minor units."""
+-    return int(cents * rate)
++    """Convert an amount in minor units at rate, returning minor units.
++
++    Rounds to the nearest minor unit, ties to even. Truncating instead drops a
++    fraction of a cent on every converted leg, which accumulates into a drift
++    against the control balances.
++    """
++    product = Decimal(cents) * Decimal(str(rate))
++    return int(product.quantize(Decimal(1), rounding=ROUND_HALF_EVEN))
+diff --git a/tests/test_fx.py b/tests/test_fx.py
+new file mode 100644
+index 0000000..321430d
+--- /dev/null
++++ b/tests/test_fx.py
+@@ -0,0 +1,22 @@
++import unittest
++from ledger.fx import convert
++
++
++class ConvertTests(unittest.TestCase):
++    def test_rounds_to_nearest(self):
++        self.assertEqual(convert(3823, 0.9228), 3528)  # 3527.66...
++        self.assertEqual(convert(1000, 0.9228), 923)  # 922.8
++
++    def test_ties_go_to_even(self):
++        self.assertEqual(convert(50, 0.05), 2)  # 2.5
++        self.assertEqual(convert(70, 0.05), 4)  # 3.5
++
++    def test_identity_rate(self):
++        self.assertEqual(convert(-4609, 1.0), -4609)
++
++    def test_negative_amounts_round_symmetrically(self):
++        self.assertEqual(convert(-1000, 0.9228), -923)
++
++
++if __name__ == "__main__":
++    unittest.main()

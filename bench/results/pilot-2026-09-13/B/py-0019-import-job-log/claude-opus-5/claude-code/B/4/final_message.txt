@@ -1,0 +1,26 @@
+**Diagnosis** — from the log, the job was fine on three vendors and died only on nordic:
+
+- `logs/nightly-2026-09-02.log:1331` — `WARN parse: nordic.csv row 517: unit_price '3\xa0868.13' rejected; row skipped`
+- `logs/nightly-2026-09-02.log:1627` — `ERROR reconcile: vendor nordic: manifest says 812 rows / 7855114.39, imported 811 rows / 7797092.44; aborting`
+
+That one skipped row accounts for the whole gap: 812−811 = 1 row, and 7855114.39−7797092.44 = 58021.95 = 15 × 3868.13. Nordic writes its thousands separator as a no-break space (U+00A0), and it's the single such price in the night's input. `parse_price` documents that vendors use "a comma, a space or a no-break space" as thousands separators and that all of them are ignored, but the implementation only stripped commas, so the price hit `Decimal`'s `InvalidOperation` and was rejected as garbage.
+
+**Fix** — `importer/parse.py:19` now strips the full documented separator set instead of commas alone:
+
+```python
+_THOUSANDS_SEPARATORS = {ord(ch): None for ch in ", \xa0"}
+...
+cleaned = text.strip().translate(_THOUSANDS_SEPARATORS)
+```
+
+Genuinely malformed prices still raise `ParseError` (`n/a`, `''`, `1.2.3`, `-` all verified rejected), and the reconcile comparison in `job.run` is untouched — it remains an exact row-count and exact `Decimal` total match that aborts the job.
+
+**Verification**
+
+- `python3 -m unittest discover -v -s tests -t .` → 4 tests, `OK`.
+- A fresh run of the night's input returns rc=0 with all four vendors reconciling, nordic at `812 rows / 7855114.39 ok`, matching the manifest exactly.
+- Mutating a copied manifest's row count still gives `rc 1` (G2), so a manifest that disagrees with its file keeps failing the job.
+- `git status` shows only `importer/parse.py` modified; `fixtures/` (vendor CSVs and manifest), `logs/`, and `tests/` are unchanged — the vendors' word was taken as-is.
+- `saga gate check` → `ALL MET`; `saga gate status --strict` → `0 unmet, 0 unproven, 0 manual, 0 guard findings`. G2 and G3 report `UNPROVEN: declared none`, which is their pre-existing `RED: none` declaration in the contract, not a gap I introduced.
+
+DONE

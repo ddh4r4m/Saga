@@ -1,0 +1,23 @@
+diff --git a/versions.py b/versions.py
+index dd8c2f8..6d74200 100644
+--- a/versions.py
++++ b/versions.py
+@@ -1,6 +1,17 @@
+ """Version helpers for the changelog generator."""
+ 
+ 
++def _version_key(item: str) -> list[tuple[int, int, str]]:
++    """Split a version into components that compare numerically, not lexically."""
++    key = []
++    for component in item.split("."):
++        if component.isdigit():
++            key.append((0, int(component), ""))
++        else:
++            key.append((1, 0, component))
++    return key
++
++
+ def sort_versions(items: list[str]) -> list[str]:
+     """Return the version strings in ascending order."""
+-    return sorted(items)
++    return sorted(items, key=_version_key)

@@ -1,0 +1,19 @@
+diff --git a/ledger/fx.py b/ledger/fx.py
+index ba10a28..5efbe85 100644
+--- a/ledger/fx.py
++++ b/ledger/fx.py
+@@ -1,6 +1,12 @@
+ """Currency conversion of minor-unit amounts."""
++from decimal import Decimal, ROUND_HALF_UP
+ 
+ 
+ def convert(cents: int, rate: float) -> int:
+-    """Convert an amount in minor units at rate, returning minor units."""
+-    return int(cents * rate)
++    """Convert an amount in minor units at rate, returning minor units.
++
++    Rounds half away from zero to the nearest minor unit; truncating instead
++    loses a fraction of a unit on every conversion, which accumulates into a
++    visible drift over a night's postings.
++    """
++    return int((Decimal(cents) * Decimal(str(rate))).quantize(Decimal(1), rounding=ROUND_HALF_UP))

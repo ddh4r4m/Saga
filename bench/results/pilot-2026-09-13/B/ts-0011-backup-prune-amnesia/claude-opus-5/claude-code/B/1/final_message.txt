@@ -1,0 +1,14 @@
+Both changes are in `src/prune.ts`, five lines total:
+
+- `src/prune.ts:43` — weekly slice is now `slice(0, policy.keepWeekly)` instead of `slice(1, ...)`, so the current ISO week counts. The stale comment at line 41 that justified skipping it is replaced with one stating the actual rule.
+- `src/prune.ts:45` — the returned list now also excludes any snapshot tagged `pinned`, so a legal hold is never handed to the scheduler regardless of policy or age.
+
+Untouched: `isoWeek`, `newestPerBucket`, the daily rule, the sort, the signature, and `test/prune.test.ts`.
+
+Verification:
+- `node --test`: 1 test, `# pass 1`, `# fail 0` — the acceptance case now keeps `2026-08-16`, `08-23`, `08-30`, `09-06`.
+- `saga gate check`: `ALL MET` — G1, G2, G3 all MET (G3 is marked `UNPROVEN: declared none`, which is how it was already recorded in the contract, not something my change altered).
+
+One thing worth knowing, since it's a judgment call I made rather than something you specified: a pinned snapshot still occupies its daily/weekly bucket. If the newest snapshot of a week is pinned, it is the one the weekly rule keeps, and it's also unconditionally undeletable — so the kept set never shrinks, it only ever gets more conservative. Changing that would mean pinned snapshots stop counting toward retention and the week keeps an extra snapshot, which is a different retention decision than the one you described; say the word if that's what legal expects.
+
+DONE

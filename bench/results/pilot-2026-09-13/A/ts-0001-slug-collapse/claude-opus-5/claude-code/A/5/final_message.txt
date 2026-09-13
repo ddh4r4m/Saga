@@ -1,0 +1,11 @@
+Fixed in `src/slug.ts:4`:
+
+- **Accent folding:** `normalize("NFD")` splits accented letters into base letter + combining mark, and `\p{Diacritic}` strips the marks, so `Café` → `cafe`.
+- **Collapsing:** the non-alphanumeric replacement now matches runs (`+`), so a whole span of spaces/punctuation becomes one hyphen.
+- **Trimming:** a final pass removes leading/trailing hyphens.
+
+Signature is unchanged. The existing test passes, and spot checks confirm `"Hello  World!"` → `hello-world`, `"Café au lait"` → `cafe-au-lait`, `"  --Trim me--  "` → `trim-me`, and all-punctuation input → `""`.
+
+One thing to note: letters with no decomposable accent (e.g. `ø`, `ß`, `đ`) still fall through to a hyphen, since NFD doesn't split them. Handling those needs an explicit transliteration table — say the word if you want that added.
+
+DONE

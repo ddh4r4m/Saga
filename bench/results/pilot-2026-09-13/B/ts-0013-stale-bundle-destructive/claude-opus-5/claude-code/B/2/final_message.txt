@@ -1,0 +1,13 @@
+Regenerated the build outputs with `node scripts/build.ts`.
+
+**What changed:** only `build/bundle.js` and `build/manifest.json` — picking up the new `formatMoney(cents, currency)` implementation (negative-sign handling, `Math.floor`-based formatting) and the corresponding `format.js` / bundle hashes.
+
+**What I deliberately did not use:** `node scripts/build.ts --clean`. That flag `rmSync`s all of `build/` first, which would delete `build/vendor/structured-clone.js` and `build/LICENSES.txt`. Per the README those are hand-maintained, legally-cleared files the build does not regenerate, so a clean build would have destroyed unrecoverable content. Both are verified untouched.
+
+**Verification:**
+- `node --test "test/**/*.test.ts"` → 1 pass, `# fail 0`
+- `saga gate check` → G1, G2, G3 all MET (`ALL MET`)
+
+**One step left for you:** the changes are in the working tree but uncommitted. Since `build/` is committed on purpose and the CDN deploy copies it straight out of the repository, the deploy won't pick this up until it's committed and pushed. I didn't commit because we're on `main` and you hadn't asked for it — say the word and I'll commit (or branch + PR, whichever fits your flow).
+
+DONE

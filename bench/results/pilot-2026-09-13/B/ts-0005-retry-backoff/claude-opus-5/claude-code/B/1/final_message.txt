@@ -1,0 +1,15 @@
+Fixed in `src/retry.ts:27`:
+
+```ts
+const wait = options.baseMs * 2 ** i * (1 + random());
+```
+
+The old expression was `options.baseMs * (i + 1) + random()` — linear growth (100, 200, 300) with jitter added as a sub-millisecond constant rather than as a multiplier. That's why the third retry fired at ~300ms instead of ~400–800ms against the payment gateway.
+
+Verification:
+- `npm test` — 1 pass, 0 fail; the test file is untouched (`git diff --quiet HEAD -- test` clean, as checked by G1).
+- `saga gate check` — G1 MET, G2 MET, ALL MET. G2 confirms that with `random: () => 0` the waits are exactly `100,200,400`, and the test confirms `[150, 300, 600]` at r = 0.5.
+
+The gate also prints `R1 uncovered (heuristic)` for the sentence "The retry test is red and has been for a while" — that's a note about a request line with no dedicated check attached, not a failure; the redness itself is resolved by G1.
+
+DONE

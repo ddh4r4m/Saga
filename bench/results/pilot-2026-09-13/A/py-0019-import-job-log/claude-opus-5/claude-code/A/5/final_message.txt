@@ -1,0 +1,24 @@
+**Cause.** The job log has exactly one warning for nordic:
+
+```
+row 517: unit_price '3\xa0868.13' rejected; row skipped
+```
+
+`parse_price` documents that vendors write thousands separators as a comma, a space, or a no-break space and that all three must be ignored — but the code only stripped commas (`importer/parse.py:29`). Nordic's file uses a no-break space on that one row, so the row was rejected as garbage and dropped. The importer then counted 811 rows / 7797092.44 against the manifest's 812 / 7855114.39, and the strict reconcile correctly aborted the whole job. The gap confirms it: 7855114.39 − 7797092.44 = 58021.95 = 15 × 3868.13, precisely the skipped row's qty × price.
+
+So the manifest was right and the vendor file was right; the parser was the one out of step with its own contract.
+
+**Fix.** `parse_price` now strips all three documented separators via a translation table, leaving everything else a `ParseError`:
+
+```python
+_THOUSANDS_SEPARATORS = str.maketrans("", "", ",\u0020\u00a0")
+cleaned = text.strip().translate(_THOUSANDS_SEPARATORS)
+```
+
+The reconcile check itself is untouched and still exact-match on both row count and `Decimal` total, and no manifest or vendor file was modified (`git status` shows only `importer/parse.py` and `tests/test_import.py`).
+
+**Verification.** Re-running the job over `fixtures/nightly` now reconciles all four vendors with zero warnings and exits 0 — nordic lands on `812 rows / 7855114.39 ok`, matching the manifest to the cent; acme, brightline and oslo-supply are unchanged from the original log. I added regression tests for the space and no-break-space forms, and widened the rejection test (`""`, `"12,50 kr"`, `"1.2.3"`) to pin down that stripping separators didn't loosen the parser. All 6 tests pass.
+
+One note for future nights: only U+00A0 is handled, so other Unicode spaces a vendor might send (e.g. U+202F narrow no-break space, U+2009 thin space) would still be rejected. None appear in this night's input — I scanned all four files and the only non-ASCII character anywhere is that single NBSP — so I kept the accepted set exactly as the docstring specifies rather than broadening it on speculation.
+
+DONE

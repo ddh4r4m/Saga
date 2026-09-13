@@ -1,0 +1,31 @@
+diff --git a/contacts/merge.py b/contacts/merge.py
+index 69d76a6..9527847 100644
+--- a/contacts/merge.py
++++ b/contacts/merge.py
+@@ -2,6 +2,24 @@
+ from .models import Contact
+ 
+ 
++def _email_key(contact: Contact) -> str:
++    """Normalise an email so feed differences in case and padding don't matter."""
++    return contact.email.strip().lower()
++
++
+ def dedupe(contacts: list[Contact]) -> list[Contact]:
+-    """Return the list without duplicate people."""
+-    raise NotImplementedError("dedupe is not implemented yet")
++    """Return the list without duplicate people, keeping the original order.
++
++    Two entries are the same person when their emails match. Entries without an
++    email have nothing to match on, so each one is kept.
++    """
++    seen: set[str] = set()
++    result: list[Contact] = []
++    for contact in contacts:
++        key = _email_key(contact)
++        if key and key in seen:
++            continue
++        if key:
++            seen.add(key)
++        result.append(contact)
++    return result

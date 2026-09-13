@@ -1,0 +1,7 @@
+**Cause:** `ledger/fx.py:convert` did `int(cents * rate)`, which truncates toward zero. Every leg touching account 4471 (the only non-USD account, so the only one where the rate isn't 1.0) lost the fractional cent — 455 postings converted at 0.9228, and the dropped fractions accumulated to exactly 30 cents. All USD-to-USD legs convert at rate 1.0, so no other account was affected, which is why 4471 was the lone mismatch.
+
+**Fix:** `convert` now computes the product with `Decimal` (using `Decimal(str(rate))` to avoid binary float artifacts) and quantizes half-up to the nearest minor unit. Half-up and half-even both reproduce the control balance on this data; I chose half-up as the conventional money rounding, and it's symmetric for negative amounts.
+
+Verified: `python3 -m ledger.reconcile fixtures` now ends with `balance 4471 EU Receivables -11857.91 EUR` and `0 mismatches`, exit code 0. Added `tests/test_fx.py` covering the truncation regression; full suite (6 tests) passes.
+
+DONE

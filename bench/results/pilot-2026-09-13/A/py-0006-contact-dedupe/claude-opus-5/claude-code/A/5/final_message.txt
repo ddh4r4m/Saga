@@ -1,0 +1,10 @@
+`dedupe` is implemented in `contacts/merge.py:11`. It keeps the first entry of each email group, matching on the email lowercased and stripped of surrounding whitespace, and preserves input order. The kept record is returned untouched — padding and casing are only normalised for comparison, not rewritten.
+
+Two judgment calls worth your confirmation:
+
+- **"Addresses"**: `Contact` only has `name`, `email`, `phone`, so I applied the whitespace-stripping to the email field. If a feed actually pads a postal address that isn't in the model yet, that's a separate change.
+- **Empty emails**: contacts with no email are all kept rather than collapsed into one. A literal reading of "same person if the email matches" would merge them, but that would silently drop unrelated people whose email column was blank. Say the word if you'd rather have the literal behaviour.
+
+The existing test passes.
+
+DONE

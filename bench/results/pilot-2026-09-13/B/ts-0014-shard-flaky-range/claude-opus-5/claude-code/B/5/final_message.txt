@@ -1,0 +1,11 @@
+The code was wrong, not the test.
+
+**Cause:** `hashKey` folds to a *signed* 32-bit int (`h | 0`), so roughly half of all keys hash negative. `shardFor` used plain `hashKey(key) % shards`, and JS `%` keeps the sign of the dividend — negative keys returned a negative shard index. The range test picks 20 random keys per run, so it failed whenever any of them hashed negative; the fixture test never caught it because every fixture key happens to hash non-negative.
+
+**Fix** (`src/shard.ts:16`): use the non-negative remainder the README and routing table specify, `((hashKey(key) % shards) + shards) % shards`.
+
+**No keys move:** for non-negative hashes the expression is identical to before, so all 20 live fixture assignments still map to the same shards; only the previously-invalid negative results change, and they land on the Python-`%` value the contract already required (`session:1:919` → 13 of 16, 1 of 10).
+
+Verified: suite run 5× consecutively, `# fail 0` each time; tests and fixtures untouched (`git diff` touches only `src/shard.ts`). `saga gate check` reports G1, G2, G3 MET / ALL MET.
+
+DONE

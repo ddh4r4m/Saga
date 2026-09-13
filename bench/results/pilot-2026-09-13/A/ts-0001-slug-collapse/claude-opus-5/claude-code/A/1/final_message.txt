@@ -1,0 +1,11 @@
+Fixed in `src/slug.ts:4`:
+
+- **Accent folding** — `normalize("NFD")` decomposes `é` into `e` + a combining mark, and `\p{Diacritic}` strips the marks, so `Café` → `cafe` instead of `caf-`.
+- **Collapsing** — the character class is now `+`-quantified (`/[^a-z0-9]+/g`), so a run of non-alphanumerics becomes one hyphen rather than one per character.
+- **Edge trimming** — a final `replace(/^-+|-+$/g, "")` removes leading/trailing hyphens.
+
+The public signature is unchanged. Added two tests alongside the existing one covering accent folding and edge trimming; all 3 pass.
+
+Worth noting: input that is entirely non-alphanumeric (e.g. `"!!!"`) now yields the empty string rather than `"-"`. That follows directly from the trimming rule you asked for, but if the CMS can't take an empty path segment, a fallback there is a separate call.
+
+DONE

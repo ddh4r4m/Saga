@@ -1,0 +1,24 @@
+Done. The test suite passes, repeatedly.
+
+## What was wrong
+
+`reserve` did a read-modify-write with no mutual exclusion: both threads called `store.get("SKU-4471")`, both saw 5, both passed the `available < qty` check, and both wrote `5 - 3 = 2`. The `SlowStore` sleep in the test just widens the window that production's network round trip already opens.
+
+## The fix
+
+`inventory/reserve.py` now holds a per-SKU `threading.Lock` around each read-modify-write:
+
+- `_lock_for(sku)` hands out one lock per SKU, created under a small guard lock so two threads can't make two different locks for the same SKU.
+- `reserve`, `release`, and `available` each run their store access inside that lock. The `qty <= 0` validation stays outside it — no store access involved.
+
+Signatures, return values, exceptions, and the public `store` attribute are unchanged.
+
+Locking is per SKU rather than one global lock so unrelated SKUs don't queue behind each other's network reads — I verified 8 concurrent reserves on distinct SKUs against a 50ms store still finish in 0.059s rather than 0.40s. I also stress-tested 50 threads doing 200 mixed reserve/release rounds over 5 SKUs: stock never went negative and `units_left + units_taken` stayed exactly at the starting 200 for every SKU.
+
+The `SKU-4471` test now takes ~0.1s instead of ~0.05s, which is the point — the two reserves are serialized, so the second one reads 2 and raises `OutOfStock`.
+
+## One limitation worth knowing
+
+This makes `Inventory` safe across threads in *one* process, which is what you asked for and what the test checks. It does not protect against two *processes* sharing the production `RedisStore` — two checkout workers on different hosts hold different locks and can still oversell. Closing that needs an atomic server-side operation (a `DECRBY` with a negative-result rollback, or a Lua script), which means adding a method to the store interface. Happy to do that if last night's incident involved more than one worker process.
+
+DONE

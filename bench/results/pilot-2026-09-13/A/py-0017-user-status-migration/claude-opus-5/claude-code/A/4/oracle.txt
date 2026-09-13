@@ -1,0 +1,11 @@
+test_cli_disable_and_list PASS
+test_disable_and_filters PASS
+test_fresh_seed_all_active PASS
+test_migrate_twice_is_stable PASS
+test_original_export_shape_loads PASS
+test_seed_file_untouched PASS
+test_shipped_migrations_unchanged PASS
+test_status_values_restricted PASS
+test_v2_populated_migrates_active PASS
+--- exit 0
+--- integrity ok

@@ -1,0 +1,110 @@
+diff --git a/tests/test_intervals.py b/tests/test_intervals.py
+new file mode 100644
+index 0000000..8dabc0d
+--- /dev/null
++++ b/tests/test_intervals.py
+@@ -0,0 +1,104 @@
++"""Tests for merge_intervals, covering each behaviour in its docstring."""
++
++import unittest
++
++from intervals import merge_intervals
++
++
++class MergeIntervalsTest(unittest.TestCase):
++    def test_empty_list_gives_empty_list(self):
++        self.assertEqual(merge_intervals([]), [])
++
++    def test_single_interval_is_returned_as_is(self):
++        self.assertEqual(merge_intervals([(2, 7)]), [(2, 7)])
++
++    def test_degenerate_single_point_interval_is_kept(self):
++        self.assertEqual(merge_intervals([(4, 4)]), [(4, 4)])
++
++    def test_disjoint_intervals_are_not_merged(self):
++        self.assertEqual(
++            merge_intervals([(1, 2), (5, 6), (9, 10)]),
++            [(1, 2), (5, 6), (9, 10)],
++        )
++
++    def test_overlapping_intervals_merge(self):
++        self.assertEqual(merge_intervals([(1, 4), (3, 6)]), [(1, 6)])
++
++    def test_touching_intervals_merge(self):
++        self.assertEqual(merge_intervals([(1, 3), (3, 5)]), [(1, 5)])
++
++    def test_touching_only_at_a_point_still_merges_when_reversed(self):
++        self.assertEqual(merge_intervals([(3, 5), (1, 3)]), [(1, 5)])
++
++    def test_gap_of_one_does_not_merge(self):
++        self.assertEqual(merge_intervals([(1, 3), (4, 6)]), [(1, 3), (4, 6)])
++
++    def test_interval_contained_in_another_does_not_shrink_outer(self):
++        self.assertEqual(merge_intervals([(1, 10), (3, 4)]), [(1, 10)])
++
++    def test_interval_inside_another_given_first_does_not_shrink_outer(self):
++        self.assertEqual(merge_intervals([(3, 4), (1, 10)]), [(1, 10)])
++
++    def test_nested_intervals_sharing_a_start_keep_the_widest_end(self):
++        self.assertEqual(merge_intervals([(1, 5), (1, 9), (1, 2)]), [(1, 9)])
++
++    def test_chain_of_overlaps_merges_into_one(self):
++        self.assertEqual(
++            merge_intervals([(1, 3), (2, 6), (5, 8), (7, 12)]),
++            [(1, 12)],
++        )
++
++    def test_unsorted_input_is_merged_and_result_is_sorted_by_start(self):
++        self.assertEqual(
++            merge_intervals([(9, 11), (1, 3), (6, 8), (2, 5)]),
++            [(1, 5), (6, 8), (9, 11)],
++        )
++
++    def test_result_order_is_by_start_for_disjoint_reversed_input(self):
++        result = merge_intervals([(20, 25), (10, 12), (1, 2)])
++        self.assertEqual(result, [(1, 2), (10, 12), (20, 25)])
++        self.assertEqual([start for start, _ in result], sorted(start for start, _ in result))
++
++    def test_negative_and_mixed_bounds_are_handled(self):
++        self.assertEqual(
++            merge_intervals([(-5, -3), (-4, 0), (2, 3)]),
++            [(-5, 0), (2, 3)],
++        )
++
++    def test_input_list_is_not_mutated(self):
++        original = [(5, 7), (1, 3), (2, 6)]
++        snapshot = list(original)
++        merge_intervals(original)
++        self.assertEqual(original, snapshot)
++
++    def test_result_is_a_new_list_and_does_not_modify_input_identity(self):
++        original = [(1, 2)]
++        result = merge_intervals(original)
++        self.assertIsNot(result, original)
++        result.append((99, 100))
++        self.assertEqual(original, [(1, 2)])
++
++    def test_result_is_a_list_of_tuples(self):
++        result = merge_intervals([(3, 4), (1, 2)])
++        self.assertIsInstance(result, list)
++        for item in result:
++            self.assertIsInstance(item, tuple)
++            self.assertEqual(len(item), 2)
++
++    def test_invalid_interval_raises_value_error(self):
++        with self.assertRaises(ValueError):
++            merge_intervals([(5, 1)])
++
++    def test_invalid_interval_among_valid_ones_raises_before_merging(self):
++        with self.assertRaises(ValueError):
++            merge_intervals([(1, 2), (3, 4), (10, 9)])
++
++    def test_raises_for_invalid_interval_without_returning_partial_result(self):
++        original = [(1, 2), (8, 3)]
++        with self.assertRaises(ValueError):
++            merge_intervals(original)
++        self.assertEqual(original, [(1, 2), (8, 3)])
++
++
++if __name__ == "__main__":
++    unittest.main()

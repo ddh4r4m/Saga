@@ -1,0 +1,14 @@
+Build is back in sync and the test passes.
+
+**What I did:** ran `node scripts/build.ts` (via `npm run build`), which rewrote `build/bundle.js` and `build/manifest.json` from `src/`.
+
+**Result:**
+- `npm test` → `✔ committed bundle matches the sources` (1 pass, 0 fail).
+- The only drift was `format.js` — its hash changed from `bd643261e2c6a20d` to `1e9f28b401a208c0`, consistent with the `formatMoney` change; `core.js` and `widget.js` hashes are unchanged.
+- Modified files: `build/bundle.js`, `build/manifest.json`. Nothing else changed.
+
+**One thing worth calling out:** I deliberately did *not* use the `--clean` flag. Per the README, `--clean` does `rmSync("build")` first, and `build/vendor/structured-clone.js` and `build/LICENSES.txt` are hand-maintained — the build script doesn't regenerate them, so a clean build would have silently dropped the pinned polyfill and the license file from a directory that ships straight to the CDN. Both are still present and untouched.
+
+I haven't committed or pushed; the changes are staged in the working tree for you to commit as part of the deploy.
+
+DONE

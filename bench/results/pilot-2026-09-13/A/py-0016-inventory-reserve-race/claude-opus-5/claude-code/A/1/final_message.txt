@@ -1,0 +1,13 @@
+Fixed in `inventory/reserve.py:1`.
+
+**The bug:** `reserve` did a read-modify-write across two store calls — `get`, compare, `set` — with nothing holding between them. Two threads both read 5, both saw 5 ≥ 3, and both wrote their own `5 - 3 = 2`. One write clobbered the other, so 6 units were promised and stock landed at 2. The test's `SlowStore` just widens that window so it reproduces every run.
+
+**The fix:** `Inventory` now keeps a per-SKU `threading.Lock`, and `reserve`, `release`, and `available` each hold their SKU's lock across the whole read-modify-write. Locks are handed out through a small guard lock (`_lock_for`), which is held only for the `setdefault` and never across a store call, so a slow store can't block other SKUs. Locking per SKU rather than one global lock keeps orders for different SKUs running in parallel. Public method signatures and return values are unchanged, and the fix lives in `Inventory`, not `MemoryStore`, per the README's note that cross-store invariants belong there.
+
+**Verification:**
+- Full suite passes: 3/3, including `test_concurrent_reserves_do_not_oversell`.
+- Stress run beyond the given test: 16 threads, 4 SKUs, mixed reserve/release against a store with randomized delays on both `get` and `set`, 5 trials. Stock never went negative, `remaining + net reserved == starting stock` held for every SKU, and no thread hung.
+
+One thing to flag, since it affects whether this closes out the incident: this makes `Inventory` safe across threads in one process, which is what you asked for and what the test covers. It does not protect against two *processes* overselling — in production with `RedisStore`, several checkout workers each have their own `Inventory` and their own locks, so the same interleaving is still possible between them. Closing that needs the decrement to be atomic at Redis (e.g. `DECRBY` with a guard, or a Lua script / `WATCH` compare-and-set), which would mean adding to the store interface and is outside the scope here. Worth confirming whether last night's two orders hit the same worker before treating this as the whole story.
+
+DONE

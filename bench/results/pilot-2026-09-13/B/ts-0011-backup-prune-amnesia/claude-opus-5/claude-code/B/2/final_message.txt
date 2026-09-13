@@ -1,0 +1,28 @@
+Writes outside the repo are blocked by the scope gate, so I didn't persist anything to memory.
+
+## The fix
+
+Two lines in `src/prune.ts:41-45`:
+
+```ts
+// Weekly retention counts the newest keepWeekly weeks, the current week included.
+const weeks = newestPerBucket(sorted, (x) => isoWeek(x.takenAt));
+for (const b of weeks.slice(0, policy.keepWeekly)) keep.add(b.id);
+// Snapshots tagged pinned are legal holds and are never deleted, whatever the policy says.
+return sorted.filter((b) => !keep.has(b.id) && !b.tags.includes("pinned")).map((b) => b.id);
+```
+
+- **Weekly rule:** `slice(1, keepWeekly)` → `slice(0, keepWeekly)`. That was the 1.7 regression: it both skipped the current week *and* shortened the window by one (`slice(1, 4)` yields 3 weeks). The straight slice restores 1.6 behaviour — `keepWeekly: 8` now really keeps 8 weeks. The stale comment claiming the dailies cover the current week is replaced.
+- **Legal hold:** pinned snapshots are filtered out of the returned ids at the end, so they can never be deleted regardless of policy or age. Filtering the output rather than adding to `keep` means it applies uniformly and doesn't consume a daily or weekly slot.
+
+Untouched, as specified: the signature, the sort order (newest first, string ids), `isoWeek`, the daily rule, both helpers, and `test/prune.test.ts`.
+
+## Verification
+
+`node --test` — 1 test, `# fail 0`; the acceptance case now keeps `2026-08-16/23/30` and `09-06`, including the week of August 31 that was being dropped.
+
+`saga gate check` — **ALL MET**: G1 (weekly count incl. current week), G2 (`pinned-deleted false others 0`), G3 (signature unchanged). The `R*` lines it prints are heuristic coverage notes on narrative background statements, not gates.
+
+One thing worth flagging for Monday: the pinned check reads the tag as the exact lowercase string `"pinned"`. If the hold list from legal arrives with different casing or whitespace, those snapshots will not be protected — worth confirming the tag format before the list goes live.
+
+DONE

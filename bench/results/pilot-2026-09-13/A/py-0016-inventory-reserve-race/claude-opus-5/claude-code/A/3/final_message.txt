@@ -1,0 +1,15 @@
+The race is fixed in `inventory/reserve.py:14-46`.
+
+**What went wrong:** `reserve` did a get, a check, and a set as three separate steps. Two threads both read 5, both saw 5 ≥ 3, both wrote `5 - 3 = 2`. Stock landed at 2 with 6 units promised — exactly the SKU-4471 symptom. `release` had the same lost-update hole in the other direction.
+
+**The fix:** `Inventory` now holds one `threading.Lock` per SKU, and `reserve`/`release` do their whole read-check-write under it. Per-SKU rather than one global lock so checkouts for different SKUs don't serialize behind each other — the store reads are slow (network round trip in production), so a single lock would have made that latency additive across all traffic. The lock dictionary itself is guarded by a small `_locks_guard` held only while creating a lock, never across a store call.
+
+Public methods are unchanged — same names, signatures, return values, and exceptions. `MemoryStore` is untouched, so it stays the plain dict wrapper that `store.py` asks it to be and stays interchangeable with `RedisStore`.
+
+**Verification:**
+- All 3 tests pass (`python3 -m unittest discover`); stashing the change reproduces the original failure, so the test is really exercising this code.
+- A stress run of 50 threads doing 200 mixed reserve/release ops across 2 SKUs ended with stock + units-taken exactly equal to the starting stock, and stock never went negative.
+
+**One thing to flag:** this makes `Inventory` thread-safe within a single process, which is what the test and your report describe. It does not make it safe across processes — if you run several checkout workers against the shared `RedisStore`, two processes can still interleave get/set and oversell, because each has its own locks. Closing that needs atomicity at the store, e.g. a Redis `DECRBY` guarded by a `WATCH`/Lua script that refuses to go negative. That's a change to the store interface, so I left it out of this fix; say the word if you want me to take it on.
+
+DONE

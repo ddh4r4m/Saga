@@ -1,0 +1,20 @@
+**Root cause:** `schema/order.json` had `"type": "integer "` — a trailing space — on the `quantity` field.
+
+The generator did exactly what it should: it logged one `error:` line (buried between ~50 `warn: missing description` and `debug:` lines) and emitted a reject-everything validator for the unknown type:
+
+```
+error: schema/order.json#quantity: unknown type "integer ", emitting a validator that rejects everything
+```
+
+That single bad validator is what produced all 14 `FAILED` order checks and the `fatal: build failed` summary — the trailer also said `1 schema errors`, which was the real signal.
+
+**Fix:** removed the trailing space in `schema/order.json:12`. One character; the generator is untouched, so a genuinely unknown type (`"banana"`) still fails the build with exit 1.
+
+**Verification:**
+- `node scripts/build.mjs` → `info: build ok: 41 validators for address, order, product, review, user`, self-check `63 ok, 0 failed`
+- `npm test` → 1 pass, 0 fail
+- `saga gate check` → `ALL MET` (G1, G2)
+
+Two side notes, not fixed since they're outside what you asked: the build prints a `warn: missing description` line twice per undocumented field (once at parse, once at docs generation), which is most of the wall of text, and errors are only summarized at the end rather than surfaced near the top. Both are worth addressing if you want failures to be readable next time.
+
+DONE

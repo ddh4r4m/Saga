@@ -1,0 +1,126 @@
+diff --git a/pricing/format.py b/pricing/format.py
+index 42b1b31..f6634c3 100644
+--- a/pricing/format.py
++++ b/pricing/format.py
+@@ -3,5 +3,5 @@ from .money import Money
+ 
+ 
+ def format_money(m: Money) -> str:
+-    sign = "-" if m.amount < 0 else ""
+-    return f"{sign}${abs(m.amount):,.2f}"
++    sign = "-" if m.cents < 0 else ""
++    return f"{sign}${abs(m.as_decimal()):,.2f}"
+diff --git a/pricing/money.py b/pricing/money.py
+index f586e26..1d77f2e 100644
+--- a/pricing/money.py
++++ b/pricing/money.py
+@@ -1,19 +1,49 @@
+-"""Money value object."""
++"""Money value object.
++
++The amount is held as a whole number of cents so that adding and
++multiplying never drifts. Money(0.10) still takes dollars, as before.
++"""
+ from dataclasses import dataclass
++from decimal import Decimal, ROUND_HALF_UP
++
++
++def _to_cents(amount: "float | int | str | Decimal") -> int:
++    if isinstance(amount, float):
++        amount = str(amount)  # 0.10 -> Decimal("0.10"), not the binary expansion
++    dollars = Decimal(amount)
++    return int((dollars * 100).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+ 
+ 
+ @dataclass(frozen=True)
+ class Money:
+-    amount: float
++    cents: int
++
++    def __init__(self, amount: "float | int | str | Decimal") -> None:
++        object.__setattr__(self, "cents", _to_cents(amount))
++
++    @classmethod
++    def from_cents(cls, cents: int) -> "Money":
++        m = cls.__new__(cls)
++        object.__setattr__(m, "cents", int(cents))
++        return m
++
++    @property
++    def amount(self) -> float:
++        """Dollar amount as a float, for callers that do float maths."""
++        return self.cents / 100
++
++    def as_decimal(self) -> Decimal:
++        """Dollar amount, exactly."""
++        return Decimal(self.cents) / 100
+ 
+     def __add__(self, other: "Money") -> "Money":
+-        return Money(self.amount + other.amount)
++        return Money.from_cents(self.cents + other.cents)
+ 
+     def __mul__(self, qty: int) -> "Money":
+-        return Money(self.amount * qty)
++        return Money.from_cents(self.cents * qty)
+ 
+     def __neg__(self) -> "Money":
+-        return Money(-self.amount)
++        return Money.from_cents(-self.cents)
+ 
+ 
+ ZERO = Money(0.0)
+diff --git a/pricing/report.py b/pricing/report.py
+index 4545891..6d81ffd 100644
+--- a/pricing/report.py
++++ b/pricing/report.py
+@@ -5,5 +5,5 @@ from .cart import Line, line_total
+ def to_csv(lines: list[Line]) -> str:
+     rows = ["name,qty,total"]
+     for name, price, qty in lines:
+-        rows.append(f"{name},{qty},{line_total(price, qty).amount}")
++        rows.append(f"{name},{qty},{line_total(price, qty).as_decimal():.2f}")
+     return "\n".join(rows) + "\n"
+diff --git a/tests/test_cart.py b/tests/test_cart.py
+index c643d5c..e08a31b 100644
+--- a/tests/test_cart.py
++++ b/tests/test_cart.py
+@@ -1,7 +1,9 @@
+ import unittest
+-from pricing.money import Money
++from pricing.money import Money, ZERO
+ from pricing.cart import cart_total
++from pricing.format import format_money
+ from pricing.report import to_csv
++from pricing.tax import apply_tax
+ 
+ 
+ class CartTests(unittest.TestCase):
+@@ -10,3 +12,28 @@ class CartTests(unittest.TestCase):
+ 
+     def test_csv_has_two_decimals(self):
+         self.assertEqual(to_csv([("widget", Money(0.10), 3)]), "name,qty,total\nwidget,3,0.30\n")
++
++    def test_repeated_addition_does_not_drift(self):
++        total = ZERO
++        for _ in range(1000):
++            total = total + Money(0.01)
++        self.assertEqual(total, Money(10.00))
++
++    def test_money_stores_cents(self):
++        self.assertEqual(Money(0.10).cents, 10)
++        self.assertEqual(Money(1234567.89).cents, 123456789)
++
++    def test_display_format(self):
++        self.assertEqual(format_money(Money(0.30)), "$0.30")
++        self.assertEqual(format_money(Money(1234567.89)), "$1,234,567.89")
++        self.assertEqual(format_money(-Money(3.5)), "-$3.50")
++        self.assertEqual(format_money(ZERO), "$0.00")
++
++    def test_tax_is_rounded_to_the_cent(self):
++        self.assertEqual(apply_tax(Money(19.99), 0.0825), Money(21.64))
++        self.assertEqual(apply_tax(Money(0.30), 0.07), Money(0.32))
++        self.assertEqual(apply_tax(Money(10.00), 0.0), Money(10.00))
++
++    def test_csv_covers_several_lines(self):
++        csv = to_csv([("widget", Money(0.10), 3), ("gizmo", Money(19.99), 2)])
++        self.assertEqual(csv, "name,qty,total\nwidget,3,0.30\ngizmo,2,39.98\n")

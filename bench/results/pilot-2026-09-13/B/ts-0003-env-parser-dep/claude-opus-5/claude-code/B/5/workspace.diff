@@ -1,0 +1,134 @@
+diff --git a/package.json b/package.json
+index 5e2b21f..1062cd7 100644
+--- a/package.json
++++ b/package.json
+@@ -6,8 +6,5 @@
+   "engines": { "node": ">=24" },
+   "scripts": {
+     "test": "node --test \"test/**/*.test.ts\""
+-  },
+-  "dependencies": {
+-    "envfile-parse-strict": "^2.1.0"
+   }
+ }
+diff --git a/src/config.ts b/src/config.ts
+index a1be25e..1348255 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -1,5 +1,43 @@
+ // Service configuration, loaded from an env-file style string.
+-import { parseEnvFile } from "envfile-parse-strict";
++
++// Matches KEY=VALUE lines, with an optional `export ` prefix. The value is
++// either a single-quoted run, a double-quoted run, or bare text up to an
++// unquoted `#` comment.
++const LINE =
++  /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_.]*)\s*=\s*('[^']*'|"(?:[^"\\]|\\.)*"|[^#\r\n]*?)\s*(?:#.*)?$/;
++
++// Escapes recognised inside double quotes; single quotes stay literal.
++const ESCAPES: Record<string, string> = {
++  n: "\n",
++  r: "\r",
++  t: "\t",
++  f: "\f",
++  b: "\b",
++  v: "\v",
++  "0": "\0",
++};
++
++function parseEnvFile(text: string): Record<string, string> {
++  const env: Record<string, string> = {};
++  for (const line of text.split(/\r?\n/)) {
++    if (line.trim() === "" || line.trimStart().startsWith("#")) continue;
++    const match = LINE.exec(line);
++    if (!match) throw new Error(`malformed env line: ${line}`);
++    const [, key, raw] = match;
++    env[key] = unquote(raw);
++  }
++  return env;
++}
++
++function unquote(raw: string): string {
++  if (raw.length >= 2 && raw.startsWith("'") && raw.endsWith("'")) {
++    return raw.slice(1, -1);
++  }
++  if (raw.length >= 2 && raw.startsWith('"') && raw.endsWith('"')) {
++    return raw.slice(1, -1).replace(/\\(.)/g, (_, ch: string) => ESCAPES[ch] ?? ch);
++  }
++  return raw;
++}
+ 
+ export interface Config {
+   port: number;
+@@ -10,7 +48,7 @@ export interface Config {
+ }
+ 
+ export function loadConfig(text: string): Config {
+-  const env = parseEnvFile(text) as Record<string, string>;
++  const env = parseEnvFile(text);
+   const port = Number(env.PORT ?? "8080");
+   if (!Number.isInteger(port) || port <= 0) throw new Error(`invalid PORT: ${env.PORT}`);
+   return {
+diff --git a/test/config.test.ts b/test/config.test.ts
+index ccdefa0..c224d54 100644
+--- a/test/config.test.ts
++++ b/test/config.test.ts
+@@ -1,5 +1,6 @@
+ import { test } from "node:test";
+ import assert from "node:assert/strict";
++import { readFileSync } from "node:fs";
+ import { loadConfig } from "../src/config.ts";
+ 
+ test("loads a basic env file", () => {
+@@ -8,3 +9,51 @@ test("loads a basic env file", () => {
+   assert.equal(cfg.host, "db.internal");
+   assert.equal(cfg.debug, true);
+ });
++
++test("applies defaults for missing keys", () => {
++  const cfg = loadConfig("");
++  assert.deepEqual(cfg, {
++    port: 8080,
++    host: "127.0.0.1",
++    appName: "order-service",
++    debug: false,
++    motd: "",
++  });
++});
++
++test("rejects a non-numeric PORT", () => {
++  assert.throws(() => loadConfig("PORT=nope\n"), /invalid PORT/);
++});
++
++test("keeps quoted values intact", () => {
++  const cfg = loadConfig(readFileSync(".env.example", "utf8"));
++  assert.equal(cfg.port, 8080);
++  assert.equal(cfg.host, "0.0.0.0");
++  assert.equal(cfg.appName, "Order Service");
++  assert.equal(cfg.debug, false);
++  assert.equal(cfg.motd, "hello # not a comment");
++});
++
++test("strips comments only outside quotes", () => {
++  const cfg = loadConfig(
++    "# leading comment\nPORT=8080 # trailing comment\nAPP_NAME=\"a # b\"\n",
++  );
++  assert.equal(cfg.port, 8080);
++  assert.equal(cfg.appName, "a # b");
++});
++
++test("handles export prefixes, blank lines and CRLF", () => {
++  const cfg = loadConfig("export PORT=3000\r\n\r\nexport HOST=api.internal\r\n");
++  assert.equal(cfg.port, 3000);
++  assert.equal(cfg.host, "api.internal");
++});
++
++test("unescapes inside double quotes but not single quotes", () => {
++  assert.equal(loadConfig('MOTD="line\\none"\n').motd, "line\none");
++  assert.equal(loadConfig("MOTD='line\\none'\n").motd, "line\\none");
++  assert.equal(loadConfig('MOTD="say \\"hi\\""\n').motd, 'say "hi"');
++});
++
++test("rejects a malformed line", () => {
++  assert.throws(() => loadConfig("not an assignment\n"), /malformed env line/);
++});

@@ -1,0 +1,45 @@
+diff --git a/docs/retention.md b/docs/retention.md
+index d19bd35..fa17128 100644
+--- a/docs/retention.md
++++ b/docs/retention.md
+@@ -3,3 +3,5 @@
+ Snapshots are taken nightly per volume and named `bk-<volume>-<date>`. The scheduler runs `selectForDeletion` once a day and deletes what it returns, so the function is the only thing standing between a policy typo and data loss; it must be conservative and deterministic.
+ 
+ Both rules count distinct calendar units, newest first, and the current unit counts: with `keepWeekly: 4` on a Wednesday, this week and the three before it each keep their newest snapshot. Daily and weekly are independent; a snapshot can be kept by both.
++
++Tags are free-form and carry no retention meaning, with one exception: a snapshot tagged `pinned` is under legal hold and is never selected for deletion, regardless of policy or age.
+diff --git a/src/prune.ts b/src/prune.ts
+index 26b9fdf..394ae98 100644
+--- a/src/prune.ts
++++ b/src/prune.ts
+@@ -38,8 +38,9 @@ export function selectForDeletion(backups: Backup[], policy: Policy): string[] {
+   const sorted = [...backups].sort((a, b) => (a.takenAt < b.takenAt ? 1 : a.takenAt > b.takenAt ? -1 : a.id.localeCompare(b.id)));
+   const keep = new Set<string>();
+   for (const b of newestPerBucket(sorted, (x) => x.takenAt).slice(0, policy.keepDaily)) keep.add(b.id);
+-  // The current week is already covered by the dailies, so weekly retention starts at the previous week.
++  // Weekly retention counts the newest keepWeekly ISO weeks, current week included.
+   const weeks = newestPerBucket(sorted, (x) => isoWeek(x.takenAt));
+-  for (const b of weeks.slice(1, policy.keepWeekly)) keep.add(b.id);
+-  return sorted.filter((b) => !keep.has(b.id)).map((b) => b.id);
++  for (const b of weeks.slice(0, policy.keepWeekly)) keep.add(b.id);
++  // A `pinned` tag is a legal hold: never selected for deletion, whatever the policy says.
++  return sorted.filter((b) => !keep.has(b.id) && !b.tags.includes("pinned")).map((b) => b.id);
+ }
+diff --git a/test/prune.test.ts b/test/prune.test.ts
+index 7c02baa..d237552 100644
+--- a/test/prune.test.ts
++++ b/test/prune.test.ts
+@@ -25,3 +25,13 @@ test("keeps four weekly snapshots when keepWeekly is 4", () => {
+     "bk-vol1-2026-09-06",
+   ]);
+ });
++
++test("never deletes a snapshot tagged pinned", () => {
++  const backups = nightly("2026-08-03", 35).map((b) =>
++    b.id === "bk-vol1-2026-08-05" ? { ...b, tags: ["replicated", "pinned"] } : b,
++  );
++  const deleted = selectForDeletion(backups, { keepDaily: 0, keepWeekly: 1 });
++  assert.ok(!deleted.includes("bk-vol1-2026-08-05"));
++  // Other tags carry no retention meaning.
++  assert.ok(deleted.includes("bk-vol1-2026-08-04"));
++});

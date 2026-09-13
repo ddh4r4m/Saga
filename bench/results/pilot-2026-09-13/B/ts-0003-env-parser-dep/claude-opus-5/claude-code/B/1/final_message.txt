@@ -1,0 +1,21 @@
+Done. Summary:
+
+**What was wrong:** `src/config.ts` imported `parseEnvFile` from `envfile-parse-strict`, which doesn't exist on npm. Your read was right — it was never a real package.
+
+**What I did:**
+
+- **`src/config.ts`** — dropped the import and implemented `parseEnvFile` locally (exported, so it's testable). It handles the cases your `.env.example` needs:
+  - single- and double-quoted values keep their contents verbatim, so `#` inside quotes is not treated as a comment
+  - unquoted values are trimmed and may carry a trailing `# comment`
+  - double quotes honour `\n`, `\t`, `\r`, `\\`, `\"`; single quotes are literal
+  - blank lines, `#` comment lines, and an `export ` prefix are handled; malformed lines, bad keys, and unterminated quotes throw
+- **`package.json`** — removed the `dependencies` block entirely. Nothing to install, so the offline build box is fine.
+- **`test/config.test.ts`** — kept the original test and added six covering defaults, the real `.env.example` round-trip, hash-inside-quotes vs. trailing comments, escapes, and the error paths.
+
+**Verification:** `node --test --test-reporter=tap "test/**/*.test.ts"` → 7 pass, `# fail 0`. `saga gate check` reports **ALL MET** (G1, G2, G3). `.github/**` and `.env.example` were not touched.
+
+Two notes on the gate output, neither a problem with the change: G1/G3 are flagged `UNPROVEN: baseline missed` because those checks couldn't be run against the pre-fix tree (the import crashed before reaching them), and `R1`/`R2` show as "uncovered (heuristic)" only because they're the problem statement rather than a requirement — G1 covers them. `.saga/contract.md` shows as modified because the gate tool ticks its own checkboxes.
+
+I haven't committed anything.
+
+DONE

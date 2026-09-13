@@ -1,0 +1,14 @@
+The race is fixed in `inventory/reserve.py:34`.
+
+**What was wrong:** `reserve` read the stock level, checked it, and wrote back the new level as three separate steps. Two threads both read 5, both concluded 5 ≥ 3, and the second `set(2)` overwrote the first — 6 units promised, stock left at 2. `release` had the same read-modify-write shape, so concurrent releases could lose units too.
+
+**The fix:** `Inventory` now holds a per-SKU `threading.Lock` and takes it around each check-then-write. I put the locking in `Inventory` rather than `MemoryStore` because `store.py` documents that class as a plain dict wrapper kept interchangeable with the production `RedisStore` — a lock there would not survive the swap, and it couldn't span the check and the write anyway. Locks are per SKU (created under a small guard lock) so orders for different SKUs still proceed in parallel; that matters given the slow network-backed store. Public methods are unchanged.
+
+**Verification:**
+- Full suite passes, 5 consecutive runs (3 tests each, all OK).
+- Confirmed the new test genuinely reproduces the bug: stashing the fix gives `FAILED (failures=1)`.
+- Stress check beyond the suite — 8 threads doing interleaved reserve/release across 5 SKUs, 20 trials: stock never went negative and every final level matched the net units taken.
+
+One thing worth flagging, outside what you asked: this protects a single process. If checkout runs in more than one worker or host against the shared Redis store, these in-process locks won't serialize across them, and the same oversell returns. The durable fix there is an atomic decrement-with-guard in the store itself (a Lua script or `WATCH`/`MULTI` on the SKU key). I left that alone since it means changing the store interface.
+
+DONE

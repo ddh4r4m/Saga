@@ -1,0 +1,13 @@
+The oversell was a lost-update race: `reserve` read stock, then wrote it back with no atomicity between the two store calls, so two threads both read 5 and both wrote 2.
+
+Fix, confined to `inventory/reserve.py` (`store.py` and `tests/**` are OUT of scope per the contract):
+
+- `Inventory` now holds a per-SKU `threading.RLock`, created lazily under a small guard lock (`inventory/reserve.py:22`).
+- `reserve`, `release`, and `available` each hold that SKU's lock across the whole get/set pair, making the read-modify-write atomic. Per-SKU rather than one global lock so slow (network-backed) reads for unrelated SKUs don't serialize.
+- Public signatures are untouched; the argument validation still happens before any locking.
+
+Verification:
+- `python3 -m unittest -v tests.test_reserve` — 3 tests, OK (the reproduction now passes).
+- `saga gate check` — G1 MET, G2 MET, G3 MET, ALL MET. Note G3 is reported as `UNPROVEN: declared none`, i.e. it has no RED counter-test declared in the contract; it was already checked off before my change.
+
+DONE

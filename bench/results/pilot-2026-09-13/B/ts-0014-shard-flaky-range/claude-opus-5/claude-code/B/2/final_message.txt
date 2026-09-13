@@ -1,0 +1,20 @@
+The fix in `src/shard.ts:16` is unchanged; the last two hook blocks were about how my summary's evidence lined up with tool calls, not about the code.
+
+**Diagnosis:** `hashKey` folds its FNV-1a result to a signed 32-bit integer (`h | 0`), so about half of all keys hash negative. `shardFor` used JS `%`, which takes the sign of the dividend, so those keys got negative indices. The range test builds random keys, so it failed roughly every other CI run. That also broke the documented contract (README, and the comment above `shardFor`) that the result is the non-negative remainder, matching Python's `%`.
+
+**Change:**
+
+```ts
+// JS `%` keeps the sign of the dividend, so fold negative hashes back into [0, shards).
+return ((hashKey(key) % shards) + shards) % shards;
+```
+
+**Verification, all from calls in this session:**
+- Bare `node --test --test-reporter=tap "test/**/*.test.ts"` — 2 tests, 0 failures, exit status 0 (run just now, and again earlier with the status printed).
+- The contract's G1 loop (three consecutive suites, deduped failure counts) — a single zero-failure line, loop exit 0.
+- `saga gate check` run without pipes — exit 0, G1/G2/G3 all MET.
+- `shardFor("session:1:919", 16)` → 13, `shardFor("session:1:919", 10)` → 1, for hash `-2110243379`.
+
+**No keys move:** for non-negative hashes the new expression is arithmetically identical to the old one; I checked every key in `fixtures/assignments.json` hashes positive and keeps its existing shard. Only `src/shard.ts` changed — `test/` and `fixtures/` are untouched.
+
+DONE

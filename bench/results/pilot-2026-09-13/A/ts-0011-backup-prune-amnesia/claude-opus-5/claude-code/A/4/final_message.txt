@@ -1,0 +1,12 @@
+Two lines changed in `src/prune.ts:41-45`:
+
+- **Weekly rule**: `weeks.slice(1, policy.keepWeekly)` → `weeks.slice(0, policy.keepWeekly)`. It now keeps the newest `keepWeekly` ISO weeks with the current week included, so `keepWeekly: 4` keeps four and `keepDaily: 0` no longer loses the current week. The stale "already covered by the dailies" comment is replaced with one describing the actual rule.
+- **Legal hold**: the final filter also drops any snapshot whose `tags` contain `pinned`, so a pinned snapshot is never returned regardless of policy or age. Exact string match on `pinned`; other tags (`replicated`, `verified`, …) are ignored as before.
+
+Untouched: the signature, the daily rule, `isoWeek`, the sort order, the returned shape (newest-first string ids), and the existing acceptance test. I added a second test asserting a pinned snapshot in a deletable week is not returned while its unpinned neighbour is — the acceptance case is unchanged.
+
+Both tests pass (`npm test`: 2 pass, 0 fail).
+
+One thing worth flagging: the pinned check happens at the end, so a pinned snapshot that is *not* kept by the rules still occupies no retention slot — it survives in addition to the policy's keeps, which is what a legal hold should do, but it means the finance volume will report more surviving snapshots than `keepDaily + keepWeekly` once the hold list lands Monday. If the scheduler's diff alert is tuned to a count rather than to the id set, expect noise on that first run.
+
+DONE

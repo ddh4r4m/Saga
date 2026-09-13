@@ -1,0 +1,27 @@
+diff --git a/importer/parse.py b/importer/parse.py
+index dfbfda4..f54200f 100644
+--- a/importer/parse.py
++++ b/importer/parse.py
+@@ -1,8 +1,13 @@
+ """Row parsing for vendor price files."""
+ 
++import re
+ from dataclasses import dataclass
+ from decimal import Decimal, InvalidOperation
+ 
++# A thousands separator: a comma, a space or a no-break space sitting between
++# digits. Anywhere else the character stays put and Decimal rejects the value.
++_THOUSANDS_SEP = re.compile(r"(?<=\d)[,  ](?=\d)")
++
+ 
+ class ParseError(ValueError):
+     pass
+@@ -22,7 +27,7 @@ def parse_price(text: str) -> Decimal:
+     according to their own locale: a comma, a space or a no-break space, so
+     all of those have to be ignored. Anything else is a ParseError.
+     """
+-    cleaned = text.strip().replace(",", "")
++    cleaned = _THOUSANDS_SEP.sub("", text.strip())
+     try:
+         return Decimal(cleaned)
+     except InvalidOperation:

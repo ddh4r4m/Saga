@@ -1,0 +1,13 @@
+**Cause:** `ledger/fx.py:convert` did `int(cents * rate)`, which truncates toward zero rather than rounding. Every USD→EUR leg therefore dropped the fractional cent.
+
+Account 4471 ("EU Receivables") is the only EUR account in the chart, so it's the only one whose postings go through a non-1.0 rate — 455 of the 3200 entries touch it, all booked in USD and converted at 0.9228. 235 are debits and 220 credits; truncation shrinks the magnitude of each leg, so the debit and credit losses don't cancel, and the residue accumulated to 30 cents in the credit direction (`got -1185821` vs control `-1185791`). Every other account is USD→USD at rate 1.0, where truncation is a no-op — which is why only 4471 drifted.
+
+**Fix:** convert with `Decimal` and round half away from zero to the nearest minor unit. Using `Decimal(str(rate))` keeps the rate exact instead of inheriting the float's binary representation, so ties round on the true decimal value.
+
+```python
+return int((Decimal(cents) * Decimal(str(rate))).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+```
+
+**Verified:** `python3 -m ledger.reconcile fixtures` now prints `reconcile: 3200 entries posted, 0 mismatches` and exits 0; 4471 lands on `-11857.91 EUR`, matching the control, with all other balances unchanged. `python3 -m unittest discover -s tests -t .` passes (3 tests). I confirmed independently that recomputing 4471 with half-even rounding gives the same `-1185791`, so the control file doesn't disambiguate between the two tie-breaking modes — I chose half-up as the usual convention for currency conversion.
+
+DONE

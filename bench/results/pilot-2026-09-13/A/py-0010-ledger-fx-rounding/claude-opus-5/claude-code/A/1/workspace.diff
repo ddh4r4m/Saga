@@ -1,0 +1,54 @@
+diff --git a/ledger/fx.py b/ledger/fx.py
+index ba10a28..bfc6a6e 100644
+--- a/ledger/fx.py
++++ b/ledger/fx.py
+@@ -1,6 +1,11 @@
+ """Currency conversion of minor-unit amounts."""
++from decimal import Decimal, ROUND_HALF_UP
+ 
+ 
+ def convert(cents: int, rate: float) -> int:
+-    """Convert an amount in minor units at rate, returning minor units."""
+-    return int(cents * rate)
++    """Convert an amount in minor units at rate, returning minor units.
++
++    Rounds half away from zero: truncating would bias every converted leg
++    towards zero and drift the account balance over many postings.
++    """
++    return int((Decimal(cents) * Decimal(str(rate))).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+diff --git a/tests/test_fx.py b/tests/test_fx.py
+new file mode 100644
+index 0000000..b93041e
+--- /dev/null
++++ b/tests/test_fx.py
+@@ -0,0 +1,30 @@
++import io
++import unittest
++from pathlib import Path
++from ledger.fx import convert
++from ledger.reconcile import run
++
++
++class ConvertTests(unittest.TestCase):
++    def test_identity_rate(self):
++        self.assertEqual(convert(4072, 1.0), 4072)
++
++    def test_rounds_up_not_truncated(self):
++        # 4072 * 0.9228 = 3757.6416
++        self.assertEqual(convert(4072, 0.9228), 3758)
++
++    def test_rounds_down(self):
++        # 1000 * 0.9228 = 922.8 -> 923; 100 * 0.9228 = 92.28 -> 92
++        self.assertEqual(convert(1000, 0.9228), 923)
++        self.assertEqual(convert(100, 0.9228), 92)
++
++    def test_half_goes_away_from_zero(self):
++        self.assertEqual(convert(5, 0.1), 1)
++        self.assertEqual(convert(-5, 0.1), -1)
++
++
++class ReconcileTests(unittest.TestCase):
++    def test_fixture_reconciles_clean(self):
++        out = io.StringIO()
++        self.assertEqual(run(Path("fixtures"), out=out), 0)
++        self.assertNotIn("MISMATCH", out.getvalue())

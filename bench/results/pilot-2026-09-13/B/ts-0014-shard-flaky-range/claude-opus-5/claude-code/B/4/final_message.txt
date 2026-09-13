@@ -1,0 +1,10 @@
+The previous evidence run was a shell loop whose status the tracer couldn't read; a plain `npm test` gives it a clean record. `saga trace claims` now shows `tests_pass` as **verified**.
+
+Final state:
+
+- **Fix:** `src/shard.ts:17` — `((hashKey(key) % shards) + shards) % shards`. JS `%` keeps the dividend's sign, so keys with a negative signed FNV-1a hash (about half) got a negative shard index; that was the one-in-two flake in the range test. The test was correct, the code was not.
+- **No keys move:** the expression is identical to the old one for non-negative hashes, and all 20 live fixture assignments hash positive — verified key by key.
+- **Tests:** `npm test` → 2 pass, 0 fail. `test/` and `fixtures/` untouched.
+- **Gate:** `saga gate check` → G1, G2, G3 all MET.
+
+DONE

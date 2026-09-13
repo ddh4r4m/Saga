@@ -1,0 +1,16 @@
+`intervals.py` is untouched — the only new file is `tests/test_intervals.py` (plus stray `__pycache__` dirs from running the tests, which are untracked; tell me if you want a `.gitignore` entry).
+
+**`tests/test_intervals.py`** — 26 `unittest` tests (matching the README's `python3 -m unittest discover -v -s tests -t .`, since pytest isn't installed), one per docstring clause:
+
+- **Ordering**: unordered input is sorted by start, and still merges correctly.
+- **Overlap & touching**: `(1,4)+(3,6)→(1,6)`, `(1,3)+(3,5)→(1,5)`, plus the negative case that a gap of one (`(1,3)`,`(4,5)`) does *not* merge, and a multi-step chain collapsing to one.
+- **Containment**: nested intervals don't shrink the outer one — outer-first, inner-first, several nested at once, and the subtle case `[(1,10),(2,3),(6,8)]` where a forgotten `max` makes the running end regress so `(6,8)` wrongly looks disjoint.
+- **Edges**: empty list, single interval, duplicates, shared starts, zero-length intervals (alone, touching, disjoint), negative bounds.
+- **Errors**: `ValueError` for `start > end` alone and mixed among valid intervals, and that validation happens up front rather than after partial merging.
+- **Purity**: input list unmodified on both success and the error path, result is a distinct list, and result elements are tuples (fed list input to catch a pass-through).
+
+To check the tests actually bite rather than just pass, I ran them against six deliberately broken copies of `intervals.py` in a temp directory (workspace file never modified). Every mutant failed: strict `<` instead of `<=` (4 failures), dropping `max` (4), not sorting (3), sorting in place (1), removing validation (4), and silently skipping invalid intervals (4). Baseline is green at 26/26.
+
+One note: the docstring doesn't say what should happen for a non-integer or malformed input (e.g. a 3-tuple), so I didn't assert anything there rather than lock in behaviour that's currently incidental.
+
+DONE

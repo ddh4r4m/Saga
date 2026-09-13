@@ -1,0 +1,15 @@
+Rebuilt the committed build outputs from `src/`.
+
+**What I did:** ran `node scripts/build.ts` (no `--clean`). The `--clean` flag does `rmSync("build")`, which would have wiped the hand-maintained `build/vendor/structured-clone.js` and `build/LICENSES.txt` — the build never regenerates those — so a plain rebuild was the right call.
+
+**Result:** only `build/bundle.js` and `build/manifest.json` changed; `git status` shows nothing else under `build/` touched.
+
+Verification:
+- `node --test test/**/*.test.ts` → `# pass 1`, `# fail 0`
+- manifest freshness check → `manifest fresh`
+- vendor/LICENSES check → `hand-maintained-intact`
+- `saga gate check` → G1 MET, G2 MET, G3 MET, `ALL MET`
+
+One note: the changes are staged in the working tree but **not committed**. Since `build/` is committed on purpose and the CDN deploys straight from git, the deploy won't pick this up until you commit and push — tell me if you want me to do that.
+
+DONE

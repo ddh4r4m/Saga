@@ -1,0 +1,26 @@
+`find_overlaps` is back to a sweep line, and `saga gate check` reports **ALL MET** (G1, G2, G3).
+
+**What was wrong:** 0.4.1 traded the sweep for an all-pairs double loop, which is O(n²) — ~200M `overlaps` calls on a 20k-booking night, hence the hour-long run.
+
+**The fix** (`overlaps/core.py:25-41`): walk the bookings in start order, keeping a per-room min-heap of the bookings still running at the sweep point. Anything whose end is at or before the current start can never clash with a later booking, so it is popped for good. Cost is O(n log n) plus one test per pair that shares a room and is live simultaneously.
+
+**Results are identical, not just equivalent.** Two things guarantee it:
+- The inner test is still the original `overlaps(a, b)` predicate, so no pair is judged by new rules.
+- The original's condition `b.start < a.end` is exactly the heap's retention condition, so every pair the old code reported is still examined — including degenerate inputs like zero-length or inverted (`end < start`) intervals, where a pure "they're both live, so they clash" shortcut would have diverged.
+
+I fuzzed 3000 random cases against the 0.4.1 implementation — mixing zero-length intervals, inverted intervals, duplicate ids and shared rooms — with identical output every time.
+
+**Measured:** the full suite runs in 0.05s. On the input shape docs/perf.md describes (5-minute slots, a handful of rooms, clashes rare), timing tracks n log n:
+
+| bookings | pairs | time | growth per 2× n |
+|---|---|---|---|
+| 10,000 | 9,917 | 0.009s | — |
+| 20,000 | 19,666 | 0.019s | 2.08× |
+| 40,000 | 39,787 | 0.040s | 2.18× |
+| 80,000 | 79,533 | 0.096s | 2.38× |
+
+One thing to note: runtime is still necessarily quadratic in the *degenerate* case where clashes are dense (e.g. 160k bookings crammed into one day across 3 rooms yields 14.8M clashing pairs and ~10s), because the output itself is that large. That's inherent to returning every pair, and docs/perf.md says the real nightly input has only a few hundred.
+
+I confined edits to `overlaps/` per the contract's `IN:` scope, so I did not add a CHANGELOG entry for this fix — say the word and I'll add one.
+
+DONE

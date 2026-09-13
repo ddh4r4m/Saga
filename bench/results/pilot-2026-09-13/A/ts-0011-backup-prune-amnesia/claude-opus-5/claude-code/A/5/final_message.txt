@@ -1,0 +1,15 @@
+Two lines changed in `src/prune.ts:41-45`, nothing else touched.
+
+**Weekly rule** — `weeks.slice(1, policy.keepWeekly)` → `weeks.slice(0, policy.keepWeekly)`. That was a double bug: the `1` start dropped the current week, and because the end index stayed at `keepWeekly` the slice also yielded only `keepWeekly - 1` weeks. Starting at `0` fixes both at once — `keepWeekly: 4` now keeps four weeks including the current one, and finance's `keepWeekly: 8` keeps eight. I replaced the stale comment that justified the old behavior.
+
+**Legal holds** — the final filter now also drops any snapshot whose `tags` include `pinned`, so a pinned snapshot is never returned regardless of policy or age. Placing it in the return filter rather than the `keep` set means it holds even for `keepDaily: 0, keepWeekly: 0`. Tag matching is exact and case-sensitive on the free-form list, so the other systems' tags (`replicated`, `verified`) are ignored as before.
+
+Verification:
+- `npm test` passes; the acceptance case is unchanged and now keeps `2026-08-16`, `08-23`, `08-30`, `09-06` — the week of August 31 is no longer dropped.
+- Ad-hoc check: a snapshot tagged `["replicated","pinned"]` from 2020 is absent from the returned list under both `{0,0}` and `{1,1}`, while an untagged neighbour from the same week is returned. Return order stayed newest-first.
+
+One thing worth knowing for Monday, since it's a behavior change the scheduler will see: the first run after this deploys returns fewer ids than the previous run for every volume — one extra weekly snapshot retained per volume, plus any pinned ones. If the scheduler alerts on unexpected diffs, expect that to fire once on Monday and be the expected shape rather than a regression.
+
+I didn't touch the daily rule, `isoWeek`, the sort, the return shape, or the test.
+
+DONE

@@ -1,0 +1,62 @@
+diff --git a/pricing/money.py b/pricing/money.py
+index f586e26..6d2fe30 100644
+--- a/pricing/money.py
++++ b/pricing/money.py
+@@ -1,19 +1,41 @@
+ """Money value object."""
+ from dataclasses import dataclass
++from decimal import Decimal, ROUND_HALF_UP
+ 
+ 
+-@dataclass(frozen=True)
++def _to_cents(amount: float) -> int:
++    """Convert a dollar amount to whole cents, rounding halves away from zero."""
++    return int(Decimal(str(amount)).scaleb(2).quantize(Decimal(1), rounding=ROUND_HALF_UP))
++
++
++@dataclass(frozen=True, init=False)
+ class Money:
+-    amount: float
++    """A dollar amount held exactly, as whole cents."""
++
++    cents: int
++
++    def __init__(self, amount: float = 0.0) -> None:
++        object.__setattr__(self, "cents", _to_cents(amount))
++
++    @classmethod
++    def from_cents(cls, cents: int) -> "Money":
++        m = cls.__new__(cls)
++        object.__setattr__(m, "cents", int(cents))
++        return m
++
++    @property
++    def amount(self) -> float:
++        """The dollar amount, for display; arithmetic stays on `cents`."""
++        return self.cents / 100
+ 
+     def __add__(self, other: "Money") -> "Money":
+-        return Money(self.amount + other.amount)
++        return Money.from_cents(self.cents + other.cents)
+ 
+     def __mul__(self, qty: int) -> "Money":
+-        return Money(self.amount * qty)
++        return Money.from_cents(self.cents * qty)
+ 
+     def __neg__(self) -> "Money":
+-        return Money(-self.amount)
++        return Money.from_cents(-self.cents)
+ 
+ 
+ ZERO = Money(0.0)
+diff --git a/pricing/report.py b/pricing/report.py
+index 4545891..6c11166 100644
+--- a/pricing/report.py
++++ b/pricing/report.py
+@@ -5,5 +5,5 @@ from .cart import Line, line_total
+ def to_csv(lines: list[Line]) -> str:
+     rows = ["name,qty,total"]
+     for name, price, qty in lines:
+-        rows.append(f"{name},{qty},{line_total(price, qty).amount}")
++        rows.append(f"{name},{qty},{line_total(price, qty).amount:.2f}")
+     return "\n".join(rows) + "\n"

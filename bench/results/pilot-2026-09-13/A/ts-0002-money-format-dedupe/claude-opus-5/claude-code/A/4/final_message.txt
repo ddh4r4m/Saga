@@ -1,0 +1,7 @@
+Done. `src/money.ts` now holds the single `formatMoney` (invoice's version verbatim: sign in front of `$`, `toLocaleString` grouping on the absolute value), and both `src/invoice.ts:3` and `src/receipt.ts:3` import it. Both local copies are gone; `src/legacy/report.ts` is untouched, still using its own `fmt`.
+
+Both tests pass.
+
+One behaviour change worth flagging to whoever owns the POS printer: the receipt previously printed negatives as `$-2.50` and also mis-grouped large negatives (`Math.floor(-123456/100)` → `-1,235` paired with a `.56` fraction). Receipts now print `-$1.50` and `-$1,234.56`. That's the point of the change, but it does shift the receipt's column content for refunds, so any downstream parser of receipt text should be checked.
+
+DONE

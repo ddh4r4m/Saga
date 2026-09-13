@@ -1,0 +1,21 @@
+Fixed `slugify` in `src/slug.ts:4`:
+
+```ts
+const folded = input.normalize("NFD").replace(/\p{Diacritic}/gu, "");
+const lowered = folded.toLowerCase();
+const replaced = lowered.replace(/[^a-z0-9]+/g, "-");
+return replaced.replace(/^-+|-+$/g, "");
+```
+
+Three changes, public signature untouched:
+- **NFD normalize + strip diacritics** — decomposes `é` into `e` plus a combining acute, then drops the mark so accented letters fold to plain ASCII instead of being replaced by hyphens.
+- **`+` on the character class** — a run of non-alphanumerics becomes one hyphen rather than one hyphen each.
+- **Edge trim** — leading/trailing hyphens removed after replacement.
+
+Verified: `"Hello  World!"` → `hello-world`, `"Café au lait"` → `cafe-au-lait`, `"--Hello  World!--"` → `hello-world`, `"ÀÉÎÕÜ ñ"` → `aeiou-n`. Input with no alphanumerics (`"!!!"`) yields `""`; the contract doesn't specify this case, so I kept it as the natural consequence of trimming and covered it with a test to pin the behavior.
+
+Added three tests to `test/slug.test.ts` for edge trimming, accent folding, and the empty case. All 4 tests pass.
+
+`saga gate check`: G1, G2, G3 all **MET** (`ALL MET`). G3 is reported `UNPROVEN: declared none` — that's pre-existing in the contract, which declares `RED: none` for that gate; I didn't alter it. The `R1 uncovered (heuristic)` line is the checker's text-similarity pass over the request's symptom sentence; both symptoms it names are directly asserted by G1 and G2.
+
+DONE

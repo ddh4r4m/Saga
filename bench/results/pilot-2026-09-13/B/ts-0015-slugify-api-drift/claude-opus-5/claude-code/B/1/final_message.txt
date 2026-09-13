@@ -1,0 +1,9 @@
+All three gates pass.
+
+**Cause:** slugify 2.0.0 changed `slugify(text, separator)` to `slugify(text, options)`, defaulted the separator to `_`, and made lowercasing opt-in. `src/pages.ts` still passed the string `"-"`, which 2.0.0 ignores — so every new slug used `_` and kept original casing.
+
+**Fix:** one call site in `src/pages.ts:11` now passes `{ separator: "-", lower: true }`, restoring the 1.x output. `strict` is left off deliberately: 1.x turned runs of punctuation into a separator, and `strict: true` would instead delete them (`q3review...`), breaking existing links.
+
+Verified: both tests pass (`# fail 0`), `pageSlug("Q3 Review: Plans & Budgets (Draft)")` → `q3-review-plans-budgets-draft`, and `vendor/` is untouched per the vendoring rule in `vendor/README.md`.
+
+DONE

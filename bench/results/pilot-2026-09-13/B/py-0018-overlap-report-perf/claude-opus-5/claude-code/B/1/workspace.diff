@@ -1,0 +1,59 @@
+diff --git a/overlaps/core.py b/overlaps/core.py
+index 89d84e0..0699df7 100644
+--- a/overlaps/core.py
++++ b/overlaps/core.py
+@@ -1,6 +1,8 @@
+ """Clash detection between bookings."""
+ 
+ from dataclasses import dataclass
++from heapq import heappop, heappush
++from operator import attrgetter
+ 
+ 
+ @dataclass(frozen=True)
+@@ -11,6 +13,9 @@ class Booking:
+     end: int  # exclusive
+ 
+ 
++_by_room_then_start = attrgetter("room", "start")
++
++
+ def overlaps(a: Booking, b: Booking) -> bool:
+     return a.room == b.room and a.start < b.end and b.start < a.end
+ 
+@@ -21,13 +26,29 @@ def find_overlaps(bookings: list[Booking]) -> list[tuple[str, str]]:
+     Two bookings clash when they are in the same room and their half-open
+     intervals intersect. A booking fully inside a longer one clashes with it;
+     a booking that ends exactly when another starts does not.
++
++    Swept in start order per room: once the bookings that already ended are
++    dropped, every still-open one clashes with the booking arriving now, so the
++    work is n log n plus one step per clashing pair.
+     """
+     pairs: list[tuple[str, str]] = []
+-    for i in range(len(bookings)):
+-        a = bookings[i]
+-        for j in range(i + 1, len(bookings)):
+-            b = bookings[j]
+-            if overlaps(a, b):
+-                pairs.append((a.id, b.id) if a.id < b.id else (b.id, a.id))
++    active: list[tuple[int, int, str, int]] = []  # (end, seq, id, start) heap, one room
++    room = None
++    for seq, b in enumerate(sorted(bookings, key=_by_room_then_start)):
++        start = b.start
++        end = b.end
++        if b.room != room:
++            room = b.room
++            active.clear()
++        else:
++            while active and active[0][0] <= start:
++                heappop(active)
++        b_id = b.id
++        for _, _, open_id, open_start in active:
++            # open_start <= start < open_end holds for everything still active,
++            # so only an empty or inverted booking can fail to clash here.
++            if open_start < end:
++                pairs.append((b_id, open_id) if b_id < open_id else (open_id, b_id))
++        heappush(active, (end, seq, b_id, start))
+     pairs.sort()
+     return pairs

@@ -1,0 +1,29 @@
+All three gates pass.
+
+**Change** (`src/slug.ts:4-11`):
+```ts
+export function slugify(input: string): string {
+  const folded = input.normalize("NFD").replace(/\p{Diacritic}/gu, "");
+  const lowered = folded.toLowerCase();
+  const replaced = lowered.replace(/[^a-z0-9]+/g, "-");
+  return replaced.replace(/^-+|-+$/g, "");
+}
+```
+
+- NFD decomposition + diacritic stripping folds `é` → `e` before the ASCII filter runs, so `Café` no longer loses the letter entirely.
+- The character class is now `+`-quantified, so a run of separators becomes one hyphen.
+- A final trim removes leading/trailing hyphens.
+
+Signature unchanged. Added two tests (`test/slug.test.ts`) covering edge trimming and accent folding; all 3 tests pass.
+
+`saga gate check`:
+```
+slugify-separator-collapse:G1 MET
+slugify-separator-collapse:G2 MET
+slugify-separator-collapse:G3 MET (UNPROVEN: declared none)
+ALL MET
+```
+
+Two notes worth flagging, both outside what the contract asks for and left as-is: input that is entirely non-alphanumeric (`"!!!"`, `""`) yields an empty string, and non-Latin scripts (e.g. Cyrillic, CJK) still get stripped to `""` since the filter is ASCII-only. Say the word if either should produce a fallback.
+
+DONE

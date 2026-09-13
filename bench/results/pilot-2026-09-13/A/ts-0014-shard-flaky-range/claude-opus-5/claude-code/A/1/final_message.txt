@@ -1,0 +1,13 @@
+The code was wrong.
+
+**What was happening:** `shardFor` did `hashKey(key) % shards`. `hashKey` is folded to a *signed* 32-bit int, and JS `%` keeps the sign of the dividend, so roughly half of all keys got a negative shard index (e.g. `req:u0omb44538 -> -12`). The README specifies the non-negative remainder, Python's `%` semantics. The test was asserting the right invariant.
+
+**Fixes:**
+- `src/shard.ts:17` — fold the remainder back into range: `((hashKey(key) % shards) + shards) % shards`.
+- `test/shard.test.ts:14` — the range test drew 20 keys from `Math.random()`, so a failure never reproduced on rerun. It now walks a fixed set of 200 keys (`req:0`…`req:199`, 80 of which hash negative) and asserts that negative-hash keys are actually covered, so this can't silently regress into a spot-check that happens to miss them.
+
+**No keys move:** for any key whose hash is non-negative the result is byte-identical to before; the only changed outputs are the negative ones, which were never valid shard indices the routing table could have stored. The `live assignments do not move` fixture test (20 real assignments, 16 shards) passes unchanged.
+
+Ran `npm test` five times: green every run (it failed on every run before the fix, not one in two — the CI reports of intermittent failure understated it, likely because reruns landed on different key counts).
+
+DONE

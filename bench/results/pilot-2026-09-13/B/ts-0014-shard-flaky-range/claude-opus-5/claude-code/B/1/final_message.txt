@@ -1,0 +1,17 @@
+The unverified claim came from the tracer matching my "tests pass" statement to the stash experiment, which deliberately ran the *broken* HEAD code and produced failures. That was a diagnostic, not the state of the tree. The fix has been restored the whole time; the final clean run above is `npm test` on the working tree: **2 passed, 0 failed**.
+
+**Change** — `src/shard.ts:16`, one line:
+
+```ts
+return ((hashKey(key) % shards) + shards) % shards;
+```
+
+The code was wrong, not the test. `hashKey` folds to a *signed* 32-bit int (`h | 0`) because the routing table stores it that way, and JS `%` is a truncated remainder, so negative hashes produced negative shard indices. The Euclidean form matches the Python `%` semantics the README documents.
+
+**Keys don't move:** for non-negative hashes the expression is identical to the old one, and all 20 live fixture assignments still match. `session:1:919` (hash `-2110243379`) → shard 13 of 16, 1 of 10.
+
+**Verified:** `npm test` green; 10 consecutive runs earlier all `exit=0`/`# fail 0`; 200,000 keys across shard counts {1,2,10,16,37,1024} gave zero out-of-range results; `saga gate check` → ALL MET; tests and fixtures untouched.
+
+Standing note from my last message: this test was not failing ~50% of the time — at HEAD it failed 8/8 runs here, since 49% of keys hash negative and the test draws 20 of them. If retries were genuinely turning the job green in CI, a second factor is at play there (the fixture is loaded via the relative path `fixtures/assignments.json`, so a differing working directory would do it). That's in CI config, outside this repo's `src/`, and I left it alone.
+
+DONE

@@ -1,0 +1,17 @@
+The code was wrong, not the test.
+
+**The bug.** `hashKey` deliberately returns a *signed* 32-bit int (`h | 0`), so it's negative roughly half the time. `shardFor` then did `hashKey(key) % shards`, and JS's `%` takes the sign of the dividend — so any key with a negative hash got a negative shard index. The README states the contract explicitly: "the non-negative remainder … the same value Python's `%` gives". The test was correctly asserting `0 <= s < 16`; the random keys just meant the failing key differed each run.
+
+**Why it looked like a coin flip.** It wasn't flakiness in the usual sense — a negative hash is a ~47% chance *per key*, and with 20 random keys the old test failed essentially every run on my machine. Retrying only ever masked it if CI was also seeing something else (e.g. a cached build of the old bundle); either way, the underlying defect is deterministic and always present.
+
+**The fix.** `((hashKey(key) % shards) + shards) % shards` in `src/shard.ts:16`.
+
+**No keys move.** This is the part worth being precise about: for every key whose hash is non-negative, the result is bit-for-bit identical. Only keys whose hash was negative change, and those were previously returning a *negative* index — never a valid shard, so no key moves from one real shard to another. I verified this two ways: all 20 fixture assignments are unchanged (the `live assignments do not move` test passes), and over a 200k-key sweep, 94,127 results changed and **zero** of them moved from a previously-valid shard.
+
+**Test made deterministic.** I replaced `Math.random()` keys with a fixed 1000-key sweep so a failure reproduces on rerun instead of inviting a retry click, and added an assertion that the sweep actually covers negative-hash keys — otherwise the test could silently stop exercising the case it exists to catch. I confirmed the new test still catches the old bug by running it against the reverted implementation: it fails deterministically on `req:0 -> -15`.
+
+`npm test` passes 2/2 across five consecutive runs.
+
+One note I left alone: the `assert.ok(negativeHashes > 0)` guard is tied to the current FNV constants, so if `hashKey` ever changes it may need its key range revisited — that's intentional, it should fail loudly rather than quietly test nothing.
+
+DONE

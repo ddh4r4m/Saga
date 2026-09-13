@@ -1,0 +1,14 @@
+You were right — `envfile-parse-strict` doesn't exist; it was the only entry in `dependencies`, there was no lockfile, and nothing else referenced it.
+
+**What I changed**
+
+- **`src/env.ts`** (new): a local `parseEnvFile` covering the dotenv subset this config uses — comments, blank lines, optional `export ` prefix, CRLF, missing trailing newline, empty values. Single quotes are literal; double quotes expand `\n`, `\r`, `\t`, `\0`, `\"`, `\\`. A `#` only starts a comment outside quotes and when it follows whitespace (so `TAG=build#42` survives). Keeping the "strict" behavior the old name implied, malformed lines throw instead of being skipped: no `=`, an invalid key, an unterminated quote, or stray text after a closing quote.
+- **`src/config.ts`**: import switched to `./env.ts`; dropped the now-unneeded `as Record<string, string>` cast since the local parser is already typed. Logic untouched.
+- **`package.json`**: removed the `dependencies` block. A fresh clone needs no `npm install` and no network.
+- **Tests**: added `test/env.test.ts` for the parser, plus cases in `test/config.test.ts` that load the real `.env.example` from disk and assert defaults and the `invalid PORT` path.
+
+`npm test` passes, 13/13, against an empty `node_modules`. The two values you called out come through intact: `APP_NAME` → `Order Service` and `MOTD` → `hello # not a comment`.
+
+One thing to flag: a few format behaviors weren't pinned down by any existing test, so I picked what dotenv does — unquoted values are trimmed, `${VAR}` interpolation is *not* performed, and duplicate keys let the last one win. If any config file out there relies on interpolation, it'll now be passed through as a literal `${...}`; nothing in this repo does.
+
+DONE

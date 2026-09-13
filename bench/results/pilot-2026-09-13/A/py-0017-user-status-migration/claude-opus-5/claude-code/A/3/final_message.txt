@@ -1,0 +1,18 @@
+All 4 tests pass. What I changed:
+
+**`app/db.py`** — appended migration `3` (no shipped migration edited):
+```sql
+ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'
+    CHECK (status IN ('active', 'disabled'))
+```
+The `DEFAULT 'active'` backfills every existing row, and the `CHECK` makes "active or disabled and nothing else" a property of the schema, not just of the Python layer — verified that a raw `UPDATE`/`INSERT` with `'suspended'` is rejected by sqlite.
+
+**`app/seed.py`** — `data/seed.json` is untouched, and the loader now inserts only the columns each record actually carries. The current export has no `status`, so the column default applies and seeded users come out active; if ops' export job later starts emitting `status`, the same loader picks it up without a change. This also keeps `load_seed` working against a database migrated only to version 2.
+
+**`app/users.py`** — added `set_status(conn, user_id, status)`, which rejects anything outside `("active", "disabled")` with `ValueError` and returns `False` when there is no such user. `list_users(conn, disabled=False)` returns everything by default (unchanged behavior for existing callers) and only disabled users when `disabled=True`.
+
+**`app/cli.py`** — added `disable <id>` (exit 1 with `no user <id>` if absent) and `list --disabled`; `format_user` marks disabled users with a `(disabled)` suffix. An unrecognized `list` flag falls through to usage/exit 2 rather than being silently ignored.
+
+One judgment call worth flagging: I read `disabled=False` as "don't filter" rather than "only active", since `list_users(conn)` and the bare `list` command must keep showing all 12 users. If you wanted `disabled=False` to mean "active only", that's a one-line change plus a CLI adjustment.
+
+DONE

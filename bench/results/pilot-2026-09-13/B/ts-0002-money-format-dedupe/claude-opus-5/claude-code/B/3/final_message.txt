@@ -1,0 +1,15 @@
+Done.
+
+**What changed**
+- Added `src/money.ts:4` with a single exported `formatMoney`, copied verbatim from the invoice's version (sign in front of `$`, `Math.abs` before splitting whole/fraction, `en-US` grouping).
+- `src/invoice.ts` and `src/receipt.ts` now import it and no longer carry local copies.
+- The receipt's old formatter computed `Math.floor(cents / 100)` on the signed value, which produced `$-2.50`; it now yields `-$1.50` for a −150¢ refund, matching the invoice.
+- `src/legacy/report.ts` untouched — it keeps its own frozen `fmt`.
+
+**Verification**
+- `node --test "test/**/*.test.ts"`: 2 pass, 0 fail.
+- `saga gate check`: exit 0, `ALL MET` (G1, G2, G3). Two informational lines remain — `R1`/`R2` "uncovered (heuristic)" — but those sentences are the bug description, not separate requirements; they're covered behaviorally by G1 and G2. G1's "baseline missed" and G3's "declared none" are notes about absent red proof (G3 declares `RED: none`), not failures; strict status reports `0 unmet, 0 unproven`.
+
+I did not edit `.saga/contract.md` myself — the checkbox/EVIDENCE lines there were written by `saga gate check`.
+
+DONE

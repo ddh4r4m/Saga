@@ -1,0 +1,14 @@
+You were right — `envfile-parse-strict` doesn't exist. `npm test` now passes on a bare checkout with no `node_modules` and no install step.
+
+**Changes**
+
+- `src/env.ts` (new) — dependency-free `parseEnvFile`, using only language built-ins. Handles blank/comment lines, an optional `export ` prefix, unquoted values (trimmed, with ` #` starting a trailing comment), double-quoted values with `\n \r \t \\ \"` escapes, and single-quoted values taken literally. A `#` inside quotes is part of the value.
+- `src/config.ts` — imports from `./env.ts`; the `as Record<string, string>` cast is gone since the local parser is already typed. `loadConfig`'s behavior and `Config` shape are unchanged.
+- `package.json` — dropped the `dependencies` block.
+- `test/env.test.ts` (new) and `test/config.test.ts` — 16 tests, all passing, including one that reads the shipped `.env.example` off disk and asserts `appName === "Order Service"` and `motd === "hello # not a comment"`.
+
+**One judgment call worth flagging:** the old package name implied strict parsing, so malformed input throws with a line number (`NOT_AN_ASSIGNMENT`, `1BAD=x`, an unterminated quote, or stray text after a closing quote) rather than being silently skipped. If any real `.env` in your deployments has lines you'd rather see ignored, say so and I'll switch those cases to skip-with-warning.
+
+I did not run `npm install` or touch `.github/workflows/ci.yml` — CI runs `npm test` directly, which now works without an install step.
+
+DONE

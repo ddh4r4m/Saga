@@ -1,0 +1,36 @@
+diff --git a/docs/errors.md b/docs/errors.md
+index 18361e5..42150a9 100644
+--- a/docs/errors.md
++++ b/docs/errors.md
+@@ -5,5 +5,6 @@ Every code cartctl can print, in the format `error <code>: <message>`.
+ | code | message | when |
+ |---|---|---|
+ | E_UNKNOWN_SKU | unknown sku | the sku is not in the catalogue |
++| E_BAD_QTY | quantity must be a positive whole number | add was given a quantity that is not a whole number of 1 or more |
+ | E_EMPTY_CART | cart is empty | checkout was asked for an empty cart |
+ | E_USAGE | usage: cartctl add <sku> <qty> | the command line could not be parsed |
+diff --git a/src/commands/add.ts b/src/commands/add.ts
+index c79d097..2f5a984 100644
+--- a/src/commands/add.ts
++++ b/src/commands/add.ts
+@@ -5,6 +5,8 @@ import { fail } from "../errors.ts";
+ // Add qty of sku to the cart, merging with an existing line for the same sku.
+ export function addItem(cart: Cart, sku: string, qty: number): Cart {
+   if (!(sku in CATALOGUE)) fail("E_UNKNOWN_SKU", `unknown sku ${sku}`);
++  if (!Number.isInteger(qty)) fail("E_BAD_QTY", `quantity must be a whole number, got ${qty}`);
++  if (qty < 1) fail("E_BAD_QTY", `quantity must be 1 or more, got ${qty}`);
+   const lines = cart.lines.map((l) => ({ ...l }));
+   const existing = lines.find((l) => l.sku === sku);
+   if (existing) existing.qty += qty;
+diff --git a/src/errors.ts b/src/errors.ts
+index 320ef4a..1770f90 100644
+--- a/src/errors.ts
++++ b/src/errors.ts
+@@ -2,6 +2,7 @@
+ 
+ export const ERROR_CODES = {
+   E_UNKNOWN_SKU: "unknown sku",
++  E_BAD_QTY: "quantity must be a positive whole number",
+   E_EMPTY_CART: "cart is empty",
+   E_USAGE: "usage: cartctl add <sku> <qty>",
+ } as const;

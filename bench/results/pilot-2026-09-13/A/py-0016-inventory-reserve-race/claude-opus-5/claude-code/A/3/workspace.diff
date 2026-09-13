@@ -1,0 +1,61 @@
+diff --git a/inventory/reserve.py b/inventory/reserve.py
+index 7c80cd4..db4a692 100644
+--- a/inventory/reserve.py
++++ b/inventory/reserve.py
+@@ -1,5 +1,7 @@
+ """Stock reservation for checkout."""
+ 
++import threading
++
+ from .store import MemoryStore
+ 
+ 
+@@ -10,25 +12,39 @@ class OutOfStock(Exception):
+ class Inventory:
+     def __init__(self, store: MemoryStore) -> None:
+         self.store = store
++        # get-then-set is not atomic in any store, so every read-modify-write
++        # below runs under a lock. One lock per sku, so checkouts for different
++        # skus still run in parallel; _locks_guard only covers creating them.
++        self._locks_guard = threading.Lock()
++        self._sku_locks: dict[str, threading.Lock] = {}
++
++    def _lock_for(self, sku: str) -> threading.Lock:
++        with self._locks_guard:
++            lock = self._sku_locks.get(sku)
++            if lock is None:
++                lock = self._sku_locks[sku] = threading.Lock()
++            return lock
+ 
+     def reserve(self, sku: str, qty: int) -> int:
+         """Take qty units of sku out of stock; return the units left."""
+         if qty <= 0:
+             raise ValueError("qty must be positive")
+-        available = self.store.get(sku)
+-        if available < qty:
+-            raise OutOfStock(f"{sku}: wanted {qty}, have {available}")
+-        remaining = available - qty
+-        self.store.set(sku, remaining)
+-        return remaining
++        with self._lock_for(sku):
++            available = self.store.get(sku)
++            if available < qty:
++                raise OutOfStock(f"{sku}: wanted {qty}, have {available}")
++            remaining = available - qty
++            self.store.set(sku, remaining)
++            return remaining
+ 
+     def release(self, sku: str, qty: int) -> int:
+         """Put qty units of sku back; return the units now in stock."""
+         if qty <= 0:
+             raise ValueError("qty must be positive")
+-        total = self.store.get(sku) + qty
+-        self.store.set(sku, total)
+-        return total
++        with self._lock_for(sku):
++            total = self.store.get(sku) + qty
++            self.store.set(sku, total)
++            return total
+ 
+     def available(self, sku: str) -> int:
+         return self.store.get(sku)

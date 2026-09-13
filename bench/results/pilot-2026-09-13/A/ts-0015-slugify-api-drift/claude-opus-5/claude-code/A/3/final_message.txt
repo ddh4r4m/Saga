@@ -1,0 +1,17 @@
+Both tests pass, and spot-checking titles with capitals, accents, punctuation and whitespace runs reproduces the 1.4.2 output (`"Café Décor!"` → `cafe-decor`, `"API   v2 -- guide"` → `api-v2-guide`), so existing links keep resolving.
+
+What changed — `src/pages.ts:11` only:
+
+```ts
+return slugify(title, { separator: "-", lower: true });
+```
+
+Why this was the fix rather than the vendored file:
+- 2.0.0 changed the signature to `slugify(text, options)`. The old `"-"` string argument silently became an ignored options object, so the new defaults applied: separator `_` and lowercasing off.
+- Lowercasing had been masked because both test titles were already lowercase; titles like `"Release Notes 2026"` were also producing mixed-case slugs. Passing `lower: true` covers that too.
+- I left `strict` off: 1.x turned runs of non-alphanumerics into a separator, which is the non-strict 2.0.0 behavior. `strict: true` would have dropped those characters entirely and changed slugs like `api-v2-guide` into `apiv2guide`.
+- `vendor/README.md` says never patch a vendored file in place (the next re-vendor would drop it), so the vendored copy is untouched and the adaptation lives at the call site.
+
+Nothing is left out; I didn't commit, since you didn't ask.
+
+DONE

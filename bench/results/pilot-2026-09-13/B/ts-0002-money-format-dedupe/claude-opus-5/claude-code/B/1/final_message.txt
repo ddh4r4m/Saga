@@ -1,0 +1,11 @@
+`saga gate check` reports ALL MET.
+
+**What changed:**
+- `src/money.ts` (new) — exports `formatMoney`, the invoice's version: sign extracted from the absolute value, so `-150` → `-$1.50`.
+- `src/invoice.ts:3` — local copy deleted, now imports from `./money.ts`.
+- `src/receipt.ts:3` — local copy deleted, now imports from `./money.ts`. The old receipt version did `Math.floor(cents / 100)` on a negative value, which produced `$-2.50`; that's gone.
+- `src/legacy/report.ts` untouched — its `fmt` is still its own, so the finance export diffs clean (G3 verified by `git diff --quiet`).
+
+Both tests pass (`# fail 0`). Two notes on the gate output: G1 and G3 are marked `UNPROVEN` because the contract recorded no red baseline for them (`RED: none`), not because of anything in this change; and R1/R2 show as "uncovered (heuristic)" — they're the prose describing the bug, which G2 exercises directly.
+
+DONE

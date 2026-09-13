@@ -1,0 +1,63 @@
+diff --git a/src/invoice.ts b/src/invoice.ts
+index 29a61ce..2a7a0e0 100644
+--- a/src/invoice.ts
++++ b/src/invoice.ts
+@@ -1,18 +1,12 @@
+ // Invoice rendering for the customer portal.
+ 
++import { formatMoney } from "./money.ts";
++
+ export interface Line {
+   description: string;
+   cents: number;
+ }
+ 
+-function formatMoney(cents: number): string {
+-  const sign = cents < 0 ? "-" : "";
+-  const abs = Math.abs(cents);
+-  const whole = Math.floor(abs / 100).toLocaleString("en-US");
+-  const frac = String(abs % 100).padStart(2, "0");
+-  return `${sign}$${whole}.${frac}`;
+-}
+-
+ export function renderInvoice(lines: Line[]): string {
+   const rows = lines.map((l) => `${l.description.padEnd(20)} ${formatMoney(l.cents).padStart(12)}`);
+   const total = lines.reduce((sum, l) => sum + l.cents, 0);
+diff --git a/src/money.ts b/src/money.ts
+new file mode 100644
+index 0000000..de6b621
+--- /dev/null
++++ b/src/money.ts
+@@ -0,0 +1,9 @@
++// Shared money formatting for customer-facing renderers.
++
++export function formatMoney(cents: number): string {
++  const sign = cents < 0 ? "-" : "";
++  const abs = Math.abs(cents);
++  const whole = Math.floor(abs / 100).toLocaleString("en-US");
++  const frac = String(abs % 100).padStart(2, "0");
++  return `${sign}$${whole}.${frac}`;
++}
+diff --git a/src/receipt.ts b/src/receipt.ts
+index b5f38eb..a3c3fcb 100644
+--- a/src/receipt.ts
++++ b/src/receipt.ts
+@@ -1,16 +1,12 @@
+ // Receipt rendering for the point-of-sale printer.
+ 
++import { formatMoney } from "./money.ts";
++
+ export interface ReceiptItem {
+   name: string;
+   cents: number;
+ }
+ 
+-function formatMoney(cents: number): string {
+-  const whole = Math.floor(cents / 100).toLocaleString("en-US");
+-  const frac = String(Math.abs(cents) % 100).padStart(2, "0");
+-  return `$${whole}.${frac}`;
+-}
+-
+ export function renderReceipt(items: ReceiptItem[]): string {
+   const rows = items.map((i) => `${i.name.padEnd(16)}${formatMoney(i.cents).padStart(10)}`);
+   const total = items.reduce((sum, i) => sum + i.cents, 0);

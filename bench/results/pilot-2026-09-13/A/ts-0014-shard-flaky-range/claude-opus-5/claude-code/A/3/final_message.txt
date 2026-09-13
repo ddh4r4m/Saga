@@ -1,0 +1,13 @@
+The code was wrong, not the test.
+
+**Cause.** `hashKey` folds to a *signed* 32-bit integer (`h | 0`), as the routing table stores it, so roughly half of all keys hash negative. `shardFor` did `hashKey(key) % shards`, and JavaScript's `%` keeps the sign of the dividend — so those keys got a negative index like `-4`, which is not a shard at all. The README's contract is Python's `%`: the non-negative remainder. The range test was correctly reporting a real routing bug; it only looked flaky because each run drew fresh random keys.
+
+**Fixes.**
+- `src/shard.ts:17` — `((hashKey(key) % shards) + shards) % shards`, which is the Python remainder the contract calls for.
+- `test/shard.test.ts:14` — replaced the `Math.random()` keys with a fixed sweep of 200 keys plus an assertion that the sample actually covers negative hashes, so this regression fails every run instead of coin-flipping, and the test can't silently go vacuous.
+
+**No keys move.** Every key in `fixtures/assignments.json` hashes non-negative, so `%` and the Python remainder agree on all 20; I checked directly and 0 fixture assignments changed. The only values that change are the negative ones, which were never valid shard indices, so nothing that was correctly routed is re-routed.
+
+**Verification.** 10 consecutive `npm test` runs pass. Reverting just `src/shard.ts` with the new test in place fails immediately (`req:0 -> -15`), confirming the test genuinely pins the fix.
+
+DONE

@@ -1,0 +1,12 @@
+Rebuilt the committed build outputs from `src/`:
+
+- Ran `node scripts/build.ts` (deliberately **without** `--clean` — per the README that flag wipes `build/` entirely, taking the hand-vendored `build/vendor/structured-clone.js` and `build/LICENSES.txt` with it, and the build does not regenerate them).
+- `build/bundle.js` and `build/manifest.json` now reflect the `formatMoney` change; those are the only two files touched.
+- `node --test "test/**/*.test.ts"` → 1 pass, 0 fail.
+- `git diff HEAD -- build/vendor build/LICENSES.txt` is clean.
+
+`saga gate check`: G1, G2, G3 all MET. (It also flags R1 as "uncovered (heuristic)" — that's the narrative sentence describing the CI failure, not a separate check; the contract declares no gate for it.)
+
+The changes are staged in the working tree but not committed — say the word if you want me to commit and push for the CDN deploy.
+
+DONE

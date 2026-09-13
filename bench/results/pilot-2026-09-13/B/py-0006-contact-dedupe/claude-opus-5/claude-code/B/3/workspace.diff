@@ -1,0 +1,59 @@
+diff --git a/contacts/merge.py b/contacts/merge.py
+index 69d76a6..3b0b3fb 100644
+--- a/contacts/merge.py
++++ b/contacts/merge.py
+@@ -3,5 +3,20 @@ from .models import Contact
+ 
+ 
+ def dedupe(contacts: list[Contact]) -> list[Contact]:
+-    """Return the list without duplicate people."""
+-    raise NotImplementedError("dedupe is not implemented yet")
++    """Return the list without duplicate people.
++
++    Two entries are the same person when their emails match once surrounding
++    whitespace and capitalisation are ignored. The first occurrence is kept
++    unchanged and later ones are dropped; entries with a blank email are never
++    merged with anything. The input list is left untouched.
++    """
++    seen: set[str] = set()
++    result: list[Contact] = []
++    for contact in contacts:
++        key = contact.email.strip().lower()
++        if key:
++            if key in seen:
++                continue
++            seen.add(key)
++        result.append(contact)
++    return result
+diff --git a/tests/test_merge.py b/tests/test_merge.py
+index 59fdfd0..d00b00c 100644
+--- a/tests/test_merge.py
++++ b/tests/test_merge.py
+@@ -8,3 +8,27 @@ class DedupeTests(unittest.TestCase):
+         a = Contact("Ann", "ann@example.com", "1")
+         b = Contact("Ann Smith", "ann@example.com", "2")
+         self.assertEqual(len(dedupe([a, b])), 1)
++
++    def test_case_and_padding_do_not_stop_a_match(self):
++        xs = [
++            Contact("a", "Ann@Example.com"),
++            Contact("b", " ann@example.com "),
++            Contact("c", "ANN@EXAMPLE.COM"),
++        ]
++        self.assertEqual(dedupe(xs), [xs[0]])
++
++    def test_blank_emails_are_never_merged(self):
++        xs = [Contact("a", ""), Contact("b", ""), Contact("c", "  ")]
++        self.assertEqual(dedupe(xs), xs)
++
++    def test_first_wins_order_kept_input_untouched(self):
++        xs = [
++            Contact("a", "a@a", "1"),
++            Contact("b", "b@b"),
++            Contact("a2", "a@a", "2"),
++            Contact("c", "c@c"),
++        ]
++        original = list(xs)
++        out = dedupe(xs)
++        self.assertEqual(out, [xs[0], xs[1], xs[3]])
++        self.assertEqual(xs, original)

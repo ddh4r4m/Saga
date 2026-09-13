@@ -1,0 +1,15 @@
+Added `tests/test_intervals.py` — 27 unittest cases, all passing with `python3 -m unittest discover -v -s tests -t .`. `intervals.py` is unchanged (the only new file in `git status`).
+
+**Coverage, mapped to the docstring bullets:**
+- **Any input order → sorted by start:** unsorted disjoint input, plus an unsorted case where merging and sorting interact.
+- **Overlapping and touching merge:** `(1,4)+(3,6)`, `(1,3)+(3,5)`, a 4-interval overlap chain collapsing to one, shared-start and shared-end pairs, and duplicates.
+- **Nested doesn't shrink the outer:** nested-second, nested-first, several nested inside one, and a nested interval followed by a disjoint one (guards against the outer end being clobbered *and* against the gap being swallowed).
+- **Empty / single:** both.
+- **New list of tuples, input untouched:** identity check, mutating the result without affecting the input, element-type check, and input-equality after the call.
+- **ValueError on start > end:** alone, among valid intervals, on an interval that would otherwise have been merged away (proves validation precedes merging), and a message check naming the offending interval.
+
+**Edge cases beyond the literal bullets:** adjacency vs. touching — `(1,3)` and `(4,6)` stay separate, since closed intervals only merge on a shared endpoint; degenerate `(4,4)` intervals standalone, touching, and disjoint; negative bounds.
+
+I also mutation-tested the suite against throwaway copies of `intervals.py` (the original was never edited). Eight plausible regressions each produce failures: dropping the `max()` when extending (the classic nested-interval bug, 4 failures), requiring strict overlap so touching no longer merges, skipping the sort, skipping validation, a vague error message, merging across a gap of 1, returning lists instead of tuples, and sorting the caller's list in place.
+
+DONE

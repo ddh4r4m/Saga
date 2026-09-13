@@ -1,0 +1,11 @@
+One-line change in `src/pages.ts:11`:
+
+```ts
+return slugify(title, { separator: "-", lower: true });
+```
+
+Why this was the fix rather than the vendored file: slugify 2.0.0 replaced the `slugify(text, separator)` signature with `slugify(text, options)` and made lowercasing opt-in. The old `"-"` argument was silently ignored, so every slug fell through to the new `_` default and kept its original casing. `vendor/README.md` says never to patch vendored files in place — the next re-vendor would drop the patch — so the call site absorbs the API change.
+
+Slugs now match 1.x output: lowercase, hyphen-separated, accents folded to ASCII, separators trimmed from the edges. The new `strict` option is opt-in and left off, so punctuation still collapses to a separator as before. Existing URLs keep resolving; no slugs were changed relative to pre-bump behavior, so no redirects are needed.
+
+DONE

@@ -1,0 +1,15 @@
+**Cause.** In `logs/nightly-2026-09-02.log:1331`, exactly one row failed:
+
+```
+WARN parse: nordic.csv row 517: unit_price '3\xa0868.13' rejected; row skipped
+```
+
+`parse_price` in `importer/parse.py` documented that vendors write thousands separators as a comma, a space, or a no-break space and that all of those must be ignored — but the code only stripped commas. The nordic file has one price using a NO-BREAK SPACE (U+00A0) separator, so that row was skipped, leaving 811 rows / 7797092.44 against the manifest's 812 / 7855114.39. The gap, 58021.95, is exactly 15 × 3868.13 — that one row and nothing else.
+
+**Fix.** `importer/parse.py` now strips all three documented separators via a `THOUSANDS_SEPARATORS` constant. Nothing else was loosened: the value still has to be a valid `Decimal` afterwards, so `n/a`, `1.2.3`, `12,34a`, `--5` and empty strings are still rejected. The reconcile check in `job.py` is untouched and still aborts on any mismatch; the manifest and vendor CSVs are unmodified (`git status` shows only `importer/parse.py` and `tests/test_import.py`).
+
+**Verification.** Re-running the job over `fixtures/nightly` exits 0 with all four vendors reconciling, nordic now at 812 rows / 7855114.39 — matching the manifest exactly — and no WARN or ERROR lines. Added two regression tests for the plain-space and no-break-space separators; all 6 tests pass.
+
+One thing to flag: the fix covers the three separators named in the docstring. A narrow no-break space (U+202F), which some locales also use, would still be rejected. No vendor file currently contains one, so I left it out rather than widen what the spec calls acceptable.
+
+DONE

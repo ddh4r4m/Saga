@@ -1,0 +1,17 @@
+Wrote `tests/test_intervals.py` — 31 tests in six `TestCase` classes, one per bullet in the `merge_intervals` docstring:
+
+- **Order** (`tests/test_intervals.py:7`) — unsorted input, reversed input, duplicates, shared starts.
+- **Overlap/touching** (`:37`) — `(1,3)+(3,5) → (1,5)`, zero-length touch, chains, a bridging interval, negatives; plus the negative cases (`(1,2)`/`(3,4)` and a gap of one stay separate) that pin the boundary from both sides.
+- **Containment** (`:72`) — inner interval never shrinks the outer, in either input order, including when a later interval must still merge against the preserved end.
+- **Edge cases** (`:98`) — empty list, single interval, single zero-length interval.
+- **Purity** (`:112`) — input unmodified, result is a distinct list, mutating the result doesn't touch the input, result is a list of 2-tuples.
+- **Validation** (`:141`) — `ValueError` for `start > end` alone and among valid intervals, message names the interval, validation happens before merging, and `start == end` is valid.
+
+Verification:
+- `python3 -m unittest discover -v -s tests -t .` → `Ran 31 tests ... OK`.
+- Since G2 carries `RED: mutation`, I checked the tests actually kill mutants by applying six mutations (touching-comparison `<=`→`<`, dropping `max(...)`, dropping the sort, dropping the `ValueError`, widening the merge to bridge gaps, aliasing the input list) to a **copy** in a temp dir — all six KILLED. `intervals.py` itself was never modified; `git diff --quiet HEAD -- intervals.py` reports `source-unchanged`.
+- `saga gate check` → `ALL MET` (G1, G2, G3), and `saga gate lint --strict` → `LINT OK`.
+
+One note: the gate annotates G2 as `MET (UNPROVEN: no operator)`. That's saga saying it has no recorded red proof for the gate, not a failing check — G2's CHECK is a `grep` over test names, which no mutation of `intervals.py` could turn red, so that annotation can't be cleared from the test side. The mutation run above is the substantive evidence behind it. `require_red = false` in `.saga/config.toml`, so it isn't blocking.
+
+DONE

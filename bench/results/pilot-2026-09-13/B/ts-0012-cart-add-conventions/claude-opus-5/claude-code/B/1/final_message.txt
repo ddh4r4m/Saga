@@ -1,0 +1,12 @@
+Done. Changes, all inside the contract's `IN` scope (`src/**`, `docs/errors.md`):
+
+- **`src/errors.ts:6`** — registered `E_BAD_QTY: "quantity must be a positive whole number"` in `ERROR_CODES`.
+- **`src/commands/add.ts:8-10`** — `addItem` now rejects non-finite, fractional, and non-positive quantities via `fail(...)`, with a message naming the specific problem and the offending value (no bare `throw new Error`, per CONTRIBUTING rule 1).
+- **`docs/errors.md:10`** — one table row documenting the new code.
+
+Verification:
+- `node --test`: 3 pass, 0 fail (both new cases now pass).
+- CLI behaves per convention 3 — e.g. `error E_BAD_QTY: quantity 1.5 is not a whole number` on stderr, exit 2; `add SKU-1 2` still exits 0.
+- `saga gate check`: `ALL MET` (G1, G2, G3). It notes G3 as `UNPROVEN: declared none` — that's the pre-existing `RED: none` declaration in the contract, not something my change introduced. It also flags R1 as "uncovered (heuristic)"; the behavior itself is covered by G1/G2 through `addItem`, which is the single path the CLI uses.
+
+DONE

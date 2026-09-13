@@ -1,0 +1,16 @@
+Implemented within `app/**`; `data/seed.json` and the tests are untouched.
+
+- `app/db.py:18` — appended migration 3 (never editing shipped entries): `ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','disabled'))`. The default back-fills existing rows as active, and the CHECK makes any third value impossible at the DB level.
+- `app/users.py` — `set_status(conn, id, status)` validates against `STATUSES` and returns `False` for an unknown id; `list_users(conn, disabled=None)` keeps the old "everyone" default, `disabled=True` returns only disabled, `False` only active.
+- `app/cli.py` — added `disable <id>` and `list --disabled`; `format_user` now prints the status column, and usage text updated.
+- `app/seed.py` — the loader still accepts the current export verbatim (no `status` key → active); it also honors a `status` field if a future export carries one, so ops' file never has to change.
+
+Verification:
+
+- `python3 -m unittest discover -v -s tests -t .` → 4 tests, OK.
+- `saga gate check` → G1 MET, G2 MET, G3 MET, ALL MET. G3 is reported as "UNPROVEN: declared none", which is the contract's own pre-existing `RED: none` declaration, not a failure.
+- Spot-checked the CLI: `list --disabled` on a fresh DB prints nothing, `disable 3` flips and echoes that row, `list` shows the rest active.
+
+One thing worth flagging: `set_status` on a nonexistent id returns `False` rather than raising, and the CLI turns that into `no user <id>` with exit 1 — matching how `show` already behaves.
+
+DONE

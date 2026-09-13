@@ -1,0 +1,13 @@
+`addItem` now rejects any quantity that is not a positive whole number, following the CONTRIBUTING error conventions.
+
+Changes (all inside the contract's IN set):
+- `src/errors.ts:6` — registered `E_BAD_QUANTITY: "quantity must be a positive whole number"` in `ERROR_CODES`.
+- `src/commands/add.ts:8` — after the SKU check, `!Number.isInteger(qty) || qty < 1` goes through `fail(...)` with a message naming the offending value, e.g. `quantity must be a positive whole number, got 1.5`. `NaN` (from an unparsable argument like `abc`) is caught by the same guard.
+- `docs/errors.md` — one table row for the new code.
+
+Verification:
+- `node --test`: 3 pass, 0 fail (both new cases now pass).
+- End to end: `cartctl add SKU-1 0`, `1.5`, and `abc` all print `error E_BAD_QUANTITY: ...` on stderr and exit 2; `add SKU-1 2` still succeeds.
+- `saga gate check`: G1, G2, G3 all MET, ALL MET. G3 is reported as `UNPROVEN: declared none` — that is the pre-existing state of the gate in the contract, not something these changes introduced. The gate output also flags R1 as "uncovered (heuristic)"; that requirement is the observable behavior asserted by G1's tests.
+
+DONE

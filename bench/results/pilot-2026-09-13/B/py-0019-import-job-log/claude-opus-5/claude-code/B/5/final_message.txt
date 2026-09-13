@@ -1,0 +1,23 @@
+**Root cause.** `logs/nightly-2026-09-02.log:1331` shows the only parse failure of the night:
+
+```
+WARN parse: nordic.csv row 517: unit_price '3\xa0868.13' rejected; row skipped
+```
+
+Nordic writes thousands separators with a no-break space (U+00A0), but `parse_price` only stripped commas, so that row was skipped. The reconcile then failed at line 1627 — 811 rows instead of 812, and short by exactly 58021.95, which is that row's `15 × 3868.13`. One skipped row aborted the whole job; the manifest and the file agreed all along.
+
+**Fix** — `importer/parse.py`: strip comma, space and no-break space when they sit between digits, as the function's own docstring already specified:
+
+```python
+# A thousands separator: a comma, a space or a no-break space sitting between
+# digits. Anywhere else the character stays put and Decimal rejects the value.
+_THOUSANDS_SEP = re.compile(r"(?<=\d)[,\u00a0 ](?=\d)")
+...
+cleaned = _THOUSANDS_SEP.sub("", text.strip())
+```
+
+The lookarounds keep the parser strict: separators are only removed between digits, so `n/a`, empty values and stray-space garbage still raise `ParseError` rather than being silently coerced.
+
+**Verification.** Full suite passes (4/4 OK), including the nightly fixture importing with rc 0. `saga gate check` reports ALL MET: G1 met, G2 still fails the job (rc 1) when a manifest is perturbed to disagree with its file, G3 confirms `fixtures/` is byte-for-byte unchanged. I changed only `importer/parse.py` — no edits to the vendor files, the manifest, the log, or the tests.
+
+DONE

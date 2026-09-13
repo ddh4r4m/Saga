@@ -1,0 +1,27 @@
+Fixtures, manifest, logs and tests are untouched; the only source change is in `importer/parse.py`.
+
+**What happened.** `logs/nightly-2026-09-02.log:1331` shows the single failing row:
+
+```
+WARN  parse: nordic.csv row 517: unit_price '3\xa0868.13' rejected; row skipped
+ERROR reconcile: vendor nordic: manifest says 812 rows / 7855114.39, imported 811 rows / 7797092.44; aborting
+```
+
+Nordic writes its thousands separator as U+00A0 (no-break space). `parse_price` stripped only commas, so that one price was a `ParseError`, the row was skipped, and the vendor came up exactly one row and 58,021.95 short (15 × 3868.13) — which the strict reconcile correctly refused, aborting the whole job.
+
+**The fix** (`importer/parse.py:7`, `importer/parse.py:29`): strip the full set of separators the function already documents — comma, space, and no-break space — before handing the text to `Decimal`. Nothing else about the parser loosened: `n/a`, `12.5.0`, `abc` and empty prices still raise `ParseError`, and the reconcile check in `job.py` is unchanged, so a manifest that disagrees with its file still fails the job (verified by G2, which perturbs a manifest row count on a temp copy and still gets rc 1).
+
+I scanned all four vendor files for non-digit characters in `qty`/`unit_price`: only commas (27, in acme) and that one no-break space (nordic) appear, so this covers the night's input rather than just the one row.
+
+**Verification.** Full test suite: 4 tests, OK. `saga gate check`:
+
+```
+nordic-import-reconciles:G1  MET
+nordic-import-reconciles:G2  MET (UNPROVEN: declared none)
+nordic-import-reconciles:G3  MET (UNPROVEN: declared none)
+ALL MET
+```
+
+The "UNPROVEN" note on G2/G3 is just their pre-existing `RED: none` declaration, not a failure. The gate also flags R1 as heuristically uncovered — that sentence is the report of the symptom rather than a requirement, and it's addressed by G1.
+
+DONE

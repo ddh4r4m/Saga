@@ -1,0 +1,40 @@
+## Cause
+
+`logs/nightly-2026-09-02.log:1627` is the reconcile failure, and the single WARN in the job is its cause:
+
+```
+01:21:31 WARN parse: nordic.csv row 517: unit_price '3\xa0868.13' rejected; row skipped
+01:23:10 ERROR reconcile: vendor nordic: manifest says 812 rows / 7855114.39, imported 811 rows / 7797092.44
+```
+
+That row writes its thousands separator as a no-break space (U+00A0). `parse_price` in `importer/parse.py:25` only stripped commas — `text.strip().replace(",", "")` — despite its own docstring stating that a comma, a space **or a no-break space** are all valid separators. So the row was rejected as garbage and skipped. The arithmetic confirms it is the only cause: 7855114.39 − 7797092.44 = 58021.95 = 3868.13 × 15, exactly that row's qty, and the row count is off by exactly one.
+
+The nordic file is correct as sent; the importer was wrong.
+
+## Fix
+
+`importer/parse.py` now strips all three documented separators before parsing, and nothing else:
+
+```python
+THOUSANDS_SEPARATORS = (",", " ", "\xa0")
+```
+
+Scope check across the night's input: acme uses commas (27 rows), nordic has this one no-break space, brightline and oslo-supply use none — so this is the only affected row, but the space case is handled too since the docstring promises it.
+
+What I did **not** change: the reconcile check is untouched and still aborts the job on any mismatch; `manifest.json` and the vendor CSVs are byte-for-byte as received. Malformed prices are still rejected — I verified `'n/a'`, `''`, `'3 868.13 kr'`, `'12,50 €'`, `'--5'`, `'1.2.3'` all still raise `ParseError`.
+
+## Verification
+
+Re-running the job against `fixtures/nightly` now exits 0 with no WARN lines, and every vendor reconciles exactly against the manifest, nordic included:
+
+```
+reconcile: vendor acme: 420 rows / 6602995.58 ok
+reconcile: vendor brightline: 388 rows / 3770226.55 ok
+reconcile: vendor nordic: 812 rows / 7855114.39 ok
+reconcile: vendor oslo-supply: 402 rows / 3990864.99 ok
+job end: ok
+```
+
+I added two `parse_price` tests (space and no-break space separators) alongside the existing ones. Full suite: 6 tests, all passing.
+
+DONE

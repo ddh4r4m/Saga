@@ -1,0 +1,12 @@
+Rebuilt and verified.
+
+**What changed:** `build/bundle.js` and `build/manifest.json` now carry the new `formatMoney` (currency parameter + sign handling), replacing the stale `toFixed` version. Bundle hash went `26d3441c…` → `8f611ca0…`.
+
+**Test:** `npm test` passes — `✔ committed bundle matches the sources`, 1 pass / 0 fail.
+
+Two notes:
+
+- I ran `node scripts/build.ts` without `--clean`. Per the README, `--clean` removes `build/` entirely, and the build does not regenerate `build/vendor/structured-clone.js` (hand-vendored, pinned under legal ticket LEG-418) or `build/LICENSES.txt`. Using it here would have silently dropped both from a directory that ships straight to the CDN. Both files are still present and untouched.
+- The changes are unstaged in your working tree — I didn't commit or push, since you didn't ask. `build/` is committed on purpose for the CDN deploy, so these two files need to go in before the deploy will pick them up.
+
+DONE

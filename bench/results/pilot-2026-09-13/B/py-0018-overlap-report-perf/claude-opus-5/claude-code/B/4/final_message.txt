@@ -1,0 +1,14 @@
+`find_overlaps` in `overlaps/core.py:21` now does a per-room sweep line instead of scanning all n²/2 pairs: group by room, sort each room by start, and keep still-running bookings in a heap keyed by end time. When a booking starts, everything left in that heap after popping the expired entries clashes with it, so the cost is the sort plus one step per clash reported — the n log n + k shape `docs/perf.md` calls for.
+
+Results are identical, not just similar:
+- G3's digest matches, and a 300-case differential run against the old brute-force logic produced zero mismatches, including zero-length bookings and repeated ids. The one non-obvious case is an empty booking (`start == end`) strictly inside another, which the half-open predicate does count as a clash; the `a_start < end` check in the inner loop preserves that rather than assuming sort order implies it.
+- Pair orientation (`id_a < id_b`) and the final sort are unchanged, so duplicate-id inputs yield the same multiset of pairs.
+
+Timings on this machine (previously the budget test blew past 2s):
+- 20 000 bookings / 40 rooms (the budget test): 0.02s
+- 20 000 bookings / 4 rooms: 0.07s
+- 120 000 bookings / 4 rooms: 2.7s, but that input generates 6.2M clashing pairs; it is output-bound. On the real nightly shape docs describe (a few hundred pairs) it stays in the hundredths of a second.
+
+`saga gate check` reports ALL MET (G1, G2, G3). G3 is flagged UNPROVEN only because the contract declares `RED: none` — no code change on my side. The full `tests/test_overlaps.py` suite passes (4 tests, 0.048s). I touched only `overlaps/core.py`; tests and docs were left alone, per the contract's IN/OUT scope.
+
+DONE

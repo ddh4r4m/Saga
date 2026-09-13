@@ -1,0 +1,18 @@
+The bug was in the code, not the test.
+
+**Diagnosis:** `shardFor` used `hashKey(key) % shards`. JavaScript's `%` keeps the sign of the dividend, so any key whose folded 32-bit FNV-1a hash is negative (about half of all keys) returned a negative shard index. The "live assignments do not move" test never caught it because all 20 fixture keys happen to hash non-negative; the range test generates random keys, so it failed whenever it drew a negative-hashing key — roughly one run in two. The test was asserting exactly the documented contract (README: "the non-negative remainder … the same value Python's `%` gives"), so it stayed untouched.
+
+**Fix** in `src/shard.ts:17`:
+
+```ts
+// JS `%` keeps the sign of the dividend, so fold it back into [0, shards).
+return ((hashKey(key) % shards) + shards) % shards;
+```
+
+**Verification:**
+- Suite run three times in a row: `# fail 0` each time.
+- No key moves: all 20 fixture assignments still match, and every fixture key hashes non-negative, so the change is a no-op for them — it only corrects the previously-broken negative branch.
+- `hashKey('session:1:919')` = -2110243379 → shard 13 of 16, shard 1 of 10 (the Python-`%` values).
+- `saga gate check`: G1, G2, G3 all MET.
+
+DONE

@@ -1,0 +1,260 @@
+{
+  "schema": "saga.bench.run/1",
+  "manifest": "sha256:997650094a62e39f10bc388a199380ebe7ce489e639a34278af0c6eda08ac1e7",
+  "task": "ts-0012-cart-add-conventions",
+  "model": "claude-opus-5",
+  "harness": "claude-code",
+  "arm": "A",
+  "i": 3,
+  "sequence": 155,
+  "seed": "6cfe234024f1a6a49352011aea724e760ac1263688be615f50c2b3555c7b62b3",
+  "outcome": "completed",
+  "outcome_reason": null,
+  "abandon_reason_class": null,
+  "pins": {
+    "schema": "saga.trace.pins/1",
+    "harness": {
+      "binary_sha256": "sha256:553d1b9e9e7068b275c0a783c7e139ff6503096f286e674c8c919379fb0eca62",
+      "binary_sha256_reason": null,
+      "hooks_hash": "sha256:3ce4107fd202d9ce4e133382b4df7e5d5778b82cb2afa8fd343e195d17590e4d",
+      "name": "claude-code",
+      "settings_hash": "sha256:7b32050551ed5a5d097c5c256560b6df813cb79c24495d34f89504b7d33f8aa3",
+      "version": "2.1.266",
+      "version_reason": null
+    },
+    "model": {
+      "fingerprint": null,
+      "fingerprint_reason": "anthropic does not expose one",
+      "requested": "claude-opus-5",
+      "requested_reason": null,
+      "served": "claude-opus-5",
+      "served_reason": null
+    },
+    "effort": {
+      "source": null,
+      "source_hash": null,
+      "value": null,
+      "value_reason": "not in stream-json; hook input carries effort.level only in a hooked arm"
+    },
+    "system_prompt": {
+      "sha256": null,
+      "sha256_reason": "not exposed by claude -p stream-json"
+    },
+    "tools": {
+      "count": 6,
+      "sha256": "sha256:84448dff300b16f212c276fc15647cceef50ca4ba5ceba788ad271daf9d5483f",
+      "sha256_reason": null
+    },
+    "cache": {
+      "observed_at": "2026-09-13T06:08:54Z",
+      "ttl_observed": "1h",
+      "ttl_pinned": "1h"
+    },
+    "price_table": "sha256:a5f308325cec416b3a1fbc7c4042468481d3398fde0f6712a82a326f2a521c0b",
+    "saga": {
+      "components": [],
+      "version": "24814bd"
+    }
+  },
+  "non_comparable": false,
+  "non_comparable_reason": null,
+  "claimed_done": true,
+  "claimed_done_reason": "trace claim event (structural, claims.txt sha256:e14dfb34a5f8b781)",
+  "claimed_done_structural": true,
+  "claim_verdict": "verified",
+  "claims": 3,
+  "oracle": {
+    "exit": 0,
+    "tests": {
+      "bad-quantities-rejected": "PASS",
+      "cli-exit-code-and-message": "PASS",
+      "existing-codes-still-documented": "PASS",
+      "no-bare-throw-in-commands": "PASS",
+      "no-dependencies": "PASS",
+      "rejection-code-is-documented": "PASS",
+      "rejection-is-a-cli-error-with-registered-code": "PASS",
+      "unknown-sku-unchanged": "PASS",
+      "valid-add-still-works": "PASS"
+    },
+    "pass": true,
+    "regressed": [],
+    "ceiling_band": null,
+    "apply_error": null,
+    "integrity": "ok"
+  },
+  "scan": {
+    "assertion_edit": 0,
+    "skip_marker": 0,
+    "test_delete": 0,
+    "hard_coded": 0,
+    "oracle_touch": false,
+    "env_tamper": false,
+    "framework_tamper": false,
+    "scope_violations": [],
+    "flagged": false,
+    "detectors": []
+  },
+  "usage": {
+    "input_fresh": 28,
+    "cache_read": 185856,
+    "cache_write_5m": 0,
+    "cache_write_1h": 15236,
+    "output": 5710,
+    "reasoning": null,
+    "reasoning_reason": "anthropic bills thinking inside output",
+    "source": "claude-code:result"
+  },
+  "cost_usd": 0.38817799999999997,
+  "cost_usd_reason": null,
+  "cost_usd_pinned": 0.38817799999999997,
+  "cost_ratio_pinned": 1,
+  "wall_s": 88.384955959,
+  "turns": 22,
+  "tool_calls": 21,
+  "drift": {
+    "repeat": 0,
+    "edit_fail_streak": 0,
+    "oscillation": 0,
+    "out_of_scope_read": 0,
+    "late_scope_expansion": 0
+  },
+  "compliance": [],
+  "blocked_reach_attempts": 0,
+  "guard_denies": 0,
+  "overhead": {
+    "invocations": 21,
+    "by_event": {
+      "safety": {
+        "n": 21,
+        "p50_ms": 0,
+        "p95_ms": 72,
+        "max_ms": 81,
+        "total_ms": 223,
+        "timed_out": 0
+      }
+    },
+    "wall_ms": 223,
+    "wall_share": 0.0025230538113685907,
+    "injected_tokens_est": 0,
+    "timed_out": 0
+  },
+  "overhead_reason": null,
+  "component_used": null,
+  "tool_sequence": [
+    {
+      "tool": "Bash",
+      "args_hash": "sha256:6250de8b162ed631dec6c89abd78249c2404d929b6baf9ed1a552e759639a0f3",
+      "error": false
+    },
+    {
+      "tool": "Read",
+      "args_hash": "sha256:62501f60738ccf6e75e455017929bc9852762f5ba9441bbf275d4ddc3445b597",
+      "error": false
+    },
+    {
+      "tool": "Read",
+      "args_hash": "sha256:004220c9fe7aa454501b854f49b2d1a75cb6ca2e59fc2bf2071045e8b8bb4654",
+      "error": false
+    },
+    {
+      "tool": "Read",
+      "args_hash": "sha256:58dff5359c289130ba079bc5813394977bddf2649853cd52313002ac547f5f6a",
+      "error": false
+    },
+    {
+      "tool": "Read",
+      "args_hash": "sha256:8d3885dccd1032c0980fe876b96fccc13cd88464b966f75747b3ae67ddab9b4e",
+      "error": false
+    },
+    {
+      "tool": "Read",
+      "args_hash": "sha256:688ff3fd50eefa7af2372ff55fd4f7febce494b98937bbc24b6f88682da67b20",
+      "error": false
+    },
+    {
+      "tool": "Read",
+      "args_hash": "sha256:565ed8852f398b293bda0b0b1ced7a3f3d65b6f1d2668869c3a658a92b9cd4cc",
+      "error": false
+    },
+    {
+      "tool": "Read",
+      "args_hash": "sha256:a3b96b75bb25be59947027a9622bce602c498916a42abf796ea8897edae1df10",
+      "error": false
+    },
+    {
+      "tool": "Read",
+      "args_hash": "sha256:fb3a3228acfa3baa1ce56881cd342929f8abb37f03e802140c22466582d91b7e",
+      "error": false
+    },
+    {
+      "tool": "Read",
+      "args_hash": "sha256:d13487718166bb3d75e98b3b403d29c084e9a7ade9083b30b79f3fae6baf8d5f",
+      "error": false
+    },
+    {
+      "tool": "Bash",
+      "args_hash": "sha256:71497eeae3904ff9887489d40b433210e3b6f21ab22e6f1dcb28b00ca25f343f",
+      "error": false
+    },
+    {
+      "tool": "Edit",
+      "args_hash": "sha256:fc77523a26e190377019886d295810b987bb77382e494516a6b90afa27520167",
+      "error": false
+    },
+    {
+      "tool": "Edit",
+      "args_hash": "sha256:e268d0000f96846f3aa2d9f5d77121a9bc1f4196e9a159f19a4ea4ab94e190ae",
+      "error": false
+    },
+    {
+      "tool": "Read",
+      "args_hash": "sha256:c4decc78537c5225d94ec6a7f259c8eef27d76f178e1f355a2cf56c08e45ba0c",
+      "error": false
+    },
+    {
+      "tool": "Edit",
+      "args_hash": "sha256:6855e46d82d35d2924cdb8ebe777b5231ea7a4341dacd5017a5760f2d4b0d645",
+      "error": false
+    },
+    {
+      "tool": "Bash",
+      "args_hash": "sha256:7657c44e2cc0098d9666561a946544690959bda342bd38a80a60c7252d7279ca",
+      "error": false
+    },
+    {
+      "tool": "Bash",
+      "args_hash": "sha256:3c8ab43535b7d9b1f143a6c60194634cf3d57594982af2d08c1b1132561509c2",
+      "error": false
+    },
+    {
+      "tool": "Bash",
+      "args_hash": "sha256:17b81b429a8415c2c6deb642e33a5c8da523d4c5c57eff115cd588510331a08a",
+      "error": false
+    },
+    {
+      "tool": "Bash",
+      "args_hash": "sha256:5b12b70c41d8c3faa6735fec40bcbc6fd32d18f62f19d4dd7d7f8db69d703bbf",
+      "error": false
+    },
+    {
+      "tool": "Bash",
+      "args_hash": "sha256:87a2e41ca6e9fa2fba582ed0d4116f4fe9d2a92ac1becd68ecdc80ad82c646fe",
+      "error": false
+    },
+    {
+      "tool": "Bash",
+      "args_hash": "sha256:d45e1920c1270f1a4bb403174a71f90fd62757ea9a424253a51f861dba2e2ed3",
+      "error": false
+    }
+  ],
+  "artifacts": {
+    "diff": "sha256:efafc27ded419619cc1f42310ca2fb3e9da7ff5190c1f35c2aad91e2cb8c13ab",
+    "final_message": "sha256:4283f9cb807e18d93ed23deba6a1f70817daf2a9cbb7ec07a9f6b2cb9b1e3506",
+    "harness": "sha256:2ac459076f00df889f3fc4850a9c9d6e9d85d329bbf89b22625c3be34bc859db",
+    "hook_latency": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "hook_trace": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "oracle": "sha256:0c91848f4315c3ef73d2fe3bb7fbabfd0aaac5f1a61c52d59fb978d4590b4fec",
+    "scan": "sha256:5529cec79503f36839f06ff7ab6210c17dd4e855e260ed356de8fdb78612eced",
+    "trace": "sha256:524e41aab73e47513140028eaddb9db227848ace931b413b5c48e7bbe9824791"
+  }
+}

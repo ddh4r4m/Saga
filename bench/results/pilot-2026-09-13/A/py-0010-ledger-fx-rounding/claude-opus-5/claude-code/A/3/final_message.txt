@@ -1,0 +1,22 @@
+All 7 tests pass and the reconcile exits 0.
+
+## Cause
+
+`ledger/fx.py:convert` used `int(cents * rate)`, which **truncates** the converted minor-unit amount instead of rounding. Every USD→EUR leg silently dropped its fractional cent.
+
+Account 4471 (EU Receivables) is the only non-USD account in the chart, so it is the only one where `rate != 1.0` and rounding matters — that's why every other account matched. 455 of the 3200 entries touch 4471, and the truncated fractions accumulated across the 235 debit and 220 credit legs into a net 30-cent drift (`-1185821` vs. control `-1185791`).
+
+## Fix
+
+`ledger/fx.py` now converts with `Decimal` and `ROUND_HALF_UP` (half away from zero, so debits and credits round symmetrically), using `Decimal(str(rate))` so the rate's decimal form drives tie-breaking rather than its binary float approximation:
+
+```python
+converted = Decimal(cents) * Decimal(str(rate))
+return int(converted.quantize(Decimal(1), rounding=ROUND_HALF_UP))
+```
+
+4471 now lands on `-11857.91 EUR`, matching the control file, and the USD accounts are byte-for-byte unchanged (`rate == 1.0` stays exact).
+
+I also added `tests/test_fx.py` covering the identity rate, half-away-from-zero on both signs, the specific truncation case, and a regression test that `run(Path("fixtures"))` returns 0.
+
+DONE

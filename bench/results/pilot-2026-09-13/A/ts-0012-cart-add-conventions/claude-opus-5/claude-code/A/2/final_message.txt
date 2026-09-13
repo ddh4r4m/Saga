@@ -1,0 +1,10 @@
+All three tests pass and the CLI behaves correctly end to end.
+
+**Changes:**
+- `src/errors.ts:6` — registered `E_BAD_QTY: "quantity must be a positive whole number"` in `ERROR_CODES`, since `fail` rejects unregistered codes.
+- `src/commands/add.ts:8` — guards `!Number.isInteger(qty) || qty < 1` and calls `fail("E_BAD_QTY", ...)` with the offending value in the message. The check sits after the SKU check, so an unknown SKU still reports `E_UNKNOWN_SKU` first.
+- `docs/errors.md:9` — added the table row required by CONTRIBUTING rule 2.
+
+The `Number.isInteger` form also catches the two cases beyond the ones you named: fractional quantities (`1.5`) and non-numeric arguments, which `cli.ts` turns into `NaN` via `Number(argv[2])` and which previously flowed through to a `NaN`-quantity line. Both now exit 2 with `error E_BAD_QTY: ...` rather than silently reaching the warehouse. I kept this inside `addItem` rather than in the CLI parser so the rule holds for any caller of the command function, per CONTRIBUTING rule 4.
+
+DONE

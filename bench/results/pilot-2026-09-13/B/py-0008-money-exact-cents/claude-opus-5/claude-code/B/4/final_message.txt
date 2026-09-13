@@ -1,0 +1,18 @@
+All three contract gates pass (`saga gate check` → ALL MET).
+
+**What changed**
+
+- `pricing/money.py`: `Money` now stores `cents: int` as its single field. The constructor still takes a dollar amount (`Money(0.10)`, `Money(1234.5)`), converting via `Decimal(str(amount))` scaled by 100 with half-away-from-zero rounding, so `0.10` lands on exactly `10` cents rather than inheriting binary float error. `__add__`/`__mul__`/`__neg__` operate on the integers through a new `Money.from_cents` classmethod, so totals never drift and equality/hashing compare exact integers.
+- An `amount` property (`cents / 100`) remains as a display-only projection, which is why `format.py`, `tax.py` and `cart.py` needed no changes at all — the tax rounding expression is byte-for-byte the same.
+- `pricing/report.py`: one line, `{...amount}` → `{...amount:.2f}`. Column order and header are untouched; the row for three widgets is now `widget,3,0.30` instead of `widget,3,0.30000000000000004`.
+
+**Verified**
+
+- `python3 -m unittest discover -v -s tests -t .` → OK (2 tests).
+- `Money(0.10)*3` → `int 30`.
+- Display, tax and CSV header check → `$1,234.50 -$0.05 True name,qty,total`.
+- Spot-checked negatives end to end: `-Money(0.05)` formats as `-$0.05` and a negative line renders as `neg,1,-1.50` in the CSV.
+
+One thing worth flagging rather than changing: `repr(Money(0.30))` is now `Money(cents=30)` instead of `Money(amount=0.3)`. No user-facing output goes through `repr`, but if any log or debugging snippet outside `pricing/` matches on that string it will differ.
+
+DONE

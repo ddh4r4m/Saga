@@ -1,0 +1,11 @@
+**Cause:** `ledger/fx.py:convert` did `int(cents * rate)`, which truncates toward zero on every conversion. Account 4471 is the only non-USD account (EUR), so it's the only one whose legs actually go through a rate ≠ 1.0 — 455 legs (235 debits, 220 credits) at 0.9228. Each dropped fraction biases the leg toward zero, and since debits and credits are unbalanced in count, the residue doesn't cancel: it accumulated to exactly -30 cents. Every other account converts at rate 1.0, where truncation is a no-op, which is why they all matched.
+
+I confirmed the control file's -1185791 is reproduced by half-even (and half-up) rounding, while truncation/floor both give -1185821.
+
+**Fix:** `convert` now computes the product as an exact `Decimal` (using `Decimal(str(rate))` so 0.9228 is a true 0.9228, not its binary float neighbour) and quantizes with `ROUND_HALF_EVEN`. This also makes negative amounts round symmetrically, which `int()` did not.
+
+**Verification:**
+- `python3 -m ledger.reconcile fixtures` → `3200 entries posted, 0 mismatches`, exit 0. 4471 now reads -11857.91 EUR; no other balance changed.
+- Added `tests/test_fx.py` covering the identity rate, the truncation regression, half-to-even at exact halves, and negative symmetry. Full suite: 7 tests, OK.
+
+DONE

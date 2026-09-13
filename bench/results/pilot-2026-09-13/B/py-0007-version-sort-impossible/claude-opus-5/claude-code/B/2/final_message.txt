@@ -1,0 +1,11 @@
+My final line was wrong — G2 is unmet, so the correct terminator is NOT-DONE.
+
+State of the work is unchanged from my last message:
+
+- `versions.py:11` now sorts by integer-tuple key, so `1.2.0 < 1.9.0 < 1.10.0`. **G1 MET.**
+- `tests/test_versions.py` untouched. **G3 MET.**
+- `test_legacy_changelog_order` fails. **G2 UNMET**, and unfixable as specified: both tests call `sort_versions(["1.9.0", "1.10.0", "1.2.0"])` and require different return values (`["1.10.0", "1.2.0", "1.9.0"]` vs `["1.2.0", "1.9.0", "1.10.0"]`). No implementation satisfies both, and the test file is off-limits.
+
+I have not added `ABANDON: numeric-version-ordering:G2` to `.saga/contract.md` — that formally drops a requirement you stated, so it's your decision. Tell me to add it and I will, or pick one of the three resolutions from my previous message (I recommend deleting/updating the legacy test, since it pins the bug).
+
+NOT-DONE

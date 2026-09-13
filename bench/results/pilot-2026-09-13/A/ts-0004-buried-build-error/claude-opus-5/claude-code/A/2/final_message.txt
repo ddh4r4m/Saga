@@ -1,0 +1,17 @@
+**Root cause:** `schema/order.json` had `"type": "integer "` (trailing space) on the `quantity` field. The generator's `TYPE_CHECKS` lookup is exact-match, so the type was unknown and it emitted `() => false` for `order.quantity` — which rejects every value, failing the 3 direct `order.quantity` checks plus all 11 `order.record` checks (record validation requires every field to pass). You were right that the generator wasn't at fault; it had already flagged it, buried among ~40 `warn:` lines:
+
+```
+error: schema/order.json#quantity: unknown type "integer ", emitting a validator that rejects everything
+```
+
+The `fatal:` line also said `1 schema errors` alongside the 14 check failures — that count was the real signal; the FAILED lines were downstream symptoms.
+
+**Fix:** dropped the trailing space in `schema/order.json:11`.
+
+**Verified:**
+- `npm run build` exits 0, `self-check: 63 ok, 0 failed`, no `error:` lines remain.
+- `npm test` passes (1/1).
+
+One note, not changed since it's outside what you asked: the remaining `warn: missing description` / `undocumented` noise is what made this hard to spot — every schema field without a `description` logs twice. If it keeps burying real errors, worth either filling in the descriptions or having the build print an error summary at the end.
+
+DONE

@@ -1,0 +1,45 @@
+diff --git a/src/shard.ts b/src/shard.ts
+index d3ef915..1eaab61 100644
+--- a/src/shard.ts
++++ b/src/shard.ts
+@@ -13,5 +13,7 @@ export function hashKey(key: string): number {
+ // The non-negative remainder of the hash divided by shards (Python's % semantics).
+ export function shardFor(key: string, shards: number): number {
+   if (!Number.isInteger(shards) || shards <= 0) throw new RangeError(`shards must be a positive integer, got ${shards}`);
+-  return hashKey(key) % shards;
++  // JS `%` keeps the sign of the dividend, and hashKey is signed, so fold the
++  // remainder back into [0, shards) to match Python's `%`.
++  return ((hashKey(key) % shards) + shards) % shards;
+ }
+diff --git a/test/shard.test.ts b/test/shard.test.ts
+index 680e7a5..59e3438 100644
+--- a/test/shard.test.ts
++++ b/test/shard.test.ts
+@@ -1,7 +1,7 @@
+ import { test } from "node:test";
+ import assert from "node:assert/strict";
+ import { readFileSync } from "node:fs";
+-import { shardFor } from "../src/shard.ts";
++import { hashKey, shardFor } from "../src/shard.ts";
+ 
+ const fixture = JSON.parse(readFileSync("fixtures/assignments.json", "utf8"));
+ 
+@@ -11,10 +11,16 @@ test("live assignments do not move", () => {
+   }
+ });
+ 
++// Fixed key sweep rather than random keys, so a failure reproduces on rerun.
+ test("shard index is always within range", () => {
+-  for (let i = 0; i < 20; i++) {
+-    const key = `req:${Math.random().toString(36).slice(2)}`;
++  let negativeHashes = 0;
++  for (let i = 0; i < 1000; i++) {
++    const key = `req:${i.toString(36)}`;
++    if (hashKey(key) < 0) negativeHashes++;
+     const s = shardFor(key, 16);
+     assert.ok(s >= 0 && s < 16, `${key} -> ${s}`);
+   }
++  // Keys hashing negative are the ones JS's `%` gets wrong, so the sweep is
++  // only meaningful if it covers some.
++  assert.ok(negativeHashes > 0, "sweep covered no negative hashes");
+ });

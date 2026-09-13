@@ -1,0 +1,7 @@
+`dedupe(contacts)` is implemented in `contacts/merge.py:9`. It walks the list once, keying each contact by `email.strip().lower()`, keeps the first occurrence of each key untouched, and skips later ones. Contacts whose email is empty or all whitespace have no key to match on, so each one is kept. A new list is built, so the input is never mutated.
+
+I extended `tests/test_merge.py` with cases for mixed case/padding, blank emails, first-occurrence-wins plus ordering, non-mutation, and empty input — 6 tests, all passing.
+
+`saga gate check` reports G1, G2, G3 MET (ALL MET). It also flags R1 and R2 as "uncovered (heuristic)", but those lines are the request's framing ("duplicates from the CSV import", "add dedupe in contacts/merge.py") rather than separate behaviours — they have no gate of their own and are satisfied by the function existing where asked.
+
+DONE

@@ -1,0 +1,24 @@
+## Cause
+
+`ledger/fx.py:convert` was `int(cents * rate)`, which truncates toward zero rather than rounding. Every posting leg is converted individually, so each USD→EUR leg on account 4471 dropped the fractional cent — a systematic downward bias of ~0.5 cents per leg.
+
+Account 4471 is the only EUR account in `CHART`, so it's the only one where `rate != 1.0` and the truncation has any effect; that's why every other account matched. The fixture has 455 legs touching 4471 (235 debits, 220 credits at rate 0.9228). The biases on debits and credits partly cancel, leaving a net residual of exactly 30 cents — the reported 0.30 EUR.
+
+## Fix
+
+`ledger/fx.py` now quantizes with `Decimal` and `ROUND_HALF_UP` (half away from zero, so a reversal converts to the negation of the original):
+
+```python
+return int((Decimal(cents) * Decimal(str(rate))).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+```
+
+`Decimal(str(rate))` uses the rate as written in `rates.csv` rather than its binary float approximation, so tie cases land where the published rate says they should.
+
+## Verification
+
+- `python3 -m ledger.reconcile fixtures` → `3200 entries posted, 0 mismatches`, exit 0. 4471 now reports `-11857.91 EUR`, matching the control. All other account balances are unchanged (their rate is 1.0).
+- Added `tests/test_fx.py`: rounding cases for `convert` (including the truncation case that caused the drift and sign symmetry at a tie) plus a regression test that the fixture reconcile returns 0 with no `MISMATCH` lines. Full suite: 8 tests, OK.
+
+One thing I did not change, since it's outside this bug: `Journal.post` converts each leg from the entry currency into that leg's own account currency, so a cross-currency entry's two legs are not equal in any single currency, and rounding is applied per leg. That's consistent with the per-account-currency balances the control file expects, but it means cross-currency entries don't carry an FX gain/loss leg — worth a look if you ever want the journal to balance in a reporting currency.
+
+DONE

@@ -1,0 +1,13 @@
+Fixed `slugify` in `src/slug.ts:4`:
+
+- Normalizes to NFD and strips combining marks, so `Café` → `cafe`.
+- Collapses runs of non-alphanumerics with `[^a-z0-9]+` instead of one hyphen per character.
+- Trims leading/trailing hyphens.
+
+Signature unchanged. `package.json` untouched (it's declared OUT of scope).
+
+Added tests in `test/slug.test.ts` for edge trimming, accent folding, and the all-punctuation case (`"!!!"` → `""`). All 4 tests pass, and `saga gate check` reports G1, G2, G3 MET.
+
+One thing worth flagging: letters whose accent isn't a combining mark don't decompose, so `ø`/`æ` still drop out (e.g. `"Ærø"` → `"r"`). That matches the old behavior for those characters and is outside the "accented letters" scope you described — say the word if you want a transliteration table for them.
+
+DONE

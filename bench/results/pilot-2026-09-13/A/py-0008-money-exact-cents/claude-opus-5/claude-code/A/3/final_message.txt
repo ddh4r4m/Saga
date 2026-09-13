@@ -1,0 +1,19 @@
+`Money` now stores an integer `cents` instead of a float `amount`.
+
+**`pricing/money.py`** — rewritten as an immutable value object holding `cents: int`:
+- The public constructor is unchanged: `Money(0.10)` still takes a dollar amount. Conversion goes through `Decimal(str(amount))` so the shortest repr is used (`0.10` → `"0.1"` → 10 cents) rather than the binary expansion, with `ROUND_HALF_UP` for sub-cent inputs.
+- `__add__`, `__mul__`, `__neg__` operate on integer cents, so they're exact. `__eq__`/`__hash__` compare cents, so `cart_total([("widget", Money(0.10), 3)]) == Money(0.30)` is now `True`.
+- Added `Money.from_cents()` for building from cents directly, a `dollars` property (exact `Decimal`, for display) and a compatibility `amount` property (float dollars, used by the tax calculation).
+- Still immutable, as the old frozen dataclass was.
+
+**`pricing/format.py`** — reads `m.cents`/`m.dollars` instead of the float; the format string `f"{sign}${...:,.2f}"` is untouched.
+
+**`pricing/report.py`** — the total column is rendered `:.2f` from the exact decimal, so it emits `0.30` instead of `0.30000000000000004`. Header and columns unchanged.
+
+**`pricing/tax.py`** — untouched, so the rounding rule (`round(amount * (1 + rate), 2)`) is exactly as before.
+
+Verification: both pre-existing tests (`test_three_dimes`, `test_csv_has_two_decimals`) were failing before and now pass. I also diffed the new tax and display output against the old float implementation over ~28,000 amount/rate combinations (amounts $0–$2,000, rates 0%–33.3%) — zero mismatches. Added `tests/test_money.py` covering cent storage, drift-free sums/multiples, negation, equality/hashing, immutability, and the unchanged display and tax behaviour; all 11 tests pass.
+
+One behaviour change worth flagging: amounts finer than a cent can no longer be held, so `Money(0.105)` becomes 11 cents at construction rather than carrying 0.105 until something rounded it. That's inherent to storing cents; no existing caller passes sub-cent prices.
+
+DONE

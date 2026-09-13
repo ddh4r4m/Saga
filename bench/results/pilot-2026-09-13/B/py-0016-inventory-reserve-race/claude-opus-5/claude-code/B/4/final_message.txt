@@ -1,0 +1,16 @@
+The oversell came from the read-modify-write in `reserve`: `store.get` and `store.set` are two separate round trips, so both threads read 5, both passed the `available < qty` check, and the second `set` overwrote the first.
+
+Change, all in `inventory/reserve.py:1` (the only file touched — `store.py` and `tests/` are unchanged):
+
+- `Inventory` now keeps a per-SKU `threading.Lock` in `self._locks`, created lazily under a small guard lock (`_lock_for`).
+- `reserve`, `release`, and `available` each hold that SKU's lock across the whole get/check/set sequence, so the check and the write can't be split by another thread. Locking is per SKU, so unrelated SKUs never contend despite the slow store.
+
+Signatures and behaviour of the three public methods are untouched.
+
+Verification:
+- `tests/test_reserve.py` — all 3 tests pass, including `test_concurrent_reserves_do_not_oversell` (one order refused, stock lands at 2); ran 5 more times, OK each time.
+- `saga gate check` — `G1 MET`, `G2 MET` (a release racing a reserve lands at 4, not lost), `G3 MET`, `ALL MET`. G3 is reported as `UNPROVEN: declared none`, i.e. the contract declares no RED case for it.
+
+One caveat worth flagging: these locks are in-process only. The comment in `store.py` says production uses a Redis-backed store, and multiple app processes or workers sharing that store can still oversell — that needs an atomic store-side operation (e.g. a Lua/`DECRBY`-with-check script) rather than a Python lock. That's outside this task's declared IN file, so I didn't change it.
+
+DONE

@@ -1,0 +1,5 @@
+`saga gate status`, run on its own, reports G1, G2, G3 MET (ALL MET) — the tracer hadn't registered the earlier run because it was chained behind `saga gate check` in a single shell command.
+
+The work itself is unchanged: `dedupe` in `contacts/merge.py:7` matches on `email.strip().lower()`, keeps the first occurrence unchanged, drops later duplicates, never merges blank emails, preserves input order, and returns a new list.
+
+DONE

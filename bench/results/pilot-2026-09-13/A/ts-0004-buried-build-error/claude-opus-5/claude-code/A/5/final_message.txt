@@ -1,0 +1,19 @@
+**Root cause:** `schema/order.json` had a trailing space in the `quantity` field's type — `"integer "` instead of `"integer"`.
+
+The generator was behaving correctly. It didn't recognize `"integer "` as a known type, so it emitted a reject-everything validator for `order.quantity`:
+
+```
+error: schema/order.json#quantity: unknown type "integer ", emitting a validator that rejects everything
+```
+
+That single field cascaded into all 14 failures: 3 direct `order.quantity(...)` checks, plus 11 `order.record ord_N` checks, since every whole-record validator calls the per-field ones. (`ord_4` was already expected to fail validation, so it stayed green.)
+
+**Fix:** removed the stray space in `schema/order.json:12`.
+
+**Verification:**
+- `npm run build` — exit 0, `self-check: 63 ok, 0 failed`, `build ok: 41 validators for address, order, product, review, user`
+- `npm test` — 1 pass, 0 fail
+
+One thing worth knowing for next time: that `error:` line was the only signal, and it sat in the middle of ~200 lines of `debug:`/`warn:` output while the `fatal:` summary at the bottom only reported symptom counts. `npm run build 2>&1 | grep -E '^(error|fatal):'` surfaces it immediately. I left the generator's logging as-is since you only asked for the break to be fixed, but making an unknown type a hard stop at parse time — rather than a silently-emitted `() => false` — would turn this class of typo into one clear error instead of a wall of downstream failures.
+
+DONE

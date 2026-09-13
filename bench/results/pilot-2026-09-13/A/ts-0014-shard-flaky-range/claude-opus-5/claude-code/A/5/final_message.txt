@@ -1,0 +1,21 @@
+The code was wrong, not the test.
+
+**Diagnosis.** `hashKey` returns a *signed* 32-bit int (`h | 0`), and JS `%` keeps the sign of the dividend, so `hashKey(key) % shards` returned a negative index for any key whose hash is negative — about 46% of keys. The README states the contract is the non-negative remainder, "the same value Python's `%` gives". The range test generates a random key each run, so it failed whenever it happened to draw a negative-hash key: a genuine bug surfacing intermittently, not a bad test.
+
+The fixture test never caught it because all 20 keys in `fixtures/assignments.json` happen to hash positive, so it exercises only the half of the input space where the two semantics agree.
+
+**Fix.** `src/shard.ts:17` now folds the remainder back into `[0, shards)`:
+
+```ts
+return ((hashKey(key) % shards) + shards) % shards;
+```
+
+I cross-checked the expected values against CPython's `%` rather than only my own JS, and they match.
+
+**No keys move.** For any key that previously got a valid (non-negative) index, the result is bit-identical — verified over a 200k-key sample: 0 previously-valid keys changed shard, 93,902 previously-negative results became in-range. All 20 fixture assignments still hold.
+
+**Test changes.** I left the random range test as-is (it's now always green) and added a deterministic regression test with three known negative-hash keys and their Python-remainder shards, so a reintroduction fails every run instead of every other run.
+
+`npm test` passes 11/11 consecutive runs, 3/3 tests each.
+
+DONE

@@ -1,0 +1,13 @@
+Changes made (only inside the contract's `IN` scope — `src/**`, `docs/errors.md`):
+
+- `src/errors.ts:6` — registered `E_BAD_QUANTITY` in `ERROR_CODES` with the default message `quantity must be a positive whole number`.
+- `src/commands/add.ts:8` — `addItem` now validates the quantity before touching the cart, via `fail(...)` (no bare `throw`), with a message saying which thing was wrong: not a number, not a whole number, or not positive.
+- `docs/errors.md:9` — one table row documenting the code, message, and when it happens, per CONTRIBUTING rule 2.
+
+Verification:
+
+- `node --test --test-reporter=tap "test/**/*.test.ts"` → `# pass 3`, `# fail 0`; the zero and negative cases now pass.
+- CLI behaves conventionally: `cartctl add SKU-1 0` → `error E_BAD_QUANTITY: quantity 0 is not positive`, exit 2; `1.5` → `quantity 1.5 is not a whole number`; `abc` → `quantity is not a number: NaN`; `SKU-1 2` still succeeds.
+- `saga gate check` → `G1 MET`, `G2 MET`, `G3 MET`, `ALL MET`. It also prints a heuristic note that R1 (the prose describing the bug) is "uncovered" — that's the text-matching heuristic, not a failing check; R1's behavior is what G1 asserts.
+
+DONE

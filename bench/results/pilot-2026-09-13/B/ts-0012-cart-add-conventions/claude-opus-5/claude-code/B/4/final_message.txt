@@ -1,0 +1,15 @@
+`add` now rejects any quantity that isn't a positive whole number, following the CONTRIBUTING conventions.
+
+**Changes** (all inside the contract's IN set — `test/**`, `CONTRIBUTING.md`, `package.json` untouched):
+- `src/errors.ts:7` — registered `E_BAD_QUANTITY` ("quantity must be a positive whole number") in `ERROR_CODES`.
+- `docs/errors.md:9` — documented it with a table row (code, message, when).
+- `src/commands/add.ts:8` — three guards via `fail()`, each with a message naming what was wrong: not a number (`NaN`/`Infinity`), not a whole number, not greater than zero. No bare `throw`, still a pure function that prints nothing.
+
+**Verification**
+- `node --test`: 3 pass, 0 fail — the two new cases in `test/add.test.ts` now pass.
+- `saga gate check`: `ALL MET` (G1, G2, G3). G3 is reported `UNPROVEN: declared none`, which is how it arrived — it was already checked off with no RED case, and I didn't alter that.
+- End-to-end through the CLI: `0`, `-3`, `1.5`, and `abc` each print `error E_BAD_QUANTITY: quantity <x> ...` on stderr and exit 2; `2` still succeeds.
+
+One note: the gate's heuristic flags R1 as uncovered, but R1 is the symptom statement (nonsense lines reaching the warehouse) and the behavior behind it is covered by G1's tests plus the CLI check above.
+
+DONE

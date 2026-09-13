@@ -1,0 +1,12 @@
+Two changes in `src/prune.ts:41-45`, nothing else touched:
+
+- **Weekly count**: `weeks.slice(1, policy.keepWeekly)` → `weeks.slice(0, policy.keepWeekly)`. The old form both dropped the current week and, because `slice(1, n)` yields `n-1` elements, kept one fewer week than asked. The new form keeps exactly `keepWeekly` weeks, current week included — `keepWeekly: 8` on finance now yields eight. The stale 1.7 comment is replaced with what the code does.
+- **Pinned legal hold**: the returned list is filtered on `!b.tags.includes("pinned")`, so a pinned snapshot is never returned regardless of policy or age. It's applied at the return, after the keep-set logic, so it can't be undone by any rule. Other tags (`replicated`, `verified`, …) are still ignored.
+
+Signature, sort order, `isoWeek`, the daily rule, the helpers, and the test are unchanged.
+
+Verification: `node --test` passes the acceptance case (1 pass, 0 fail), and `saga gate check` reports **ALL MET** for G1, G2, G3. G3 is flagged `UNPROVEN: declared none` — that's the contract's own pre-existing note that the signature gate has no RED case, not a failure. The "uncovered (heuristic)" lines are background sentences from your brief that carry no check.
+
+One thing to know, not changed: if a pinned snapshot is the newest in its ISO week, it still occupies that week's bucket slot, so that week's next-newest snapshot stays deletable. That matches the prior bucket semantics and is the conservative reading — the pinned one survives either way. Say the word if you'd rather a pinned snapshot not consume a retention slot.
+
+DONE

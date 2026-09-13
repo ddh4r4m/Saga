@@ -1,0 +1,38 @@
+Both gates pass.
+
+## What broke
+
+`schema/order.json` had a typo — the `quantity` field's type was `"integer "` with a trailing space:
+
+```json
+"quantity": {
+  "type": "integer "
+}
+```
+
+The generator doesn't recognize `"integer "` as a type, so it did exactly what it's designed to do: logged one `error:` line and emitted a reject-everything validator for that field.
+
+```
+error: schema/order.json#quantity: unknown type "integer ", emitting a validator that rejects everything
+```
+
+That single line was buried among ~200 lines of `warn:`/`debug:` noise. The 14 FAILED checks and `build failed: 14 checks failed` at the bottom were downstream symptoms — every self-check touching `order.quantity` (and `order.record`, which validates all fields) failed against the reject-everything validator. The real signal was the `1 schema errors` in the fatal line, not the 14 check failures.
+
+Your instinct was right — the generator is fine. The bad input was in the data.
+
+## Fix
+
+Removed the trailing space in `schema/order.json:11`. That's a one-character change to the schema; no generator code was touched.
+
+## Verification
+
+- `npm run build` → `info: build ok: 41 validators for address, order, product, review, user`, self-check `63 ok, 0 failed`
+- `npm test` → 1 pass, 0 fail
+- `saga gate check` → `ALL MET`
+- G2 confirms a genuinely unknown type (`"banana"`) still exits 1, so the fix didn't paper over unknown-type detection by making the generator trim or accept junk types.
+
+Scanned the other four schema files for the same whitespace-in-type pattern; `order.quantity` was the only instance.
+
+One thing worth flagging: this failure mode is easy to hit again and hard to read. The generator emits a reject-everything validator and continues, which turns one bad character into 14 confusing downstream failures at the very bottom of the log. Surfacing schema errors in the final summary (or failing fast on the first one) would make the next occurrence obvious. I didn't make that change — it's generator behavior beyond what you asked for, and it's your call.
+
+DONE

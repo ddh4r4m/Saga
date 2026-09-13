@@ -1,0 +1,11 @@
+All four tests pass. What I changed:
+
+- **`app/db.py`** — appended migration `3`, an `ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','disabled'))`. Existing shipped migrations are untouched; the column default backfills rows in already-deployed databases as `active`, and the CHECK constraint means no third value can ever land in the column.
+- **`app/users.py`** — added `set_status(conn, user_id, status)`, which rejects anything outside `("active", "disabled")` with a `ValueError` and returns `False` when the id doesn't exist. `list_users` grew a `disabled` parameter: `True` → disabled only, `False` → active only, default `None` → everyone (so the existing full listing is unchanged).
+- **`app/seed.py`** — `data/seed.json` is untouched and has no status key; the loader inserts `r.get("status", "active")`, so today's export loads as-is and a future export that starts emitting the field would be honored.
+- **`app/cli.py`** — added `disable <id>` and `list --disabled`, and the listing now shows the status column.
+- **`README.md`** — updated the CLI line and noted the status values.
+
+One judgment call worth flagging: I read `disabled=False` as "active only" rather than "no filter", so the unfiltered listing is the default `None`. The tests only exercise `disabled=True` and the no-argument call, so both readings pass; say the word if you'd rather `False` mean "everyone".
+
+DONE

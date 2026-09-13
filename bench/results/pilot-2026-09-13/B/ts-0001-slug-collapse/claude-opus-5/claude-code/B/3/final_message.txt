@@ -1,0 +1,22 @@
+`src/slug.ts:4` now folds, collapses, and trims:
+
+```ts
+export function slugify(input: string): string {
+  // Decompose accented letters into base letter + combining mark, then drop the
+  // marks so "Café" folds to "cafe" instead of losing the letter entirely.
+  const folded = input.normalize("NFD").replace(/\p{M}/gu, "");
+  const lowered = folded.toLowerCase();
+  const replaced = lowered.replace(/[^a-z0-9]+/g, "-");
+  return replaced.replace(/^-+|-+$/g, "");
+}
+```
+
+- NFD decomposition + stripping combining marks turns `é` into `e` before the ASCII filter runs, so no accented letter is dropped.
+- The `+` quantifier makes a run of separators produce one hyphen.
+- The final replace trims hyphens from both edges, including the case where nothing survives (`slugify("---")` → `""`).
+
+The public signature is untouched. I added tests in `test/slug.test.ts` for edge trimming, accent folding, and the empty-result case, alongside the existing collapse test — 4/4 pass.
+
+`saga gate check` reports **ALL MET** (G1, G2, G3). One note it prints: R1 is flagged `uncovered (heuristic)` — that's the symptom sentence from the request ("slugs are coming out mangled"), which has no gate of its own; its two examples are exercised by G1 and G2, and I verified them directly: `slugify("Hello  World!")` → `hello-world`, `slugify("Café au lait")` → `cafe-au-lait`.
+
+DONE

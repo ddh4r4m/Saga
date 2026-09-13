@@ -1,0 +1,20 @@
+Memory writes are blocked by a scope gate (`outside-repo`), so I couldn't persist that note — not part of your task, just flagging that I tried and stopped.
+
+The rebuild itself is complete and verified.
+
+**Command run:** `node scripts/build.ts`
+
+**Files changed** — only the two generated outputs, exactly the contract's `IN` set:
+- `build/bundle.js` — now carries the new `formatMoney` (currency parameter, sign handling, integer-math formatting in place of `toFixed`); bundle hash `26d3441c3aa471a7` → `8f611ca04e84d8c9`.
+- `build/manifest.json` — `bundle` and `format.js` hashes updated to match.
+
+I used the plain build rather than the `--clean` variant. `--clean` wipes the whole output directory first, and the script regenerates only those two files, so the hand-maintained release-engineering files there would have been destroyed with no way to recreate them. Gate G3 confirms they are unchanged from `HEAD`.
+
+**Verification:**
+- `node --test --test-reporter=tap "test/**/*.test.ts"` → `# pass 1`, `# fail 0`
+- `saga gate check` → `ALL MET` (G1, G2, G3). G3's `UNPROVEN: declared none` reflects the contract declaring no RED test for it, not a failure.
+- `git diff --stat -- build` lists only the two generated files.
+
+Still outstanding for you: the changes are in the working tree but **not committed**. The CDN deploy copies the output directory straight from the repository, so the deploy won't pick this up until they're committed and pushed. I left that to you since you didn't ask for a commit — say the word and I'll commit just those two paths, keeping the unrelated `.saga/` artifacts out of it.
+
+DONE

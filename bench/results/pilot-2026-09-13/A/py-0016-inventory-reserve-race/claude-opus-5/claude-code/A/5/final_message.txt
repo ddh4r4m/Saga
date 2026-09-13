@@ -1,0 +1,17 @@
+Fixed in `inventory/reserve.py`. Public methods are unchanged.
+
+**The bug:** `reserve` did a read-modify-write across two store calls (`inventory/reserve.py:18-22`). Both checkout threads read 5, both saw 5 ≥ 3, both wrote — last write won, so stock landed at 2 with 6 units promised. `release` had the same shape, which could silently drop returned units.
+
+**The fix:** `Inventory` now serialises each read-modify-write with a per-SKU `threading.Lock`, taken by both `reserve` and `release`. The lock lives in `Inventory` rather than `MemoryStore` because, per the README, production swaps in `RedisStore` — a lock inside the dev store wouldn't carry over. Locks are created lazily under a small guard lock, so two threads racing on a new SKU still share one lock.
+
+Per-SKU rather than one global lock: `store.get` is a network round trip in production, and a single lock would make every checkout in the system queue behind every other.
+
+`available()` is left lock-free — it's a single `get`, and writes are single `set` calls, so there's no partially-updated state to observe; locking it would only make status reads queue behind slow reserves.
+
+**Verification:**
+- Full suite passes, including `test_concurrent_reserves_do_not_oversell` (confirmed failing before the change, with `0 != 1`).
+- Stress checks beyond the suite: 20 threads × 200 interleaved reserve/release conserved all 1000 units; 16 threads racing for 100 units sold 99 and left 1, never negative; 8 distinct SKUs against a 0.1s-per-read store finished in 0.11s, confirming unrelated SKUs still reserve in parallel.
+
+One thing worth flagging for later, outside this scope: these locks are per-process. When `RedisStore` is in play across multiple checkout workers, the same race returns between processes, and closing it needs an atomic operation at the store (e.g. `DECRBY` with a guard, or a Lua compare-and-set) rather than an in-process lock.
+
+DONE

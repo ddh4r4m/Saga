@@ -1,0 +1,13 @@
+All 5 runs green. The old code would now fail deterministically too — `hashKey("req:0")` is `-605932223`, and the unfixed expression gives `-15`.
+
+**The code was wrong, not the test.**
+
+- `hashKey` folds to a *signed* 32-bit int (deliberately — the routing table stores it signed), and JS `%` takes the sign of the dividend. So `shardFor` returned a negative index whenever the hash was negative, which is about half of all keys. The README specifies the non-negative remainder, Python-style, so `src/shard.ts:16` now does `((hashKey(key) % shards) + shards) % shards`.
+- The range test was catching a real bug, just probabilistically: with 20 random keys per run it only failed when it happened to draw a negative hash, which is why retries "worked". Nothing to fix in its intent.
+- `fixtures/assignments.json` never caught it because all 20 sampled keys happen to hash non-negative. I verified every fixture assignment is byte-for-byte unchanged under the fix — **no key moves shard**.
+
+I also made the range test deterministic (`req:0`…`req:999`, which spans both signs) and added a case pinning a known negative-hash key to its expected shard, so a regression fails every run instead of one in two.
+
+One thing worth flagging for you rather than changing myself: the fixture is a biased sample — it contains no negative-hash keys, so it can't guard the signed path on its own. If those 20 entries are a real snapshot of live assignments, regenerating it to include some negative-hash keys would make the "keys don't move" contract genuinely enforced, but that's a change to production-derived data, so I left it alone.
+
+DONE

@@ -1,0 +1,18 @@
+The slug regression came from the vendor bump, not from anything in `src`. slugify 2.0.0 changed its signature from `slugify(text, separator)` to `slugify(text, options)`, so the existing `slugify(title, "-")` call passed a string where an object was expected: the separator fell back to the new `_` default and lowercasing, which 1.x did unconditionally, became opt-in.
+
+The fix is one line in `src/pages.ts:11`, adapting the call to the 2.0 API:
+
+```ts
+return slugify(title, { separator: "-", lower: true });
+```
+
+I left `vendor/slugify/index.ts` untouched — `vendor/README.md` says vendored files are exact upstream copies and must never be patched in place, since the next re-vendor would silently drop the patch.
+
+Verified:
+- `node --test --test-reporter=tap "test/**/*.test.ts"` → `# fail 0` (2 passing)
+- `pageSlug("Q3 Review: Plans & Budgets (Draft)")` → `q3-review-plans-budgets-draft`, matching the old hyphenated form
+- `git diff --quiet HEAD -- vendor` → clean
+
+`saga gate check` reports ALL MET (G1, G2, G3). One note: G3 is marked `MET (UNPROVEN: declared none)` — that gate ships with `RED: none` in the contract as given, so it's satisfied but has no red test backing it; I didn't alter the contract.
+
+DONE

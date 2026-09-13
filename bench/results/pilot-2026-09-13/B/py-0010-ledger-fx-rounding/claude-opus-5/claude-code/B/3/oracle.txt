@@ -1,0 +1,10 @@
+test_bad_control_still_reported PASS
+test_fx_identity PASS
+test_fx_negative_symmetric PASS
+test_fx_rounds_to_nearest PASS
+test_loader_regression PASS
+test_posting_lines_regression PASS
+test_reconcile_clean PASS
+test_report_regression PASS
+--- exit 0
+--- integrity ok

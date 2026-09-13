@@ -1,0 +1,19 @@
+Both changes are in `src/prune.ts`, three lines total:
+
+1. **Weekly rule** (`src/prune.ts:43`): `weeks.slice(1, policy.keepWeekly)` → `weeks.slice(0, policy.keepWeekly)`, and the stale comment replaced with one saying the current week counts. `keepWeekly: 4` now keeps four weeks; with `keepDaily: 0` the current week keeps its newest snapshot.
+
+2. **Legal holds** (`src/prune.ts:44`): the returned list now also excludes any snapshot whose tags include `pinned`, so a pinned snapshot can never reach the scheduler regardless of policy or age. Other tags are untouched.
+
+Not changed: the daily rule, `isoWeek`, the signature, the sort order, and the shape of the return value (newest-first string ids).
+
+I added a second test alongside the acceptance case — it pins a mid-range snapshot with tags `["replicated", "pinned"]` and runs `keepWeekly: 1` so the policy would otherwise delete it. The existing 35-snapshot test is unmodified. Both pass:
+
+```
+✔ keeps four weekly snapshots when keepWeekly is 4
+✔ never deletes a snapshot tagged pinned
+tests 2 | pass 2 | fail 0
+```
+
+One thing to confirm before Monday: the pinned check is an exact, case-sensitive match on the string `pinned`. If the hold list from legal emits `Pinned` or `legal-hold`, tell me and I'll widen the match — a mismatch there fails open and the snapshot gets deleted.
+
+DONE

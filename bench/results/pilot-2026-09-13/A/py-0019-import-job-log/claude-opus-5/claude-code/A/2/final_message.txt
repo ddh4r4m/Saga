@@ -1,0 +1,30 @@
+**Root cause.** The job log has exactly one warning and one error:
+
+- `logs/nightly-2026-09-02.log:1331` — `WARN parse: nordic.csv row 517: unit_price '3\xa0868.13' rejected; row skipped`
+- `logs/nightly-2026-09-02.log:1627` — `ERROR reconcile: vendor nordic: manifest says 812 rows / 7855114.39, imported 811 rows / 7797092.44; aborting`
+
+One nordic row used a **no-break space** (U+00A0) as its thousands separator. `parse_price` in `importer/parse.py` documents that vendors write thousands separators per their own locale — "a comma, a space or a no-break space, so all of those have to be ignored" — but the implementation only stripped commas. `Decimal("3\xa0868.13")` raises `InvalidOperation`, so the row was skipped as a parse error, leaving 811 rows / 7797092.44 against the manifest's 812 / 7855114.39. The gap is 58021.95 = 3868.13 × 15, exactly the skipped row — confirming that one row is the whole discrepancy and nothing else was wrong.
+
+**Fix.** `importer/parse.py:25-27` now strips all three documented separators before parsing:
+
+```python
+cleaned = text.strip()
+for sep in (",", " ", "\xa0"):
+    cleaned = cleaned.replace(sep, "")
+```
+
+I kept this to the three separators the docstring names. I initially also stripped U+202F (narrow no-break space) and backed it out — no fixture uses it, and silently accepting undocumented characters widens what counts as a valid price beyond the vendors' stated contract.
+
+**Verification.** Re-running against `fixtures/nightly` exits 0 with no parse warnings at all, and every vendor reconciles exactly:
+
+```
+INFO reconcile: vendor acme: 420 rows / 6602995.58 ok
+INFO reconcile: vendor brightline: 388 rows / 3770226.55 ok
+INFO reconcile: vendor nordic: 812 rows / 7855114.39 ok
+INFO reconcile: vendor oslo-supply: 402 rows / 3990864.99 ok
+INFO job end: ok
+```
+
+The reconcile check in `importer/job.py` is untouched and still strict — exact row count and exact `Decimal` total equality, aborting on any mismatch. The nordic numbers now match because the row genuinely parses, not because the check was loosened. `manifest.json` and the four vendor CSVs are unmodified; the only changes are `importer/parse.py` and two regression tests in `tests/test_import.py` covering the space and no-break-space separators. Full suite: 6 tests, all passing.
+
+DONE

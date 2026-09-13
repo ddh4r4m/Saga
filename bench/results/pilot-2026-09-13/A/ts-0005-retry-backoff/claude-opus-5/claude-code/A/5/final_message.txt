@@ -1,0 +1,15 @@
+The delay computation in `src/retry.ts:27` was linear and added the random value as raw milliseconds instead of as a multiplier:
+
+```ts
+const wait = options.baseMs * (i + 1) + random();   // 100.5, 200.5, 300.5
+```
+
+It now matches the documented policy `baseMs * 2^i * (1 + r)`:
+
+```ts
+const wait = options.baseMs * 2 ** i * (1 + random());   // 150, 300, 600
+```
+
+The test file is untouched, and `npm test` passes — waits are `[150, 300, 600]` for `baseMs: 100, random: () => 0.5`, so the third retry now fires at 600ms rather than ~300ms against the gateway.
+
+DONE

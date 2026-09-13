@@ -1,0 +1,15 @@
+Fixed in `src/retry.ts:25`. The wait computation was `baseMs * (i + 1) + random()` — linear growth (100, 200, 300) with jitter *added* as a sub-millisecond constant, which is why the third retry fired far too early. It now reads:
+
+```ts
+const wait = options.baseMs * 2 ** i * (1 + random());
+```
+
+This matches the documented `baseMs * 2^i * (1 + r)`. The test file and README are unchanged.
+
+Verification:
+- `node --test` — 1 pass, 0 fail, with the test file untouched (`git diff --quiet HEAD -- test` clean).
+- `saga gate check` — G1 MET, G2 MET, ALL MET. With `r = 0` the waits are exactly `100,200,400`; with `r = 0.5` they are `150,300,600`.
+
+One note: the gate flagged `R1` ("the retry test is red") as "uncovered (heuristic)" — that's the checker not finding a literal check bound to that sentence, not a failure. The test is green, which is what R1 describes.
+
+DONE

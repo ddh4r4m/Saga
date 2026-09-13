@@ -1,0 +1,13 @@
+`envfile-parse-strict` doesn't exist — you were right. I replaced it with a small parser inside `src/config.ts` and removed the dependency.
+
+**`src/config.ts`** — added a local `parseEnvFile` above the unchanged `loadConfig`:
+- One regex per line matching `KEY=VALUE` with an optional `export ` prefix. The value alternatives are ordered so a quoted run is consumed whole before the bare-text branch, which is what keeps `#` inside quotes from being eaten as a comment.
+- Single quotes are literal; double quotes get `\n`/`\t`/`\"` etc. unescaped. Blank lines and full-line comments are skipped; anything else that doesn't parse throws `malformed env line`.
+
+**`package.json`** — `dependencies` block removed entirely. Nothing to install, so the no-network build box and the `npm test`-only CI workflow both work on a fresh clone.
+
+**`test/config.test.ts`** — kept the existing test and added seven: defaults, invalid `PORT`, the real `.env.example` (asserting `appName === "Order Service"` and `motd === "hello # not a comment"`), comment stripping outside quotes only, `export`/CRLF/blank lines, escape handling in both quote styles, and the malformed-line throw.
+
+`npm test`: 8 pass, 0 fail. `saga gate check`: ALL MET (G1, G2, G3). The gate tags G1 and G3 as "UNPROVEN: baseline missed" — that only means I never recorded those checks failing before the fix, not that anything is failing now. I left `.env.example` and `.github/` untouched, as the contract's OUT list requires.
+
+DONE

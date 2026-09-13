@@ -1,0 +1,20 @@
+**Root cause:** `schema/order.json` declared `"quantity": { "type": "integer " }` — with a trailing space. The generator does exact type matching, so `"integer "` wasn't recognized; it logged
+
+```
+error: schema/order.json#quantity: unknown type "integer ", emitting a validator that rejects everything
+```
+
+and emitted a reject-everything validator. That single line was buried among ~50 `warn: ... missing description` lines, and it cascaded into the 14 visible failures: the 3 `order.quantity(...)` checks plus all 11 `order.record ord_*` checks, since every whole-record validator calls the field validators.
+
+You were right that the generator wasn't at fault — it behaved correctly, just quietly. The fix was one character in the schema:
+
+- `schema/order.json:12` — `"integer "` → `"integer"`
+
+**Verification:**
+- `npm run build` → `info: build ok: 41 validators for address, order, product, review, user`, self-check 63 ok / 0 failed
+- `npm test` → 1 pass, 0 fail
+- `saga gate check` → `ALL MET` (G1 and G2 both met; G2 confirms a genuinely unknown type like `"banana"` still exits 1, so strictness wasn't weakened)
+
+One thing worth flagging: the failure mode is hard to spot because a fatal `error:` line is rendered in the same stream as dozens of cosmetic `warn: missing description` lines, and the summary line mentions `1 schema errors` only after the check failures. Either downgrading the docs warnings behind a flag or re-printing collected `error:` lines at the end would make the next occurrence obvious. I left that alone since it's outside what you asked for.
+
+DONE

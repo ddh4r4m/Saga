@@ -1,0 +1,17 @@
+Every mutant is caught. `intervals.py` is unchanged (`git status` shows only the new test file).
+
+**`tests/test_intervals.py`** — 29 unittest cases, one per documented behaviour plus edge cases:
+
+- **Ordering**: unsorted input sorted by start; unsorted overlaps still merge.
+- **Merging**: overlap, touching (`(1,3)+(3,5) → (1,5)`), gap of one stays separate, chains collapse transitively, duplicates collapse.
+- **Containment**: inner interval doesn't shrink the outer one — given after, before, several at once, and sharing the outer start or end.
+- **Trivial inputs**: empty list → empty; single interval unchanged.
+- **Degenerate/negative**: `(5,5)` allowed and merges when touching; adjacent point intervals stay separate; negative bounds and spanning zero.
+- **Purity**: result is a list of tuples, is not the input object, and the input list is unchanged (including on the error path).
+- **Validation**: `ValueError` when start > end, wherever the bad interval sits (including last), with the offending values in the message.
+
+One expectation I initially wrote was wrong — I had `[(-1,2),(-10,-5),(-6,-2)]` merging to a single `(-10,2)`, but `-2` and `-1` are a gap apart, so the correct result is `[(-10,-2), (-1,2)]`; the test now asserts that.
+
+Run with `python3 -m unittest discover -v -s tests -t .` — all 29 pass.
+
+DONE

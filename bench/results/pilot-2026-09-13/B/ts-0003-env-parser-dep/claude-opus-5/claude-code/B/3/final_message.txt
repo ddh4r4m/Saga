@@ -1,0 +1,5 @@
+Both test commands now ran unpiped, so their exit statuses are on the record: `node --test --test-reporter=tap "test/**/*.test.ts"` and `npm test` each pass 6/6 with `fail 0`, exit 0. `saga gate check` still reports ALL MET (G1, G2, G3).
+
+The work itself is unchanged from my previous message: local `parseEnvFile` in `src/config.ts`, dependency removed from `package.json`, expanded tests in `test/config.test.ts`.
+
+DONE

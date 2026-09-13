@@ -1,0 +1,14 @@
+diff --git a/src/pages.ts b/src/pages.ts
+index cd6d86c..01aae4d 100644
+--- a/src/pages.ts
++++ b/src/pages.ts
+@@ -8,7 +8,8 @@ export interface Page {
+ }
+ 
+ export function pageSlug(title: string): string {
+-  return slugify(title, "-");
++  // slugify 2.0 takes an options object; its defaults are "_" and no lowercasing.
++  return slugify(title, { separator: "-", lower: true });
+ }
+ 
+ export function makePage(title: string, body: string): Page {

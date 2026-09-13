@@ -1,0 +1,22 @@
+`cartctl add` now rejects any quantity that is not a positive whole number, following the CONTRIBUTING error convention.
+
+**Changes**
+
+- `src/errors.ts:6` — registered `E_BAD_QTY: "quantity must be a positive whole number"` in `ERROR_CODES`.
+- `docs/errors.md:9` — documented the code with its message and when it happens.
+- `src/commands/add.ts:8` — three guards via `fail(...)`, each with a message naming the actual problem and the offending value:
+  - not finite (`NaN`, `Infinity` — covers non-numeric CLI input like `abc`)
+  - not an integer → `quantity must be a whole number, got 1.5`
+  - less than 1 → `quantity must be at least 1, got 0` / `got -3`
+
+Validation lives in `addItem` rather than the CLI arg parsing, so it holds for every caller and keeps the command a pure function over the cart.
+
+**Verification**
+
+- `node --test --test-reporter=tap "test/**/*.test.ts"` → 3 pass, 0 fail; the two new cases now pass.
+- `saga gate check` → `ALL MET` (G1, G2, G3).
+- End-to-end CLI: `2` → exit 0 with the total; `0`, `-3`, `1.5`, `abc` → `error E_BAD_QTY: <what was wrong>` on stderr, exit 2.
+
+One note: `saga gate check` still prints `R1 uncovered (heuristic)`, which is the requirement about bad lines reaching the warehouse. That's a heuristic text-match warning, not a failed check — the behaviour is covered, since the CLI reaches the warehouse path only through `addItem`, which now rejects these quantities before a line is created. I did not add a CLI-level test for it because `test/**` is listed OUT of scope in the contract; I confirmed that path manually instead, as shown above.
+
+DONE

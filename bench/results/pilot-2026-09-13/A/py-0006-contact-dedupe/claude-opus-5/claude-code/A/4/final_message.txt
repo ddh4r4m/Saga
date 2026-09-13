@@ -1,0 +1,5 @@
+`dedupe` is in `contacts/merge.py:10`. It keys each contact on `email.strip().lower()`, so padding and capitalisation differences still match, keeps the first record seen for each person, and preserves input order. The existing test passes, plus I checked a mixed-case/padded case manually.
+
+One thing to flag: contacts with a blank email all share the empty key, so several distinct people with no email would collapse into one. That follows the rule as you stated it ("same person if the email matches"); say the word if blank emails should instead be treated as never matching.
+
+DONE

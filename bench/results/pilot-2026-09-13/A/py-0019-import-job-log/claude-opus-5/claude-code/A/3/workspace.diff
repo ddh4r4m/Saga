@@ -1,0 +1,43 @@
+diff --git a/importer/parse.py b/importer/parse.py
+index dfbfda4..1e5d534 100644
+--- a/importer/parse.py
++++ b/importer/parse.py
+@@ -8,6 +8,10 @@ class ParseError(ValueError):
+     pass
+ 
+ 
++#: Thousands separators vendors use; the decimal mark is always a dot.
++THOUSANDS_SEPARATORS = (",", " ", " ")
++
++
+ @dataclass(frozen=True)
+ class Item:
+     sku: str
+@@ -22,7 +26,9 @@ def parse_price(text: str) -> Decimal:
+     according to their own locale: a comma, a space or a no-break space, so
+     all of those have to be ignored. Anything else is a ParseError.
+     """
+-    cleaned = text.strip().replace(",", "")
++    cleaned = text.strip()
++    for sep in THOUSANDS_SEPARATORS:
++        cleaned = cleaned.replace(sep, "")
+     try:
+         return Decimal(cleaned)
+     except InvalidOperation:
+diff --git a/tests/test_import.py b/tests/test_import.py
+index 66ff2a2..2d3f982 100644
+--- a/tests/test_import.py
++++ b/tests/test_import.py
+@@ -16,6 +16,12 @@ class ParseTests(unittest.TestCase):
+     def test_comma_thousands(self):
+         self.assertEqual(parse_price("1,250.00"), Decimal("1250.00"))
+ 
++    def test_space_thousands(self):
++        self.assertEqual(parse_price("1 250.00"), Decimal("1250.00"))
++
++    def test_no_break_space_thousands(self):
++        self.assertEqual(parse_price("3 868.13"), Decimal("3868.13"))
++
+     def test_garbage_rejected(self):
+         with self.assertRaises(ParseError):
+             parse_price("n/a")

@@ -1,0 +1,15 @@
+`Money` now stores an exact integer `cents` field instead of a float `amount`.
+
+**`pricing/money.py`** — `Money` keeps its existing constructor signature, so `Money(0.10)` still means ten cents; the amount is converted once via `Decimal(str(x))` and `ROUND_HALF_UP`, then held as `cents: int`. `__add__`, `__mul__` and `__neg__` are pure integer arithmetic, so nothing drifts and `Money(0.10) * 3 == Money(0.30)` is `True`, including for `hash()`. Added `Money.from_cents()` for exact construction, `as_decimal()` for exact two-place rendering, and kept `.amount` as a float property (`cents / 100`) for the one place that legitimately needs floats.
+
+**`pricing/tax.py`** — rounding is untouched: still `round(subtotal.amount * (1 + rate), 2)` on the float value with the same half-even behavior; `Money` just snaps the result back onto exact cents. I verified parity against the old implementation for every cent value 0–300 plus large/negative values across six rates: zero mismatches.
+
+**`pricing/format.py`** — same output (`$1,234.50`, `-$0.10`, `$0.00`), computed from `divmod` on cents so it can't drift at large magnitudes.
+
+**`pricing/report.py`** — same `name,qty,total` layout, total rendered from the exact decimal.
+
+One user-visible consequence worth naming: the CSV total column is now always two decimals, so a line that used to serialize as `1234.5` is now `1234.50`. That follows from the drift fix and from `test_csv_has_two_decimals`, which expects `widget,3,0.30` — the old code had no fixed precision at all, it just printed the float's repr. Column set, ordering and quoting are unchanged.
+
+Both original tests pass, and I added `tests/test_money.py` covering cents storage, repeated-addition drift, display format and tax rounding — 8 tests, all green.
+
+DONE

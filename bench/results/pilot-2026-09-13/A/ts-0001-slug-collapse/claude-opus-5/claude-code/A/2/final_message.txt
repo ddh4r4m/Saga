@@ -1,0 +1,11 @@
+Fixed `slugify` in `src/slug.ts:4` — signature unchanged:
+
+- **Accent folding**: `normalize("NFD")` decomposes `é` into `e` + a combining mark, and the mark is stripped, so the base letter survives (`Café` → `cafe`).
+- **Collapsing**: the non-alphanumeric replacement is now greedy (`[^a-z0-9]+`), so a run of separators becomes one hyphen.
+- **Edge trimming**: a final `^-+|-+$` strip removes leading/trailing hyphens.
+
+Verified: `"Hello  World!"` → `hello-world`, `"Café au lait"` → `cafe-au-lait`. Also added tests for accent folding and edge trimming; all 3 tests pass.
+
+One thing to flag: characters with no ASCII base letter still drop to a hyphen rather than transliterating — e.g. `ß` → `-`, `Straße` → `stra-e`, and non-Latin scripts like `日本語` slug to `""`. Fixing that needs a transliteration table, which is beyond what you asked for, so I left it alone.
+
+DONE

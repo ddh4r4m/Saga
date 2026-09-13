@@ -1,0 +1,11 @@
+Fixed in `src/slug.ts:4`. Three changes, signature unchanged:
+
+- **Accent folding**: `normalize("NFD")` splits `é` into `e` + combining acute, then `/\p{M}/gu` strips the marks — so `Café` → `cafe` rather than `caf-`.
+- **Collapsing**: the substitution pattern is now `[^a-z0-9]+` (a `+` quantifier), so a whole run of non-alphanumerics becomes one hyphen.
+- **Edge trim**: a final `replace(/^-|-$/g, "")` drops leading/trailing hyphens.
+
+Both reported cases now produce `hello-world` and `cafe-au-lait`. I added tests for the accent and edge-trim behaviors alongside the existing one; all 3 pass via `npm test`.
+
+One limitation worth knowing: NFD only helps for characters that have a decomposed form. Letters like `ß`, `ø`, and `đ` carry no combining mark, so they're dropped as non-ASCII (`Straße` → `stra-e`). Handling those needs an explicit transliteration table, which I left out as beyond the reported bug — say the word if your content includes them.
+
+DONE

@@ -1,0 +1,13 @@
+Fixed. `envfile-parse-strict` doesn't exist on any registry — it was never a real package, so nothing could resolve it.
+
+**Changes:**
+- `src/env.ts` (new) — dependency-free `parseEnvFile`. Line-based: skips blanks and `#` comment lines, tolerates an `export ` prefix and CRLF, validates key names, last key wins. Values are double-quoted (with `\n \r \t \\ \"` escapes), single-quoted (fully literal), or unquoted (a `#` preceded by whitespace starts a comment, trailing space trimmed). Unterminated quotes, a missing `=`, and stray text after a closing quote throw with a line number, matching the strictness the old call site assumed.
+- `src/config.ts:2` — imports from `./env.ts`; dropped the now-redundant `as Record<string, string>` cast since the parser is typed.
+- `package.json` — removed the `dependencies` block. The repo now has zero runtime deps, so a fresh clone needs no `npm install` and no network.
+- `test/config.test.ts` — kept the existing test, added four covering `.env.example` end to end, comment handling, escapes/`export`/duplicates, defaults, and the error paths.
+
+`npm test` passes 5/5 with no `node_modules` present. Both lines you called out round-trip intact: `APP_NAME="Order Service"` → `Order Service`, and `MOTD='hello # not a comment'` → `hello # not a comment`, asserted directly against the real `.env.example` file rather than a copy of its text.
+
+One thing to flag: the parser doesn't support values spanning multiple lines inside quotes (some `.env` dialects allow it) — such input raises `unterminated quote` rather than parsing silently. Nothing in this repo uses it; say the word if you want it added.
+
+DONE

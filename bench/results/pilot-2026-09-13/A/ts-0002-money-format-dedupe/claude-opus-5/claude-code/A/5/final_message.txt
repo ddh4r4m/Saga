@@ -1,0 +1,11 @@
+Both tests pass.
+
+**Changes:**
+- `src/money.ts` (new) — exports `formatMoney` with the invoice's behaviour: sign extracted first, then `Math.abs` for both the grouped whole part and the two-digit fraction.
+- `src/invoice.ts:3` — dropped the local copy, imports from `./money.ts`. Output is byte-identical.
+- `src/receipt.ts:3` — dropped its local copy, imports the same function.
+- `src/legacy/report.ts` — untouched; it keeps its own `fmt`.
+
+The receipt's rendered output changes for negatives, which is the point of the fix: `-$1.50` instead of `$-1.50`. Worth flagging one case beyond the reported bug — amounts between -1 and 0 cents also change, e.g. -50 cents was `$-1.50` (the old code's `Math.floor(-50/100)` gave -1) and now renders `-$0.50`. Negative values are also one character wider now that the sign sits outside the `$`, so within the receipt's `padStart(10)` column they shift one space left. Both follow from adopting the invoice's behaviour as specified.
+
+DONE

@@ -1,0 +1,5 @@
+`dedupe` is implemented in `contacts/merge.py:11`. It matches people on their email after stripping surrounding whitespace and lowercasing, keeps the first record seen for each person, and returns them in the original input order. The existing test passes, and a manual check confirms `"  ANN@Example.com  "` and `"ann@example.com"` collapse to one entry while the rest of the list keeps its order.
+
+One thing to flag: `Contact` only has `name`, `email`, and `phone` — there's no postal address field — so I took "pads addresses with spaces" to mean the email addresses, which is also the field the match is keyed on. If a separate address field is coming in a later import format, the normalization would need to extend to it.
+
+DONE

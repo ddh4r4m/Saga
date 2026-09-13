@@ -1,0 +1,18 @@
+Wrote `tests/test_intervals.py` — 28 tests in 7 classes, one class per docstring bullet:
+
+- **Overlap/disjoint**: plain overlap, chains, disjoint kept apart, gap-of-one does *not* merge.
+- **Touching**: `(1,3)+(3,5) → (1,5)`, touching chains, touching when given out of order.
+- **Containment**: inner interval doesn't shrink the outer, either argument order, containment followed by a later interval that only merges if the outer end survived, duplicates, shared start.
+- **Ordering**: unsorted and reversed input, result sorted by start after merging.
+- **Empty/single**: `[] → []`, single returned as is, degenerate `(4,4)` alone and merging with `(1,4)`.
+- **No input mutation**: input list unchanged, result is a distinct list of tuples, appending to the result doesn't touch the input.
+- **Invalid intervals**: `start > end` raises `ValueError`, including when buried among valid ones; message names the interval; the raise happens before any work; `start == end` is valid.
+
+Verification:
+- `python3 -m unittest discover -v -s tests -t .` → `Ran 28 tests ... OK`.
+- Since G2 carries `RED: mutation`, I checked the tests actually bite: six mutations of the implementation, applied to throwaway copies in a temp dir (`intervals.py` never touched), all produced failures — `<=`→`<` in the touch condition (5 failures), dropping `max()` (4), dropping `sorted()` (5), removing the `raise` (4), in-place `intervals.sort()` (1), and `>`→`>=` in the validity check (3 errors).
+- `saga gate check` → `ALL MET`, exit 0. G1 and G3 are proven; G2 and G3 are flagged `UNPROVEN` by saga (`no operator` / `baseline missed`), which is about saga having no recorded red-proof operator of its own, not about the tests failing — the mutation evidence above is mine, run by hand, and is not registered with saga.
+
+`intervals.py` is unmodified (`git diff --quiet HEAD -- intervals.py` → `source-unchanged`).
+
+DONE

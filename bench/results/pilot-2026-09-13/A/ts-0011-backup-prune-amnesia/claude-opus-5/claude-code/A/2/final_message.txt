@@ -1,0 +1,12 @@
+Two lines changed in `src/prune.ts:41-45`:
+
+1. **Weekly rule** — `weeks.slice(1, policy.keepWeekly)` → `weeks.slice(0, policy.keepWeekly)`, restoring the 1.6 behaviour: the newest `keepWeekly` ISO weeks, current week included. The stale comment about the dailies covering the current week is replaced with one that states the rule. `keepWeekly: 8` on the finance volume now keeps eight weeklies, and `keepDaily: 0` volumes keep the current week.
+2. **Legal hold** — the returned list now also filters out any snapshot whose `tags` include `pinned`, so a pinned snapshot is never handed to the scheduler regardless of policy or age. Other tags are untouched.
+
+Untouched, as specified: the signature, the daily rule, `isoWeek`, the sort order, the newest-first list of string ids, and the two helpers.
+
+Tests: the existing acceptance case now passes. I added a second case in `test/prune.test.ts` (appended; the acceptance case is unmodified) that pins `bk-vol1-2026-08-05` alongside a `replicated` tag and asserts it is not returned while its unpinned neighbour still is. `npm test` → 2 passed, 0 failed.
+
+One thing worth flagging for Monday: the `pinned` check is an exact, case-sensitive match on a tag string. If the hold list from legal emits anything else — `PINNED`, `legal-hold`, a prefix like `pinned:case-1234` — it won't be recognised. Worth confirming the exact tag string before the list goes live.
+
+DONE

@@ -1,0 +1,12 @@
+**Cause:** `ledger/fx.py:convert` used `int(cents * rate)`, which truncates toward zero rather than rounding. Every FX-converted leg lost its sub-cent remainder. Account 4471 (EU Receivables) is the only non-USD account, so it's the only one where conversion actually happens — 455 USD legs, and because truncation always pulls toward zero, the bias on the debit legs didn't cancel the bias on the credit legs. Net: 0.30 EUR. All other accounts are USD, converted at rate 1.0, so they were exact.
+
+**Fix:** `convert` now rounds to the nearest minor unit with ties away from zero, using `Decimal` so the rate is interpreted as written (0.9228, not its float approximation) and negative amounts round symmetrically. Same-currency conversions short-circuit to an exact passthrough.
+
+Verified:
+- `python3 -m ledger.reconcile fixtures` → `reconcile: 3200 entries posted, 0 mismatches`, exit 0
+- A control that is genuinely wrong is still reported (gate G2 perturbs 4471 by 1 cent and still gets exactly one `MISMATCH account 4471`) — so this fixes the rounding, it doesn't mask the comparison
+- Fixtures untouched
+- Added `tests/test_fx.py` covering nearest-rounding, tie direction, and negative symmetry; full suite: 7 tests, OK
+- `saga gate check`: ALL MET
+
+DONE

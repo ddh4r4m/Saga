@@ -1,0 +1,12 @@
+**Cause:** `ledger/fx.py:convert` did `int(cents * rate)`, which truncates toward zero rather than rounding. Account 4471 ("EU Receivables") is the only EUR account in the chart, so it's the only one whose postings go through `Rates.get("USD", "EUR")`; the other six accounts convert at rate 1.0 and were unaffected. Of the 455 legs touching 4471, 30 lost a cent to truncation — exactly the 0.30 EUR gap, and all in the same direction because truncation always biases the magnitude down.
+
+**Fix:** `convert` now computes with `Decimal` and rounds to the nearest minor unit, halves away from zero (symmetric for negative amounts). Added `tests/test_fx.py` covering the round-up, round-down, tie, and sign-symmetry cases.
+
+Verification:
+- `python3 -m ledger.reconcile fixtures` → `reconcile: 3200 entries posted, 0 mismatches`, exit 0
+- `python3 -m unittest discover -s tests -t .` → 8 tests, OK
+- `saga gate check` → ALL MET (G1/G2/G3); fixtures untouched
+
+G2 confirms the fix didn't just paper over comparison: bumping the 4471 control by one cent still reports the mismatch. The gate output also flags R2 ("output is hard to read") as uncovered by any check — I left the several-thousand-line posting log as-is since the contract only required a clean reconcile, but a `--quiet` flag suppressing per-posting lines would be a small follow-up if you want it.
+
+DONE

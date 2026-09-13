@@ -1,0 +1,12 @@
+**Cause:** `ledger/fx.py:convert` did `int(cents * rate)`, which truncates toward zero. Account 4471 is the only EUR account, so it's the only one where the USD→EUR rate (0.9228) is ever applied — 455 entries, each losing a fraction of a cent. The dropped fractions summed to the 0.30 EUR gap; every USD-only account converts at rate 1.0 and was unaffected.
+
+**Fix:** `convert` now computes the product in `Decimal` (from the rate's exact decimal text, avoiding float representation drift) and quantizes with `ROUND_HALF_UP`, so ties round away from zero symmetrically for debits and credits.
+
+Verification:
+- `python3 -m ledger.reconcile fixtures` → `reconcile: 3200 entries posted, 0 mismatches`
+- Added `tests/test_fx.py` covering half-up, below-half, identity rate, and negative symmetry; full suite: 7 tests, OK.
+- `saga gate check` → ALL MET (G1/G2/G3); fixtures untouched.
+
+One note I did not act on: `saga gate check` flags R2 ("the output is a few thousand lines so it is hard to see anything") as uncovered. That's about reconcile's verbosity, not the defect — the per-posting lines still print for all 3200 entries. I left the output format alone since no gate requires it; say the word if you'd like a `--quiet`/summary-only flag.
+
+DONE

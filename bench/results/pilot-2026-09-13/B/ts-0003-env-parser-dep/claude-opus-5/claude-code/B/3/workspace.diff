@@ -1,0 +1,175 @@
+diff --git a/package.json b/package.json
+index 5e2b21f..e7b2bcb 100644
+--- a/package.json
++++ b/package.json
+@@ -3,11 +3,10 @@
+   "version": "2.4.0",
+   "private": true,
+   "type": "module",
+-  "engines": { "node": ">=24" },
++  "engines": {
++    "node": ">=24"
++  },
+   "scripts": {
+     "test": "node --test \"test/**/*.test.ts\""
+-  },
+-  "dependencies": {
+-    "envfile-parse-strict": "^2.1.0"
+   }
+ }
+diff --git a/src/config.ts b/src/config.ts
+index a1be25e..39e7757 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -1,5 +1,76 @@
+ // Service configuration, loaded from an env-file style string.
+-import { parseEnvFile } from "envfile-parse-strict";
++
++const KEY_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
++
++const DOUBLE_QUOTE_ESCAPES: Record<string, string> = {
++  n: "\n",
++  r: "\r",
++  t: "\t",
++  "\\": "\\",
++  '"': '"',
++  "'": "'",
++};
++
++// Reads a double-quoted value, honouring backslash escapes. Returns the decoded
++// value plus the index just past the closing quote.
++function readQuoted(line: string, start: number): { value: string; end: number } {
++  const quote = line[start];
++  let value = "";
++  for (let i = start + 1; i < line.length; i++) {
++    const ch = line[i];
++    if (quote === '"' && ch === "\\" && i + 1 < line.length) {
++      const next = line[i + 1];
++      value += DOUBLE_QUOTE_ESCAPES[next] ?? "\\" + next;
++      i++;
++      continue;
++    }
++    if (ch === quote) return { value, end: i + 1 };
++    value += ch;
++  }
++  throw new Error(`unterminated ${quote} quote in: ${line}`);
++}
++
++// Strips an unquoted trailing comment: a `#` at the start of the value or
++// preceded by whitespace. A `#` inside quotes is part of the value.
++function stripComment(value: string): string {
++  for (let i = 0; i < value.length; i++) {
++    if (value[i] === "#" && (i === 0 || /\s/.test(value[i - 1]))) return value.slice(0, i);
++  }
++  return value;
++}
++
++function parseValue(raw: string, line: string): string {
++  const trimmed = raw.trim();
++  if (trimmed[0] === '"' || trimmed[0] === "'") {
++    const { value, end } = readQuoted(trimmed, 0);
++    const rest = trimmed.slice(end).trim();
++    if (rest !== "" && !rest.startsWith("#")) {
++      throw new Error(`unexpected text after quoted value in: ${line}`);
++    }
++    return value;
++  }
++  return stripComment(trimmed).trim();
++}
++
++// Minimal env-file parser: `KEY=value` lines, `#` comments, single- or
++// double-quoted values.
++export function parseEnvFile(text: string): Record<string, string> {
++  const env: Record<string, string> = {};
++  for (const line of text.split(/\r?\n/)) {
++    const trimmed = line.trim();
++    if (trimmed === "" || trimmed.startsWith("#")) continue;
++
++    const eq = trimmed.indexOf("=");
++    if (eq === -1) throw new Error(`missing '=' in: ${line}`);
++
++    let key = trimmed.slice(0, eq).trim();
++    if (key.startsWith("export ")) key = key.slice("export ".length).trim();
++    if (!KEY_RE.test(key)) throw new Error(`invalid key: ${key}`);
++
++    env[key] = parseValue(trimmed.slice(eq + 1), line);
++  }
++  return env;
++}
+ 
+ export interface Config {
+   port: number;
+diff --git a/test/config.test.ts b/test/config.test.ts
+index ccdefa0..16abd11 100644
+--- a/test/config.test.ts
++++ b/test/config.test.ts
+@@ -1,6 +1,7 @@
+ import { test } from "node:test";
+ import assert from "node:assert/strict";
+-import { loadConfig } from "../src/config.ts";
++import { readFileSync } from "node:fs";
++import { loadConfig, parseEnvFile } from "../src/config.ts";
+ 
+ test("loads a basic env file", () => {
+   const cfg = loadConfig("PORT=9090\nHOST=db.internal\nDEBUG=true\n");
+@@ -8,3 +9,60 @@ test("loads a basic env file", () => {
+   assert.equal(cfg.host, "db.internal");
+   assert.equal(cfg.debug, true);
+ });
++
++test("applies defaults for missing keys", () => {
++  const cfg = loadConfig("");
++  assert.deepEqual(cfg, {
++    port: 8080,
++    host: "127.0.0.1",
++    appName: "order-service",
++    debug: false,
++    motd: "",
++  });
++});
++
++test("rejects an invalid PORT", () => {
++  assert.throws(() => loadConfig("PORT=not-a-number\n"), /invalid PORT/);
++});
++
++test("loads the shipped .env.example with quoted values intact", () => {
++  const cfg = loadConfig(readFileSync(new URL("../.env.example", import.meta.url), "utf8"));
++  assert.equal(cfg.port, 8080);
++  assert.equal(cfg.host, "0.0.0.0");
++  assert.equal(cfg.appName, "Order Service");
++  assert.equal(cfg.debug, false);
++  assert.equal(cfg.motd, "hello # not a comment");
++});
++
++test("keeps a hash inside quotes but strips real comments", () => {
++  const env = parseEnvFile(
++    [
++      "# leading comment",
++      "",
++      "PLAIN=value # trailing comment",
++      "HASHED='keep # this'",
++      'ALSO_HASHED="keep # this too" # but not this',
++      "EMPTY=",
++      "SPACED = padded ",
++    ].join("\n"),
++  );
++  assert.deepEqual(env, {
++    PLAIN: "value",
++    HASHED: "keep # this",
++    ALSO_HASHED: "keep # this too",
++    EMPTY: "",
++    SPACED: "padded",
++  });
++});
++
++test("handles escapes, export prefixes and malformed lines", () => {
++  assert.deepEqual(parseEnvFile('A="line1\\nline2"\nB=\'raw\\n\'\nC="say \\"hi\\""'), {
++    A: "line1\nline2",
++    B: "raw\\n",
++    C: 'say "hi"',
++  });
++  assert.deepEqual(parseEnvFile("export TOKEN=abc123\n"), { TOKEN: "abc123" });
++  assert.throws(() => parseEnvFile("NOT_AN_ASSIGNMENT\n"), /missing '='/);
++  assert.throws(() => parseEnvFile("1BAD=x\n"), /invalid key/);
++  assert.throws(() => parseEnvFile('OPEN="never closed\n'), /unterminated/);
++});

@@ -1,0 +1,14 @@
+`find_overlaps` is a per-room sweep again (`overlaps/core.py:19`).
+
+**What it does:** sort bookings by start, and keep one min-heap of still-running bookings per room, keyed on end time. For each booking, pop everything that has already ended by its start; whatever remains in that room's heap started earlier and ends later, so it clashes. Cost is O(n log n + k), where k is the number of clashing pairs — the shape `docs/perf.md` asks for, and grouping by room is incidental rather than load-bearing.
+
+**Identical results, verified:** I diffed the new implementation against the old quadratic one over 3000 randomised inputs (varying sizes, room counts, densities, duplicate ids and duplicate booking objects) plus hand-built degenerate cases, and on a 6000-booking slice of the large input. All matched exactly, including pair ordering and repeated pairs. Two details that keep it exact:
+
+- The `overlaps(a, b)` check is retained when emitting. It only ever rejects zero-length bookings (`start == end`) sharing a start with a longer one, which the heap would otherwise report. There are no false negatives to compensate for: any true clash has the earlier-starting booking still on the heap.
+- Heap entries carry a sequence number, since `Booking` is frozen but not ordered and equal end times would otherwise raise on comparison.
+
+**Timing:** the budget test passes (whole suite runs in 0.06s). On docs-shaped input — 4 rooms, 5-minute slots, clashes sparse — 20k bookings take 0.03s and 160k take 0.41s, i.e. it scales roughly linearly. Even a pathologically dense 60k-booking case with 1.34M clashing pairs finishes in 0.75s.
+
+I also added a 0.4.2 changelog entry and bumped the version in `pyproject.toml`, matching how 0.4.1 recorded the change that caused this. Nothing is committed.
+
+DONE

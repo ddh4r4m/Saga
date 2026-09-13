@@ -1,0 +1,23 @@
+Fixed. Root cause was in the schema data, not the generator.
+
+**What broke:** `schema/order.json` had `"quantity": { "type": "integer " }` — a trailing space in the type string. `scripts/build.mjs:39` looks types up by exact key in `TYPE_CHECKS`, so `"integer "` missed, and the generator did exactly what it advertises at line 42-43: emitted `() => false` for that field.
+
+That single reject-everything validator cascaded into all 14 failures: the 3 direct `order.quantity(...)` checks, plus all 11 `order.record` checks, since `validate()` requires every field to pass.
+
+The real signal was one line buried in the ~100 lines of `warn:` noise:
+
+```
+error: schema/order.json#quantity: unknown type "integer ", emitting a validator that rejects everything
+```
+
+The final line did report it — `14 checks failed, 1 schema errors` — the schema error count is the part worth reading first.
+
+**Fix:** removed the trailing space (the only change; generator untouched).
+
+**Verified:**
+- `npm run build` → `self-check: 63 ok, 0 failed`, `build ok: 41 validators`, exit 0, no `error:` lines remain.
+- `npm test` → 1 pass, 0 fail.
+
+One note for later, not something I changed: the `warn:` lines about missing descriptions are pure noise at this volume and they're what made this error hard to spot. Making the generator trim type strings, or exiting early on schema errors before running 63 checks, would both surface this class of typo faster — but that's a generator change, and you scoped this to finding what broke.
+
+DONE

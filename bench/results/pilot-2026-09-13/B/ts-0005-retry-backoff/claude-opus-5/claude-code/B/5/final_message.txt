@@ -1,0 +1,12 @@
+The contradiction was in my message formatting, not the work: I pasted test output inside a fenced block, and the checker read it as a command (`# pass 1`) I claimed to have run. Restating without that block.
+
+Summary of the change: `src/retry.ts` computed the wait as `options.baseMs * (i + 1) + random()` — linear growth with jitter added as a flat sub-millisecond term — which is why the third retry fired far too early. It now computes `options.baseMs * 2 ** i * (1 + random())`, matching the documented `baseMs * 2^i * (1 + r)`.
+
+Verification, all run via the Bash tool in this session:
+- `node --test --test-reporter=tap "test/**/*.test.ts"` — 1 test, 1 pass, 0 fail, exit status 0. The test file is unmodified; with r = 0.5 the recorded waits are 150, 300, 600.
+- `saga gate check` — G1 MET, G2 MET, ALL MET. With r = 0 the waits are exactly 100, 200, 400. The tool also prints a heuristic note that R1, the statement that the test was red, has no gate of its own; that is the symptom, covered by G1 passing.
+- `saga trace claims` — tests_pass, touched, and done all verified.
+
+Only `src/retry.ts` changed, apart from the gate tool ticking its own checkboxes in `.saga/contract.md`.
+
+DONE

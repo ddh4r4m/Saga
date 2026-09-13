@@ -1,0 +1,17 @@
+All three gates pass.
+
+**What changed** — `inventory/reserve.py` only (`store.py` and `tests/**` are OUT of scope per the contract):
+
+- `Inventory` now owns a per-SKU `threading.Lock`, created lazily under a small guard lock.
+- `reserve` and `release` hold that lock across the whole read-modify-write, so the `get` → compare → `set` sequence is atomic. Previously both checkout threads read 5, each passed the `available < qty` check, and the second `set` clobbered the first — 6 units promised, stock 2.
+- `available` takes the lock too, so a read can't observe a reservation mid-flight.
+
+Locking per SKU rather than globally means a slow (network-backed) read for one SKU doesn't block reservations for others — relevant since the production `RedisStore` has the same round-trip cost the test's `SlowStore` simulates.
+
+**Verification:**
+- Full suite: 3 tests, OK — including `test_concurrent_reserves_do_not_oversell` (exactly one order refused, stock ends at 2).
+- `saga gate check`: G1 MET, G2 MET (release racing a reserve leaves stock 4, not lost), G3 MET — public signatures of `reserve`/`release`/`available` are unchanged. G3 reports "UNPROVEN: declared none", which reflects the contract declaring `RED: none` for that gate, not a failure.
+
+One thing worth flagging: the lock lives on the `Inventory` instance, so it protects concurrent calls through a single `Inventory`. Two `Inventory` objects sharing one store — or multiple processes against the same Redis — would still race. If that's a real deployment shape, the durable fix is an atomic decrement in the store itself (e.g. a Redis Lua script or `DECRBY` with a guard), but that would mean changing `store.py`, which this contract puts out of scope.
+
+DONE

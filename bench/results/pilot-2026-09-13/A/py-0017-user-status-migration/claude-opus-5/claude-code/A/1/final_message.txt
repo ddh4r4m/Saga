@@ -1,0 +1,13 @@
+All four tests in `tests/test_users.py` pass.
+
+**What changed:**
+
+- `app/db.py:19` — appended migration `3`, an `ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','disabled'))`. Migrations 1 and 2 are untouched, so the change is additive and append-only per the README's rule. The default backfills every pre-existing row to `active`, and the CHECK plus NOT NULL means no third value can ever land in the column — I verified both guards reject `'suspended'` and `NULL` at the DB level, and that a database already at v2 with rows migrates forward with those rows active.
+- `app/users.py` — added `set_status(conn, user_id, status)`, which validates against `STATUSES` before writing and returns `False` when no such user exists. `list_users` grew a `disabled: bool = False` keyword that filters to disabled users only; the default call is unchanged.
+- `app/seed.py:13` — the insert now names `status` and uses `r.get("status", "active")`. `data/seed.json` is not edited: the current export has no status field, so every seeded user comes in active, and if ops' export job later starts emitting one it will be honored rather than crashing the loader.
+- `app/cli.py` — added `disable <id>` (prints the updated user, exits 1 with `no user <id>` if absent) and `list --disabled`. `format_user` appends `  [disabled]` for disabled users and leaves output for active users byte-identical to before.
+- `README.md` — documented the new CLI surface and the status invariant.
+
+One thing to flag: `python3 -m app.cli` builds a fresh in-memory database and re-seeds on every invocation, so a `disable` from one process is not visible to the next — the command works, but nothing persists across runs. That's pre-existing behavior in `main()`, and wiring up a real database path looked outside what you asked for, so I left it alone.
+
+DONE

@@ -1,0 +1,18 @@
+`add` now rejects non-positive and non-whole quantities, following the conventions in `CONTRIBUTING.md`:
+
+- `src/errors.ts:5` — registered `E_BAD_QTY: "quantity must be a positive whole number"` in `ERROR_CODES`, so `fail` accepts it.
+- `docs/errors.md:8` — documented the code with its message and when it fires.
+- `src/commands/add.ts:8` — two guards via `fail`, each naming what was wrong and echoing the value: `quantity must be a whole number, got 1.5` and `quantity must be 1 or more, got 0`. Both are placed after the SKU check so an unknown SKU still reports first, and `add` stays a pure function that prints nothing.
+
+Verified:
+
+- `npm test` — 3/3 pass, including the two previously failing cases.
+- Through the CLI: `0`, `-3`, `1.5`, `abc` (arrives as `NaN`) and an empty argument all print `error E_BAD_QTY: ...` on stderr and exit 2; `add SKU-1 2` still succeeds with exit 0.
+
+Two things worth flagging rather than changing unasked:
+
+- A non-numeric argument like `abc` reports `got NaN`, not `got "abc"`, because `src/cli.ts:9` does the `Number()` conversion before `addItem` sees it. Fixing that would mean either validating the raw string in `cli.ts` or widening `addItem`'s signature; say the word if the desk needs the original text echoed.
+- `1e3` is accepted as 1000 — it is a positive whole number, so this is consistent with the rule as stated.
+- Pre-existing and untouched: `tsc --noEmit` reports `Cannot find name 'process'` in `cli.ts` since the repo has no `@types/node` (and no new dependencies are allowed).
+
+DONE

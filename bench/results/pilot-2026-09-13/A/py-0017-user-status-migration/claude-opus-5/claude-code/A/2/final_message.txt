@@ -1,0 +1,16 @@
+All four tests in `tests/test_users.py` pass.
+
+**What changed:**
+
+- `app/db.py:19` — new append-only migration `3`: `ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','disabled'))`. Migrations 1 and 2 are untouched. The default backfills every pre-existing row as `active`, and the CHECK constraint is what keeps the column to exactly those two values — I verified a v2 database with 12 rows upgrades to v3 with all rows active, and that a raw `UPDATE` to any other value is rejected by sqlite.
+- `app/users.py` — `set_status(conn, user_id, status)` validates against `STATUSES` (raises `ValueError` on anything else) and returns `False` when no such user exists, which is what the CLI uses to report a bad id. `list_users(conn, disabled=False)` filters to `status = 'disabled'` when `disabled=True`.
+- `app/seed.py` — `data/seed.json` is unmodified and loads exactly as-is: the loader inserts the four columns it always did and lets the schema default make those users active. If a future ops export grows a `status` key, it's carried through; unknown keys are still ignored.
+- `app/cli.py` — added `disable <id>` and `list --disabled`, with usage text updated.
+- `README.md` — documented the new commands and the status column.
+
+Two judgment calls worth flagging:
+
+- Plain `list` still prints all users, including disabled ones; only `--disabled` filters. You asked for a `disabled=True` filter, so I kept the default behavior of `list`/`list_users` unchanged rather than silently hiding disabled users from the existing command.
+- I left `format_user` alone, so `list` and `show` don't display the status. Adding it would change output that existing callers may parse; say the word if you'd like status in the output.
+
+DONE

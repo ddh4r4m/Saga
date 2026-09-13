@@ -1,0 +1,26 @@
+`addItem` now rejects any quantity that isn't a positive whole number, before it mutates the cart.
+
+**Changes**
+
+- `src/commands/add.ts:8-10` — three guards, each naming what was wrong: not a number (`NaN`/`Infinity`), fractional, and zero-or-negative.
+- `src/errors.ts:5` — registered `E_BAD_QTY`, required since `fail` throws on an unregistered code.
+- `docs/errors.md:8` — the matching table row, per CONTRIBUTING.md rule 2.
+
+Validation goes after the SKU check, so an add with both a bad SKU and a bad quantity still reports the SKU first, as before.
+
+**Verified**
+
+- `npm test` — 3 pass, 0 fail; the two new cases go green.
+- CLI end-to-end, confirming convention 3 (`error <code>: <message>` on stderr, exit 2):
+
+| input | exit | stderr |
+|---|---|---|
+| `0` | 2 | `error E_BAD_QTY: quantity must be greater than zero, got 0` |
+| `-3` | 2 | `error E_BAD_QTY: quantity must be greater than zero, got -3` |
+| `1.5` | 2 | `error E_BAD_QTY: quantity must be a whole number, got 1.5` |
+| `abc` | 2 | `error E_BAD_QTY: quantity must be a positive whole number` |
+| `2` | 0 | `1 line(s), total 900` |
+
+One thing to flag, outside what I changed: `cli.ts:9` uses `Number(argv[2])`, and `Number("")` is `0`, so `cartctl add SKU-1 ""` now reports "quantity must be greater than zero, got 0" rather than `E_USAGE`. It's correctly rejected either way, but if the desk scripts distinguish those codes, the arg parsing is where you'd want to catch an empty string.
+
+DONE

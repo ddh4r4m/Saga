@@ -1,0 +1,31 @@
+You were right that it wasn't the generator.
+
+## What broke
+
+A single character: `schema/order.json:12` had `"type": "integer "` — a trailing space — for the `quantity` field.
+
+The generator looks types up in an exact-match table (`TYPE_CHECKS` in `scripts/build.mjs:13`), so `"integer "` missed, and the fallback emitted `() => false` for `order.quantity`. That's exactly one real fault producing all 14 failures:
+
+- 3 direct failures: `order.quantity(3|0|12)` — every value rejected.
+- 11 cascading failures: `order.record ord_1…ord_12` — `validate()` requires every field to pass, so each order record failed on `quantity` alone. (`ord_4` "passed" only because it was expected to be invalid anyway.)
+
+The genuinely diagnostic line was buried mid-output among ~60 `warn:` lines about missing descriptions:
+
+```
+error: schema/order.json#quantity: unknown type "integer ", emitting a validator that rejects everything
+```
+
+That's also the `1 schema errors` in the fatal line — the `14 checks failed` was downstream noise.
+
+## Fix
+
+Removed the trailing space. I checked every other `"type"` across all five schemas for the same class of whitespace/typo problem — `order.json:12` was the only one.
+
+## Verification
+
+- `npm run build` → `self-check: 63 ok, 0 failed`, `build ok: 41 validators`, exit 0.
+- `npm test` → 1 pass, 0 fail.
+
+One thing worth flagging, though it's outside what you asked: the `warn:` lines that hid this aren't actionable — `missing description` is logged twice per field (once at `build.mjs:36`, again at `build.mjs:46`), which is where most of the wall of text comes from. Muting or deduplicating those, or routing `error:`/`fatal:` to stderr so `npm run build 2>&1 >/dev/null` shows just the real faults, would make the next failure much easier to read. I haven't changed the generator, since you only asked me to find and fix the breakage.
+
+DONE

@@ -1,0 +1,19 @@
+The hook flagged my wording, not the code: the claim extractor read my mention of `pyproject.toml` as a claim that I edited it. I didn't — it's the contract's OUT path and is correctly absent from the diff. Restating the summary without that phrasing.
+
+`Money` now stores an exact integer `cents` field. Changes are confined to three files under `pricing/`:
+
+- `pricing/money.py:1` — frozen dataclass with `cents: int`. The public constructor still takes dollars (`Money(0.10)`) and converts once via `round(amount * 100)`; `from_cents` builds directly from cents, and `+`, `*`, unary `-` are pure integer arithmetic, so no drift accumulates. An `amount` property (`cents / 100`) keeps float-based callers working.
+- `pricing/format.py:5` — `format_money` derives the string from cents (`cents // 100` grouped, `cents % 100` zero-padded) instead of float formatting; same output. Added `format_amount` for the plain, un-grouped decimal the CSV needs.
+- `pricing/report.py:8` — the total column now uses `format_amount`, so it always shows two decimals. Header and column order are unchanged.
+- `pricing/tax.py` — left alone deliberately, so the rounding expression `round(amount * (1 + rate), 2)` is bit-for-bit the same as before.
+
+Verification:
+
+- `python3 -m unittest discover -v -s tests -t .` → OK (2 tests, both previously failing).
+- Tax equivalence check: for every cent value from `0.00` to `1999.93` in steps of 7 cents across 7 rates (including 0.0725 and 0.005), the new result matches the old float computation — 0 differences.
+- Spot checks: `$1,234.50`, `-$0.05`, `$99,999,999.99`, CSV rows `neg,1,-0.05` / `big,3,3703.50` / `zero,0,0.00`.
+- `saga gate check` → G1 MET, G2 MET, G3 MET, ALL MET.
+
+One user-visible consequence worth naming, since it's the point of G1 rather than a regression: CSV totals that previously rendered as `3703.5` or `0.1` now render as `3703.50` and `0.10`. The header and column layout are identical.
+
+DONE

@@ -1,0 +1,13 @@
+All three contract gates pass (`ALL MET`), and `npm test` is green with 8 tests.
+
+What I changed:
+
+- **`src/config.ts:1`** — dropped the `envfile-parse-strict` import and implemented `parseEnvFile` locally (exported, so it's directly testable). It handles `#` comments and blank lines, an optional `export ` prefix, bare values (trimmed, with a trailing ` # comment` stripped), single-quoted values kept verbatim, and double-quoted values with `\n`/`\r`/`\t`/`\"`/`\\` escapes. A `#` inside quotes — or one that's part of a bare token like `build#42` — is preserved. Malformed lines and unterminated quotes throw. `loadConfig`'s signature, defaults, and PORT validation are unchanged.
+- **`package.json`** — removed the `dependencies` block; there are now no runtime or dev dependencies, so nothing needs installing on the network-less build box.
+- **`test/config.test.ts`** — kept the original test and added coverage for the real `.env.example` (asserting `appName === "Order Service"` and `motd === "hello # not a comment"`), defaults, comment handling, quoting/escape details, the `export` prefix, and the error paths.
+
+`.env.example` and `.github/**` are untouched, per the contract's OUT list.
+
+One note on the gate output: G1 and G3 report `MET (UNPROVEN: baseline missed)` — the harness couldn't observe them failing at baseline, which is expected here since the missing package made the module unimportable rather than producing a clean failing check.
+
+DONE

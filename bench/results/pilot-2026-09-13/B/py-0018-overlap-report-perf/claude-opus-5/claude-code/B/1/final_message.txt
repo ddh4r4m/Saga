@@ -1,0 +1,5 @@
+The gates were marked stale, not failing: my post-check timing runs rewrote `__pycache__`, which changed the tree after the recorded check. Re-running `saga gate check` on the current tree gives G1, G2, G3 all MET, and `saga gate status` now agrees — ALL MET, 0 unmet.
+
+The code result is unchanged from my previous message: `find_overlaps` is a per-room sweep in `overlaps/core.py`, tests pass (4/4 OK, budget test well under its 2s limit), and 600 randomized differential cases against the old pairwise implementation match exactly.
+
+DONE

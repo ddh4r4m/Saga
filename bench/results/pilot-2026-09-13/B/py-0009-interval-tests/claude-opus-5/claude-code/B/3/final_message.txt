@@ -1,0 +1,17 @@
+Done. `tests/test_intervals.py` has 21 tests covering every documented behaviour:
+
+- **Merging:** overlapping, touching at a point (`(1,3)+(3,5) → (1,5)`), chains of overlaps, disjoint left alone, gap-of-one not merged.
+- **Containment:** inner interval doesn't shrink the outer one (given either order), shared starts keep the widest end.
+- **Ordering:** unsorted input merged and returned sorted by start.
+- **Edge cases:** empty list, single interval, degenerate `(4,4)` point, negative/mixed bounds.
+- **Purity:** input list not mutated, result is a distinct list of 2-tuples.
+- **Validation:** `ValueError` when `start > end`, including when the bad interval is last, with input left intact.
+
+Verification:
+- `python3 -m unittest discover -v -s tests -t .` → `Ran 21 tests ... OK`
+- `saga gate check` → `ALL MET` (G1, G2, G3; G3 confirms `intervals.py` is untouched). The two `UNPROVEN` notes are saga's red-proof bookkeeping, not failures — G2's check is a static grep over test names, so no mutation of the implementation can make it go red.
+- Since G2 is flagged `RED: mutation`, I ran my own mutation test against a throwaway copy of the module: 8 mutations (touching-not-merged, dropped `max`, dropped `sorted`, dropped validation, off-by-one merge, wrong start kept, returning the input, mutating the input) were all caught by the suite.
+
+Two notes: the scratch copy at `/tmp/mut-check` is still there — `saga guard` blocked the `rm -rf` cleanup, so remove it yourself if you want. And new `__pycache__/` dirs are untracked in the repo root and `tests/`.
+
+DONE

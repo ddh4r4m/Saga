@@ -1,0 +1,7 @@
+Fixed in `src/retry.ts:27`, a one-line change.
+
+**The bug:** the wait was `baseMs * (i + 1) + random()` — linear growth (`i + 1` instead of `2^i`), with the jitter *added* as a raw fraction of a millisecond instead of applied as a multiplier. With `baseMs: 100` that produced `[100.5, 200.5, 300.5]`, so the third retry fired at ~300ms against the gateway instead of the documented ~600–1200ms.
+
+**The fix:** `baseMs * 2 ** i * (1 + random())`, matching the README and the header comment that were already in the file. Test file untouched; `npm test` passes.
+
+DONE

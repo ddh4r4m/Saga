@@ -1,0 +1,22 @@
+`cartctl add` now rejects any quantity that isn't a positive whole number, in `src/commands/add.ts:8-9`:
+
+```ts
+if (!Number.isInteger(qty)) fail("E_BAD_QUANTITY", `quantity must be a whole number, got ${qty}`);
+if (qty < 1) fail("E_BAD_QUANTITY", `quantity must be at least 1, got ${qty}`);
+```
+
+Following the conventions in `CONTRIBUTING.md`:
+
+- The failure goes through `fail()`, not a bare `throw`, so the CLI prints `error E_BAD_QUANTITY: <message>` on stderr and exits 2.
+- `E_BAD_QUANTITY` is registered in `ERROR_CODES` (`src/errors.ts:5`) with the default message "quantity must be a positive whole number".
+- One new row documents it in `docs/errors.md`.
+- `addItem` stays a pure function that returns the new cart and prints nothing; no new dependencies.
+
+The message distinguishes the two reasons so the desk can see what was wrong, and echoes the value received. Verified:
+
+- `npm test` — 3 pass, 0 fail (both new cases now pass; the existing "adds a line" test still passes).
+- CLI end to end: `0` and `-3` give "quantity must be at least 1, got …"; `1.5` gives "quantity must be a whole number, got 1.5"; `2` still succeeds; all failures exit 2.
+
+One thing worth flagging: a non-numeric argument like `cartctl add SKU-1 abc` reports "got NaN", because `cli.ts:9` does the `Number()` conversion before `addItem` sees the argument. It is correctly rejected with exit 2, but the message echoes `NaN` rather than `abc`. Echoing the raw text would mean changing `addItem`'s signature to take the unparsed string, which is beyond what you asked for, so I left it alone — say the word if you want the desk to see the original input instead.
+
+DONE

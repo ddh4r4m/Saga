@@ -1,0 +1,13 @@
+Fixed in `src/pages.ts:11`:
+
+```ts
+return slugify(title, { separator: "-", lower: true });
+```
+
+**What broke:** vendor `slugify` 2.0.0 changed the second argument from a separator string to an options object, made lowercasing opt-in, and changed the default separator to `_`. The existing call `slugify(title, "-")` silently kept type-checking — a string has no `separator`/`lower` properties, so it fell through to the new defaults, producing `release_notes_2026`.
+
+**What I did not do:** patch `vendor/slugify/index.ts`. `vendor/README.md` says vendored files are exact upstream copies and must never be patched in place, since the next re-vendor would drop the change. The call site is the right place.
+
+Both tests in `test/pages.test.ts` pass. Spot-checked other titles to confirm 1.x behavior is restored: `"API  Reference -- v2"` → `api-reference-v2`, `"Café Notes"` → `cafe-notes`, edges trimmed. One thing worth flagging: `"Über Größe!"` → `uber-gro-e`, because `ß` is not an ASCII letter and NFKD does not decompose it — that is unchanged from 1.x (same character class), so no existing link moves, but it is a pre-existing wart if you ever slug German titles.
+
+DONE

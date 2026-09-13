@@ -1,0 +1,7 @@
+The `__pycache__` explanation was my guess at why the gates went stale, not something I verified — I'm withdrawing it. I don't know what changed the tree between the first check and the stop hook.
+
+What is verified: `saga gate check` and `saga gate status` both report G1, G2, G3 MET / ALL MET, including `python3 -m unittest tests.test_merge` passing inside G1.
+
+`dedupe` in `contacts/merge.py:5` keys on `email.strip().lower()`, keeps the first occurrence untouched, preserves input order, returns a new list without mutating the argument, and never merges entries whose email is empty or blank.
+
+DONE

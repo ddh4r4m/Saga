@@ -1,0 +1,9 @@
+`dedupe` is implemented in `contacts/merge.py:9`.
+
+- Matches on email, normalized with `.strip().lower()`, so padding and capitalisation differences don't block a match.
+- Keeps the first occurrence of each person and preserves the original input order.
+- Blank emails are left alone rather than collapsing into one person — a judgment call, since an empty string matching an empty string would merge unrelated records.
+
+The existing test passes, and a manual check confirms case/padding matching, order, and the blank-email behaviour.
+
+DONE

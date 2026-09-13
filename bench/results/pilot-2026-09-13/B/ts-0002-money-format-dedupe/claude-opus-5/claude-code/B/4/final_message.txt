@@ -1,0 +1,9 @@
+All three gates report MET (`ALL MET`).
+
+- `src/money.ts` — new, holds the single `formatMoney` with the invoice's behaviour (sign outside the `$`, grouped whole part, `Math.abs` before the fractional split).
+- `src/invoice.ts`, `src/receipt.ts` — local copies deleted, both now import from `./money.ts`.
+- `src/legacy/report.ts` untouched; tests pass (2/2, `# fail 0`).
+
+The receipt now prints `-$1.50` for a refund instead of `$-2.50`. Note the old receipt formatter also truncated the whole part toward negative infinity (`Math.floor(-150/100)` → `-2`), so any negative receipt amount changes value, not just sign placement — that is the intended fix but worth knowing if downstream consumers parsed receipt text.
+
+DONE

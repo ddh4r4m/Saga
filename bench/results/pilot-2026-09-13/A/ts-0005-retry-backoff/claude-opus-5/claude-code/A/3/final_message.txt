@@ -1,0 +1,16 @@
+Test passes. The test file is untouched — only `src/retry.ts:27` changed.
+
+```
+const wait = options.baseMs * 2 ** i * (1 + random());
+```
+
+The waits now follow the README's `baseMs * 2^i * (1 + r)`. With the test's fixed `r = 0.5` and `baseMs = 100`, that gives `[150, 300, 600]` instead of the old near-linear `[100.5, 200.5, 300.5]`.
+
+On the concrete symptom you reported: the third retry was firing at ~300ms instead of ~600–1200ms, and the gap only widens with more attempts, so the gateway got hit far sooner than intended. The old jitter term was also `+ random()` — a raw addend under 1ms, which was effectively no jitter at all. Retries against the gateway were therefore near-synchronised across callers, not just too fast. The multiplicative form fixes both, spreading each wait across `[baseMs * 2^i, baseMs * 2^(i+1))`.
+
+Two things I did not change, since they're outside what you asked for but worth knowing:
+
+- There's no cap on the wait, so high `attempts` values grow unboundedly (attempt 10 waits ~51–102s). If the gateway team wants a ceiling, that needs a `maxMs` option and a test to pin it.
+- The default `random` is `Math.random`, unseeded, which is fine for jitter but means production waits aren't reproducible in logs.
+
+DONE

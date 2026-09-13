@@ -1,0 +1,5 @@
+`dedupe` in `contacts/merge.py:6` keys on `email.strip().lower()`, keeps the first occurrence unchanged, skips later matches, and passes blank-email entries through unmerged. It builds a new list, so the input isn't mutated.
+
+I also added three tests in `tests/test_merge.py` covering case/padding, blank emails, and order/non-mutation. All 4 tests pass and `saga gate check` reports G1–G3 MET (ALL MET). The two "uncovered (heuristic)" lines are just R1/R2 restating the task premise; they have no CHECK in the contract.
+
+DONE

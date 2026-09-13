@@ -1,0 +1,36 @@
+## What happened
+
+The job log pinpoints it — one skipped row cascaded into the reconcile failure:
+
+```
+1331: WARN  parse: nordic.csv row 517: unit_price '3\xa0868.13' rejected; row skipped
+1627: ERROR reconcile: vendor nordic: manifest says 812 rows / 7855114.39,
+             imported 811 rows / 7797092.44; aborting
+```
+
+Nordic writes thousands separators with a **no-break space** (U+00A0): `3 868.13`. `parse_price` in `importer/parse.py:25` stripped only commas, so `Decimal()` rejected the value, the row was skipped, and the vendor came up one row short. The arithmetic confirms it's exactly that row and nothing else: 7855114.39 − 7797092.44 = 58021.95 = 15 × 3868.13, matching the row's qty.
+
+The parser's own docstring already declared the intended behavior — *"a comma, a space or a no-break space, so all of those have to be ignored"* — so the code simply didn't match its contract.
+
+## The fix
+
+`importer/parse.py` only, one line of logic:
+
+```python
+_THOUSANDS_SEPARATORS = str.maketrans("", "", ",\N{SPACE}\N{NO-BREAK SPACE}")
+...
+cleaned = text.strip().translate(_THOUSANDS_SEPARATORS)
+```
+
+I used `\N{...}` escapes rather than a literal no-break space so the character is visible in source. I kept the accepted set to exactly the three separators the docstring declares rather than broadening to all Unicode whitespace — anything else still raises `ParseError`.
+
+Scoped as required: the reconcile check in `job.py` is untouched and still exact (`imported != rows or total != Decimal(total)`), and no fixture, manifest, log, or test file was modified — `git status` shows `importer/parse.py` as the only change.
+
+## Verification
+
+- `python3 -m unittest -v tests.test_import` — 4 tests, **OK**; the nightly fixture now imports with rc 0, all four vendors reconciling.
+- `saga gate check` — **ALL MET** (G1, G2, G3). G2 independently confirms strictness held: perturbing a manifest row count in a temp copy still returns rc 1.
+
+The "UNPROVEN: declared none" notes on G2/G3 and the heuristic R1 line are pre-existing contract bookkeeping (both were already checked off with `RED: none`), not new failures.
+
+DONE

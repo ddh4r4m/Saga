@@ -1,0 +1,5 @@
+test_o1 PASS
+test_o2 FAIL
+test_o3 FAIL
+--- exit 1
+--- integrity ok

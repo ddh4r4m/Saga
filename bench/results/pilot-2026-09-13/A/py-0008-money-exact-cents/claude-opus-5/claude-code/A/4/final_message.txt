@@ -1,0 +1,14 @@
+`Money` now stores an integer `cents` instead of a float `amount`. Both previously-failing tests pass.
+
+**What changed**
+
+- `pricing/money.py:1` — `Money` is no longer a float dataclass. It still takes dollars (`Money(0.10)`), but converts once to whole cents via `Decimal(str(...))` + `ROUND_HALF_UP`, so `0.10` becomes exactly `10`. Addition, multiplication and negation are integer ops, so totals can't drift and `cart_total(...) == Money(0.30)` is True. It stays immutable and hashable. `.amount` remains as a float property for callers that want a plain number, plus `from_cents()` and `to_decimal()` for exact work.
+- `pricing/format.py:6` — formats from `cents` via `divmod` so the grouped two-decimal output is exact rather than going through a float.
+- `pricing/report.py:8` — writes the line total as an exact two-decimal value.
+- `pricing/tax.py` — untouched; `round(subtotal.amount * (1 + rate), 2)` keeps the same float rounding you had.
+
+**Verification**: against the old implementation over ~20,000 random amounts plus edge cases (zero, negatives, millions, sub-cent), `format_money` output is byte-identical and `apply_tax` results match at every rate tested — 0 differences.
+
+**One visible CSV consequence to flag**: the total column is now always two decimals, so a line that used to print `3.0` prints `3.00`. That's what the drift fix requires (it's also what `test_csv_has_two_decimals` asserts with `0.30`), and the columns and ordering are unchanged — but if finance parses that column as a literal string anywhere, that's the one thing that differs.
+
+DONE

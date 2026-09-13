@@ -1,0 +1,216 @@
+{
+  "bench_path": [
+    "/var/folders/yb/b_617z_s2ml933nmr_k7m47m0000gn/T/saga-bench-3578220652/ts-0015-slugify-api-drift/3/cfg/shim",
+    "SAGA_MASK_HOME/.saga/bench/bin/d9dbc07d8f1b2a3e",
+    "/opt/homebrew/bin",
+    "/usr/bin",
+    "/bin",
+    "/usr/sbin",
+    "/sbin"
+  ],
+  "blocks": [
+    "path-shim:saga",
+    "settings:no-saga-hooks-but-safety",
+    "settings:no-mcp",
+    "sentinel:.saga"
+  ],
+  "blocks_detail": [
+    {
+      "block": "path-shim:saga",
+      "count": 0,
+      "instrumentation": "blocked_reach_attempts",
+      "surface": "cli_binary"
+    },
+    {
+      "block": "settings:no-mcp",
+      "instrumentation": null,
+      "instrumentation_reason": "no MCP server is registered in the generated settings or the private config dir, so there is nothing to connect to and no attempt to log",
+      "surface": "mcp_server"
+    },
+    {
+      "block": "settings:no-saga-hooks-but-safety",
+      "block_reason": "the generated settings carry no Saga hook in a bare arm; the one exception is the deny-only safety hook of docs/12 row 6, registered with the same command string in both arms so it is never a treatment",
+      "count": 0,
+      "instrumentation": "guard_denies",
+      "surface": "hooks"
+    },
+    {
+      "block": "sentinel:.saga",
+      "instrumentation": "sentinel",
+      "sentinel": "present",
+      "sentinel_open_count": null,
+      "sentinel_open_count_reason": "no audit log on host",
+      "surface": "files"
+    },
+    {
+      "block": "none",
+      "block_reason": "the bare arm's prompt is prompt.md plus the protocol sentence; prompt_hash records it",
+      "instrumentation": "prompt_hash",
+      "surface": "prompt_text"
+    }
+  ],
+  "config_hash": "sha256:560b246dbf9dedf651dcf958028035e27b45979e3cae6bdbddde615a57738ca4",
+  "context": {
+    "compaction": "auto",
+    "compaction_threshold": null,
+    "compaction_threshold_reason": "not exposed by harness",
+    "rewind": null,
+    "rewind_reason": "not exposed by harness",
+    "window": null,
+    "window_reason": "not exposed by harness"
+  },
+  "env_vars": {
+    "CI": "1",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "CLAUDE_CODE_OAUTH_TOKEN": "\u003credacted\u003e",
+    "CLAUDE_CONFIG_DIR": "/var/folders/yb/b_617z_s2ml933nmr_k7m47m0000gn/T/saga-bench-3578220652/ts-0015-slugify-api-drift/3/cfg/claude-config",
+    "DISABLE_AUTOUPDATER": "1",
+    "DISABLE_ERROR_REPORTING": "1",
+    "DISABLE_TELEMETRY": "1",
+    "HOME": "/var/folders/yb/b_617z_s2ml933nmr_k7m47m0000gn/T/saga-bench-3578220652/ts-0015-slugify-api-drift/3/cfg/home",
+    "LANG": "en_US.UTF-8",
+    "LOGNAME": "dharamdhurandhar",
+    "PATH": "\u003credacted\u003e",
+    "SAGA_APPROVAL_DIR": "SAGA_MASK_HOME/.saga/bench/approved/fc22a4d4e333155c972173462beeb09e8bab56e6fd4045bd897676ad80feb521",
+    "SAGA_GUARD_LOG": "/var/folders/yb/b_617z_s2ml933nmr_k7m47m0000gn/T/saga-bench-3578220652/ts-0015-slugify-api-drift/3/cfg/guard.jsonl",
+    "SHELL": "/bin/zsh",
+    "TERM": "xterm-256color",
+    "TMPDIR": "/var/folders/yb/b_617z_s2ml933nmr_k7m47m0000gn/T/",
+    "USER": "dharamdhurandhar"
+  },
+  "harness": {
+    "binary_sha256": "sha256:553d1b9e9e7068b275c0a783c7e139ff6503096f286e674c8c919379fb0eca62",
+    "name": "claude-code",
+    "version": "2.1.266"
+  },
+  "harness_cost_usd": 0.158667,
+  "hooks": [
+    {
+      "command": "/tmp/saga-pilot-20260913-082413/bin/saga guard hook claude-code PreToolUse",
+      "deviation_from_bare": true,
+      "deviation_reason": "docs/12 row 5 takes the worktree substitute for containers, so the agent runs on the owner's machine; the deny-only safety hook runs with the same command string in the gate arm, so it cannot be the treatment",
+      "event": "PreToolUse",
+      "role": "safety",
+      "script_sha256": "sha256:d9dbc07d8f1b2a3ef9445dff71d9e73f9d7dc8dcd694f5d19bfd54893a4fcdd7"
+    }
+  ],
+  "host": {
+    "arch": "arm64",
+    "image_digest": null,
+    "image_digest_reason": "worktree isolation: no image",
+    "os": "darwin"
+  },
+  "instructions": {
+    "AGENTS.md_sha256": null,
+    "AGENTS.md_sha256_reason": "no AGENTS.md in the workspace",
+    "CLAUDE.md_sha256": null,
+    "CLAUDE.md_sha256_reason": "no CLAUDE.md in the workspace"
+  },
+  "limits": {
+    "max_turns": 200,
+    "on_limit": "wait",
+    "usd": 0.6000000000000001,
+    "wall_s": 900
+  },
+  "mcp_servers": [],
+  "model": {
+    "fingerprint": null,
+    "fingerprint_reason": "not exposed by harness",
+    "id": "claude-opus-5",
+    "reasoning_effort": null,
+    "reasoning_effort_reason": "not exposed by harness",
+    "seed": null,
+    "seed_reason": "claude -p has no seed parameter",
+    "seed_supported": false,
+    "snapshot": null,
+    "snapshot_reason": "not exposed by harness",
+    "temperature": null,
+    "temperature_reason": "not exposed by harness"
+  },
+  "native_log": "native.jsonl",
+  "non_comparable": false,
+  "non_comparable_reason": null,
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Read",
+      "Edit",
+      "Write",
+      "MultiEdit",
+      "Grep",
+      "Glob"
+    ],
+    "deny": [],
+    "mode": "acceptEdits",
+    "sandbox": "none"
+  },
+  "pins": {
+    "cache": {
+      "observed_at": "2026-09-13T06:42:07Z",
+      "ttl_observed": "1h",
+      "ttl_pinned": "1h"
+    },
+    "effort": {
+      "source": null,
+      "source_hash": null,
+      "value": null,
+      "value_reason": "not in stream-json; hook input carries effort.level only in a hooked arm"
+    },
+    "harness": {
+      "binary_sha256": "sha256:553d1b9e9e7068b275c0a783c7e139ff6503096f286e674c8c919379fb0eca62",
+      "binary_sha256_reason": null,
+      "hooks_hash": "sha256:3ce4107fd202d9ce4e133382b4df7e5d5778b82cb2afa8fd343e195d17590e4d",
+      "name": "claude-code",
+      "settings_hash": "sha256:7b32050551ed5a5d097c5c256560b6df813cb79c24495d34f89504b7d33f8aa3",
+      "version": "2.1.266",
+      "version_reason": null
+    },
+    "model": {
+      "fingerprint": null,
+      "fingerprint_reason": "anthropic does not expose one",
+      "requested": "claude-opus-5",
+      "requested_reason": null,
+      "served": "claude-opus-5",
+      "served_reason": null
+    },
+    "price_table": "sha256:a5f308325cec416b3a1fbc7c4042468481d3398fde0f6712a82a326f2a521c0b",
+    "saga": {
+      "components": [],
+      "version": "24814bd"
+    },
+    "schema": "saga.trace.pins/1",
+    "system_prompt": {
+      "sha256": null,
+      "sha256_reason": "not exposed by claude -p stream-json"
+    },
+    "tools": {
+      "count": 6,
+      "sha256": "sha256:84448dff300b16f212c276fc15647cceef50ca4ba5ceba788ad271daf9d5483f",
+      "sha256_reason": null
+    }
+  },
+  "prompt_hash": "sha256:a42a7ccad0093f9586c7ddc67a31d98508e07b9f15e5e0780c902390ddc9d9c0",
+  "retries": {
+    "count": null,
+    "count_reason": "claude-code retries inside the harness and does not emit retry events in stream-json (checked on 2.1.263)",
+    "policy": "harness-internal"
+  },
+  "schema": "saga.bench.harness/1",
+  "system_prompt": {
+    "sha256": null,
+    "sha256_reason": "harness does not expose its system prompt",
+    "verbatim_archived": false
+  },
+  "tools": {
+    "names": [
+      "Bash",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Read",
+      "Write"
+    ],
+    "sha256": "sha256:84448dff300b16f212c276fc15647cceef50ca4ba5ceba788ad271daf9d5483f"
+  },
+  "transcript_path": "/var/folders/yb/b_617z_s2ml933nmr_k7m47m0000gn/T/saga-bench-3578220652/ts-0015-slugify-api-drift/3/cfg/claude-config/projects/-private-var-folders-yb-b-617z-s2ml933nmr-k7m47m0000gn-T-saga-bench-3578220652-ts-0015-slugify-api-drift-3-ws/e2fab67e-cbca-41ed-a9cf-865ca24910e5.jsonl"
+}

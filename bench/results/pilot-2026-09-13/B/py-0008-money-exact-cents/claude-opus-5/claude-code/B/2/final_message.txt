@@ -1,0 +1,10 @@
+`Money` now stores exact integer cents instead of a float amount.
+
+- `pricing/money.py:9` — `Money(amount)` still takes dollars but converts once through `Decimal(str(amount))` into an int `cents` field; arithmetic (`+`, `*`, unary `-`) is now integer-only, so `Money(0.10) * 3 == Money(0.30)` is `True`. Added `Money.from_cents()` for internal construction, a `dollars` float property for callers that need one, `__str__` giving the plain two-decimal string, and kept the old value-object semantics (immutable, `__eq__`/`__hash__` by value).
+- `pricing/format.py:6` — formats from cents via `divmod`; output is byte-identical (`$1,234.50`, `-$0.05`).
+- `pricing/tax.py:7` — same `round(dollars * (1 + rate), 2)` rounding as before, just reading `.dollars`.
+- `pricing/report.py:8` — same `name,qty,total` layout; the total column now renders from cents, so it shows `0.30` rather than `0.30000000000000004` (and `4.00` where it used to print `4.0` — that trailing-cent change is what the "CSV shows two decimals" test requires).
+
+Verification: `python3 -m unittest discover -v -s tests -t .` → `OK` (2 tests), and `saga gate check` → `ALL MET` (G1, G2 newly met; G3 unchanged).
+
+DONE

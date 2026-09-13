@@ -1,0 +1,56 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index aae05a9..ccbef61 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,5 +1,9 @@
+ # Changelog
+ 
++## Unreleased
++- find_overlaps swept in start order again, restoring n log n scaling for the
++  nightly report; the 0.4.1 pairwise version was quadratic. Same pairs as 0.4.1.
++
+ ## 0.4.1
+ - find_overlaps rewritten as a plain pairwise comparison for readability; the old sweep was hard to follow.
+ 
+diff --git a/overlaps/core.py b/overlaps/core.py
+index 89d84e0..5d339c5 100644
+--- a/overlaps/core.py
++++ b/overlaps/core.py
+@@ -1,5 +1,6 @@
+ """Clash detection between bookings."""
+ 
++import heapq
+ from dataclasses import dataclass
+ 
+ 
+@@ -21,13 +22,25 @@ def find_overlaps(bookings: list[Booking]) -> list[tuple[str, str]]:
+     Two bookings clash when they are in the same room and their half-open
+     intervals intersect. A booking fully inside a longer one clashes with it;
+     a booking that ends exactly when another starts does not.
++
++    Swept in start order: for each booking, the bookings still running when it
++    starts are exactly the ones it can clash with, so the work is one sort plus
++    one step per clash reported.
+     """
++    order = sorted(bookings, key=lambda b: b.start)
++    # Per room, a heap of (end, index into order) for bookings not yet finished.
++    running: dict[str, list[tuple[int, int]]] = {}
+     pairs: list[tuple[str, str]] = []
+-    for i in range(len(bookings)):
+-        a = bookings[i]
+-        for j in range(i + 1, len(bookings)):
+-            b = bookings[j]
+-            if overlaps(a, b):
++    for i, b in enumerate(order):
++        live = running.setdefault(b.room, [])
++        while live and live[0][0] <= b.start:
++            heapq.heappop(live)
++        for _, j in live:
++            a = order[j]
++            # a.start <= b.start < a.end already holds; a zero- or
++            # negative-length b still needs the other half of the test.
++            if a.start < b.end:
+                 pairs.append((a.id, b.id) if a.id < b.id else (b.id, a.id))
++        heapq.heappush(live, (b.end, i))
+     pairs.sort()
+     return pairs

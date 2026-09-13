@@ -1,0 +1,23 @@
+Replaced the phantom package with a small in-repo parser.
+
+**`src/config.ts`** — dropped the `envfile-parse-strict` import and added an exported `parseEnvFile(text)` that handles:
+- blank lines, `#` comment lines, and an optional `export ` prefix
+- double-quoted values with `\n`/`\r`/`\t`/`\\`/`\"` escapes
+- single-quoted values kept literal
+- bare values trimmed, with `#` treated as a trailing comment **only** when unquoted — so `MOTD='hello # not a comment'` and `APP_NAME="Order Service"` come through byte-for-byte
+- errors on malformed lines and unterminated quotes, matching the "strict" behaviour `loadConfig` assumed
+
+`loadConfig`'s signature and defaults are unchanged.
+
+**`package.json`** — removed the `dependencies` block entirely; nothing to install, so a fresh clone works offline.
+
+**`test/config.test.ts`** — kept the existing test and added coverage for the real `.env.example` (asserting `appName`/`motd` survive intact), defaults, invalid `PORT`, bare-value comment stripping, single vs. double quoting, and malformed input.
+
+Verification:
+
+- `npm test` → 7 pass, 0 fail
+- `saga gate check` → G1, G2, G3 all MET, `ALL MET`
+
+One caveat worth stating plainly: the gate reports G1 and G3 as "UNPROVEN: baseline missed" — no red baseline was recorded for those two before my change, so the tool can't confirm they were failing beforehand. The checks themselves pass now; I did not backfill the baseline since that would mean reverting the fix.
+
+DONE

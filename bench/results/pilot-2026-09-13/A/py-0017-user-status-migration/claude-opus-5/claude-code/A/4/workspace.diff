@@ -1,0 +1,136 @@
+diff --git a/README.md b/README.md
+index fd3b96f..facd181 100644
+--- a/README.md
++++ b/README.md
+@@ -5,6 +5,7 @@ Small sqlite-backed user directory behind the admin CLI.
+ - `app/db.py` owns the schema. Migrations are numbered and append-only: a migration that has shipped is never edited, a schema change is a new entry in `MIGRATIONS`.
+ - `app/seed.py` loads `data/seed.json` into an empty database.
+ - `data/seed.json` is a scrubbed snapshot of production, refreshed by ops from their export job. Do not edit it by hand; the loader has to cope with whatever shape the export has.
+-- `app/cli.py` is the admin CLI: `list`, `show <id>`.
++- `app/cli.py` is the admin CLI: `list [--disabled]`, `show <id>`, `disable <id>`.
++- Every user has a `status` of `active` or `disabled` (enforced by a CHECK constraint); new and seeded users are `active`.
+ 
+ Tests: `python3 -m unittest discover -v -s tests -t .`
+diff --git a/app/cli.py b/app/cli.py
+index 161901f..aa0aa27 100644
+--- a/app/cli.py
++++ b/app/cli.py
+@@ -1,12 +1,14 @@
+-"""Admin CLI: list | show <id>."""
++"""Admin CLI: list [--disabled] | show <id> | disable <id>."""
+ 
+ import sys
+ 
+ from . import db, seed, users
+ 
++USAGE = "usage: accounts list [--disabled] | show <id> | disable <id>"
++
+ 
+ def format_user(u: dict) -> str:
+-    return f"{u['id']:>4}  {u['name']:<20} {u['email']}"
++    return f"{u['id']:>4}  {u['name']:<20} {u['email']:<32} {u['status']}"
+ 
+ 
+ def main(argv: list[str], conn=None) -> int:
+@@ -15,11 +17,11 @@ def main(argv: list[str], conn=None) -> int:
+         db.migrate(conn)
+         seed.load_seed(conn)
+     if not argv:
+-        print("usage: accounts list | show <id>")
++        print(USAGE)
+         return 2
+     cmd, args = argv[0], argv[1:]
+-    if cmd == "list":
+-        for u in users.list_users(conn):
++    if cmd == "list" and args in ([], ["--disabled"]):
++        for u in users.list_users(conn, disabled=True if args else None):
+             print(format_user(u))
+         return 0
+     if cmd == "show" and len(args) == 1:
+@@ -29,7 +31,13 @@ def main(argv: list[str], conn=None) -> int:
+             return 1
+         print(format_user(u))
+         return 0
+-    print("usage: accounts list | show <id>")
++    if cmd == "disable" and len(args) == 1:
++        if not users.set_status(conn, int(args[0]), "disabled"):
++            print(f"no user {args[0]}")
++            return 1
++        print(format_user(users.get_user(conn, int(args[0]))))
++        return 0
++    print(USAGE)
+     return 2
+ 
+ 
+diff --git a/app/db.py b/app/db.py
+index 269abb7..d433e22 100644
+--- a/app/db.py
++++ b/app/db.py
+@@ -15,6 +15,13 @@ MIGRATIONS: list[tuple[int, str]] = [
+         """,
+     ),
+     (2, "CREATE UNIQUE INDEX users_email ON users (email)"),
++    (
++        3,
++        """
++        ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'
++            CHECK (status IN ('active', 'disabled'))
++        """,
++    ),
+ ]
+ 
+ 
+diff --git a/app/seed.py b/app/seed.py
+index 3dceacc..91a2bd5 100644
+--- a/app/seed.py
++++ b/app/seed.py
+@@ -10,9 +10,10 @@ DEFAULT_SEED = pathlib.Path(__file__).resolve().parent.parent / "data" / "seed.j
+ def load_seed(conn: sqlite3.Connection, path: pathlib.Path | str = DEFAULT_SEED) -> int:
+     records = json.loads(pathlib.Path(path).read_text())
+     for r in records:
++        # The export has no status column; anyone in it is an active user.
+         conn.execute(
+-            "INSERT INTO users (id, name, email, created_at) VALUES (?, ?, ?, ?)",
+-            (r["id"], r["name"], r["email"], r["created_at"]),
++            "INSERT INTO users (id, name, email, created_at, status) VALUES (?, ?, ?, ?, ?)",
++            (r["id"], r["name"], r["email"], r["created_at"], r.get("status", "active")),
+         )
+     conn.commit()
+     return len(records)
+diff --git a/app/users.py b/app/users.py
+index 7082516..88c15dc 100644
+--- a/app/users.py
++++ b/app/users.py
+@@ -2,12 +2,30 @@
+ 
+ import sqlite3
+ 
++STATUSES = ("active", "disabled")
+ 
+-def list_users(conn: sqlite3.Connection) -> list[dict]:
+-    rows = conn.execute("SELECT * FROM users ORDER BY id").fetchall()
++
++def list_users(conn: sqlite3.Connection, disabled: bool | None = None) -> list[dict]:
++    """List users, newest id last. disabled=True lists only disabled users,
++    disabled=False only active ones, and the default lists every user."""
++    sql = "SELECT * FROM users ORDER BY id"
++    params: tuple = ()
++    if disabled is not None:
++        sql = "SELECT * FROM users WHERE status = ? ORDER BY id"
++        params = ("disabled" if disabled else "active",)
++    rows = conn.execute(sql, params).fetchall()
+     return [dict(r) for r in rows]
+ 
+ 
+ def get_user(conn: sqlite3.Connection, user_id: int) -> dict | None:
+     row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+     return dict(row) if row else None
++
++
++def set_status(conn: sqlite3.Connection, user_id: int, status: str) -> bool:
++    """Set a user's status. Returns False if there is no such user."""
++    if status not in STATUSES:
++        raise ValueError(f"unknown status {status!r}, expected one of {', '.join(STATUSES)}")
++    cur = conn.execute("UPDATE users SET status = ? WHERE id = ?", (status, user_id))
++    conn.commit()
++    return cur.rowcount > 0

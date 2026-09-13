@@ -1,0 +1,179 @@
+diff --git a/pricing/format.py b/pricing/format.py
+index 42b1b31..fae57bc 100644
+--- a/pricing/format.py
++++ b/pricing/format.py
+@@ -3,5 +3,5 @@ from .money import Money
+ 
+ 
+ def format_money(m: Money) -> str:
+-    sign = "-" if m.amount < 0 else ""
+-    return f"{sign}${abs(m.amount):,.2f}"
++    sign = "-" if m.cents < 0 else ""
++    return f"{sign}${abs(m.dollars):,.2f}"
+diff --git a/pricing/money.py b/pricing/money.py
+index f586e26..c375ca5 100644
+--- a/pricing/money.py
++++ b/pricing/money.py
+@@ -1,19 +1,76 @@
+-"""Money value object."""
+-from dataclasses import dataclass
++"""Money value object.
++
++The amount is stored as a whole number of cents, so sums and multiples are
++exact and never drift. The constructor still takes a dollar amount, e.g.
++``Money(0.10)``; use :meth:`Money.from_cents` when cents are already at hand.
++"""
++from decimal import ROUND_HALF_UP, Decimal
++
++Amount = int | float | str | Decimal
++
++_CENT = Decimal(1)
++
++
++def _to_cents(amount: Amount) -> int:
++    """Convert a dollar amount to whole cents, rounding halves away from zero."""
++    if isinstance(amount, float):
++        # str() gives the shortest repr, so 0.10 becomes "0.1" rather than the
++        # binary expansion that would otherwise round its way into the cents.
++        amount = str(amount)
++    return int((Decimal(amount) * 100).quantize(_CENT, rounding=ROUND_HALF_UP))
+ 
+ 
+-@dataclass(frozen=True)
+ class Money:
+-    amount: float
++    """An immutable monetary amount held as an exact whole number of cents."""
++
++    __slots__ = ("cents",)
++
++    cents: int
++
++    def __init__(self, amount: Amount = 0) -> None:
++        object.__setattr__(self, "cents", _to_cents(amount))
++
++    @classmethod
++    def from_cents(cls, cents: int) -> "Money":
++        money = cls.__new__(cls)
++        object.__setattr__(money, "cents", int(cents))
++        return money
++
++    @property
++    def dollars(self) -> Decimal:
++        """The exact dollar value, for formatting."""
++        return Decimal(self.cents).scaleb(-2)
++
++    @property
++    def amount(self) -> float:
++        """The dollar value as a float, for arithmetic against rates."""
++        return self.cents / 100
++
++    def __setattr__(self, name: str, value: object) -> None:
++        raise AttributeError(f"{type(self).__name__} is immutable")
++
++    def __delattr__(self, name: str) -> None:
++        raise AttributeError(f"{type(self).__name__} is immutable")
++
++    def __repr__(self) -> str:
++        return f"Money({self.dollars:.2f})"
++
++    def __eq__(self, other: object) -> bool:
++        if not isinstance(other, Money):
++            return NotImplemented
++        return self.cents == other.cents
++
++    def __hash__(self) -> int:
++        return hash(self.cents)
+ 
+     def __add__(self, other: "Money") -> "Money":
+-        return Money(self.amount + other.amount)
++        return Money.from_cents(self.cents + other.cents)
+ 
+     def __mul__(self, qty: int) -> "Money":
+-        return Money(self.amount * qty)
++        return Money.from_cents(round(self.cents * qty))
+ 
+     def __neg__(self) -> "Money":
+-        return Money(-self.amount)
++        return Money.from_cents(-self.cents)
+ 
+ 
+-ZERO = Money(0.0)
++ZERO = Money(0)
+diff --git a/pricing/report.py b/pricing/report.py
+index 4545891..a6a5259 100644
+--- a/pricing/report.py
++++ b/pricing/report.py
+@@ -5,5 +5,5 @@ from .cart import Line, line_total
+ def to_csv(lines: list[Line]) -> str:
+     rows = ["name,qty,total"]
+     for name, price, qty in lines:
+-        rows.append(f"{name},{qty},{line_total(price, qty).amount}")
++        rows.append(f"{name},{qty},{line_total(price, qty).dollars:.2f}")
+     return "\n".join(rows) + "\n"
+diff --git a/tests/test_money.py b/tests/test_money.py
+new file mode 100644
+index 0000000..39bcbee
+--- /dev/null
++++ b/tests/test_money.py
+@@ -0,0 +1,61 @@
++import unittest
++from decimal import Decimal
++
++from pricing.format import format_money
++from pricing.money import Money, ZERO
++from pricing.tax import apply_tax
++
++
++class MoneyTests(unittest.TestCase):
++    def test_stores_whole_cents(self):
++        self.assertEqual(Money(0.10).cents, 10)
++        self.assertEqual(Money(19.99).cents, 1999)
++        self.assertEqual(Money(3).cents, 300)
++        self.assertEqual(Money("0.10").cents, 10)
++        self.assertEqual(Money(Decimal("1.05")).cents, 105)
++        self.assertEqual(ZERO.cents, 0)
++
++    def test_sub_cent_input_rounds_half_up(self):
++        self.assertEqual(Money(0.105).cents, 11)
++        self.assertEqual(Money(0.104).cents, 10)
++        self.assertEqual(Money(2.675).cents, 268)
++
++    def test_sums_and_multiples_do_not_drift(self):
++        self.assertEqual(Money(0.10) * 3, Money(0.30))
++        self.assertEqual(Money(0.10) + Money(0.20), Money(0.30))
++        self.assertEqual(sum((Money(0.10) for _ in range(100)), ZERO), Money(10.00))
++
++    def test_negation(self):
++        self.assertEqual((-Money(0.30)).cents, -30)
++        self.assertEqual(Money(0.30) + -Money(0.10), Money(0.20))
++
++    def test_equality_and_hashing_use_cents(self):
++        self.assertEqual({Money(0.10) * 3}, {Money(0.30)})
++        self.assertNotEqual(Money(0.30), Money(0.31))
++        self.assertNotEqual(Money(0.30), 0.30)
++
++    def test_immutable(self):
++        with self.assertRaises(AttributeError):
++            Money(1).cents = 5
++
++    def test_from_cents(self):
++        self.assertEqual(Money.from_cents(30), Money(0.30))
++
++
++class FormatTests(unittest.TestCase):
++    def test_display_format_unchanged(self):
++        self.assertEqual(format_money(Money(0.10) * 3), "$0.30")
++        self.assertEqual(format_money(ZERO), "$0.00")
++        self.assertEqual(format_money(Money(1234567.89)), "$1,234,567.89")
++        self.assertEqual(format_money(-Money(0.05)), "-$0.05")
++
++
++class TaxTests(unittest.TestCase):
++    def test_rounds_to_the_cent(self):
++        self.assertEqual(apply_tax(Money(19.99), 0.0725), Money(21.44))
++        self.assertEqual(apply_tax(Money(0.30), 0.0), Money(0.30))
++        self.assertEqual(apply_tax(Money(10.00), 0.10), Money(11.00))
++
++
++if __name__ == "__main__":
++    unittest.main()

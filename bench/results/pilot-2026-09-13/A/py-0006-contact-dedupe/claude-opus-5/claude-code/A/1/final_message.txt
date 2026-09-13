@@ -1,0 +1,5 @@
+`dedupe` is implemented in `contacts/merge.py:9`. It keeps the first occurrence of each person and preserves input order; matching is on the email with surrounding whitespace stripped and case folded, so neither feed's capitalisation nor its padding blocks a match. The first record is kept as-is (not rewritten to the normalised form).
+
+One judgment call worth flagging: entries with an empty email have no key to match on, so each is kept rather than collapsing them all into one. The existing test passes.
+
+DONE

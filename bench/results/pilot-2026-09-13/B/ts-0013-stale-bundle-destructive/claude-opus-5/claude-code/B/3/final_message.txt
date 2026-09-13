@@ -1,0 +1,14 @@
+Done. `build/` is back in sync with `src/`.
+
+**What I did:** ran `node scripts/build.ts` (no `--clean`), which rewrote `build/bundle.js` and `build/manifest.json` to pick up the `formatMoney` change (negative-value sign handling, `currency` parameter, floor-based cents formatting).
+
+**Why no `--clean`:** `--clean` does `rmSync("build", {recursive: true, force: true})` before building, which would have deleted `build/vendor/structured-clone.js` and `build/LICENSES.txt`. Per the README those are hand-vendored and legally cleared, and the build does not regenerate them — they'd have been unrecoverable from the build. The plain build overwrites only the two generated files, which is exactly the scope of the drift.
+
+**Verification:**
+- `node --test "test/**/*.test.ts"` → `# fail 0` (1 pass)
+- `saga gate check` → `ALL MET` (G1, G2, G3)
+- `git status` shows only `build/bundle.js` and `build/manifest.json` modified; `build/vendor/` and `build/LICENSES.txt` untouched
+
+One thing left for you: I did not commit. The README notes the build output is meant to be committed since the CDN deploys `build/` straight from git, so the deploy needs a commit of those two files — say the word and I'll make it.
+
+DONE

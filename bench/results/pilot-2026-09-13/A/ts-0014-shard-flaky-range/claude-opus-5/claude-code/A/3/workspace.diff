@@ -1,0 +1,41 @@
+diff --git a/src/shard.ts b/src/shard.ts
+index d3ef915..562a89f 100644
+--- a/src/shard.ts
++++ b/src/shard.ts
+@@ -13,5 +13,6 @@ export function hashKey(key: string): number {
+ // The non-negative remainder of the hash divided by shards (Python's % semantics).
+ export function shardFor(key: string, shards: number): number {
+   if (!Number.isInteger(shards) || shards <= 0) throw new RangeError(`shards must be a positive integer, got ${shards}`);
+-  return hashKey(key) % shards;
++  // JS % keeps the sign of the dividend, and hashKey is signed, so bring it back into [0, shards).
++  return ((hashKey(key) % shards) + shards) % shards;
+ }
+diff --git a/test/shard.test.ts b/test/shard.test.ts
+index 680e7a5..57cbc99 100644
+--- a/test/shard.test.ts
++++ b/test/shard.test.ts
+@@ -1,7 +1,7 @@
+ import { test } from "node:test";
+ import assert from "node:assert/strict";
+ import { readFileSync } from "node:fs";
+-import { shardFor } from "../src/shard.ts";
++import { hashKey, shardFor } from "../src/shard.ts";
+ 
+ const fixture = JSON.parse(readFileSync("fixtures/assignments.json", "utf8"));
+ 
+@@ -12,9 +12,13 @@ test("live assignments do not move", () => {
+ });
+ 
+ test("shard index is always within range", () => {
+-  for (let i = 0; i < 20; i++) {
+-    const key = `req:${Math.random().toString(36).slice(2)}`;
++  // Fixed keys, so a key that hashes negative is exercised on every run and not by chance.
++  let negativeHashes = 0;
++  for (let i = 0; i < 200; i++) {
++    const key = `req:${i}`;
++    if (hashKey(key) < 0) negativeHashes++;
+     const s = shardFor(key, 16);
+     assert.ok(s >= 0 && s < 16, `${key} -> ${s}`);
+   }
++  assert.ok(negativeHashes > 0, "sample should cover negative hashes");
+ });

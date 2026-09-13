@@ -1,0 +1,14 @@
+Both tests pass.
+
+**Changes in `src/prune.ts`:**
+
+1. `src/prune.ts:43` — weekly rule now slices `[0, keepWeekly)` instead of `[1, keepWeekly)`, so `keepWeekly: 4` keeps four weeks including the current one. The stale "already covered by the dailies" comment is replaced with one that states the rule.
+2. `src/prune.ts:45` — snapshots whose `tags` include `pinned` are filtered out of the returned list, so a legal hold is never handed to the scheduler regardless of policy or age.
+
+Untouched, as specified: the signature, the daily rule, `isoWeek`, `newestPerBucket`, the sort (still newest first, ids still strings), and the existing acceptance test.
+
+Also: appended a second test case for the pinned hold (the existing case is byte-for-byte unchanged), and added a line to `docs/retention.md` recording that `pinned` is the one tag with retention meaning.
+
+One thing worth flagging: the pinned check is an exact, case-sensitive match on the string `pinned`. Since tags are free-form and arrive from several systems, if the legal hold list could emit `Pinned` or `PINNED`, that snapshot would be deleted. If you want, I can make the match case-insensitive before Monday — I left it exact because that's what you described.
+
+DONE

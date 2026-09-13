@@ -1,0 +1,27 @@
+Done. Changes are confined to `app/` — `data/seed.json` and `tests/` are untouched.
+
+**`app/db.py`** — appended migration 3 (shipped migrations 1 and 2 left alone):
+
+```sql
+ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'
+    CHECK (status IN ('active', 'disabled'))
+```
+
+The `DEFAULT 'active'` is what makes both halves of R2 work without touching the loader: existing rows in an already-populated v2 database get `active` when the ALTER runs, and `seed.py`'s unchanged four-column INSERT gets `active` for each seeded row. The `CHECK` is what enforces "and nothing else" — `UPDATE users SET status='pending'` fails at the database.
+
+**`app/users.py`** — `set_status(conn, user_id, status)` validates against `("active", "disabled")` before the UPDATE (raising `ValueError`, so callers get a clear message rather than a CHECK failure) and returns `False` when no such user exists. `list_users(conn, disabled=False)` filters to disabled rows when asked, keeping `ORDER BY id`.
+
+**`app/cli.py`** — added `disable <id>` and `list --disabled`; `format_user` now shows status, and usage text was updated. `disable` on an unknown id prints `no user <id>` and returns 1, matching `show`.
+
+Verification:
+
+- `python3 -m unittest discover -v -s tests -t .` — 4 tests, OK.
+- `saga gate check` — G1, G2, G3 all MET, `ALL MET`.
+- `saga gate lint` reports one warning, `L-RED-NONE G3: RED: none declares the gate unproven`. That is pre-existing in the contract as shipped (G3 was already checked off with `RED: none`), not something my changes introduced.
+
+Two things worth flagging rather than silently fixing:
+
+- `saga gate status` lists R1 and R3 as "uncovered (heuristic)" — the contract has no gate naming the CLI surface. G1 does exercise `set_status` and the `disabled=True` filter via the tests, but nothing gates `disable <id>` / `list --disabled`. I verified those by hand instead of adding a gate, since a gate added now could not carry red proof.
+- Each CLI invocation builds a fresh in-memory database and re-seeds it, so `disable 3` does not persist to the next process. That is the existing `main()` design, and changing it is beyond this request.
+
+DONE

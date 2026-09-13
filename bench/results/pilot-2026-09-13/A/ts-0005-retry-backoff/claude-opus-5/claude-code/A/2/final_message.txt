@@ -1,0 +1,11 @@
+Fixed the backoff formula in `src/retry.ts:27`:
+
+```ts
+const wait = options.baseMs * 2 ** i * (1 + random());
+```
+
+Previously it was `options.baseMs * (i + 1) + random()` — linear growth with jitter added as a sub-millisecond constant rather than multiplied. With `baseMs: 100` that produced waits of roughly 100/200/300ms instead of the documented 150/300/600ms at `r = 0.5`, which is why the third retry hit the payment gateway far too early.
+
+The test file is unchanged and now passes (1 pass, 0 fail).
+
+DONE

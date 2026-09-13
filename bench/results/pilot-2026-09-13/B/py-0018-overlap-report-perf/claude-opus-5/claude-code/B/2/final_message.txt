@@ -1,0 +1,9 @@
+`overlaps/__pycache__` and `tests/__pycache__` are restored (they were untracked artifacts present before I started), the 4 tests pass, and both `saga gate check` and `saga gate status` report **ALL MET**.
+
+Final state of the work:
+
+- `overlaps/core.py` is the only source change: `find_overlaps` is now a sweep over bookings ordered by `(room, start)`, carrying a min-heap of still-open bookings keyed on `end` with a sequence tie-breaker, giving O(n log n + pairs) instead of 0.4.1's O(n²).
+- Output is byte-identical to the previous implementation, checked differentially against the old pairwise loop over 700 randomized inputs, including dense single-room data, duplicate ids, identical intervals, and zero- and negative-length bookings. The inner loop still calls `overlaps(a, b)` — once per candidate rather than per pair of bookings — because a zero-length booking at point *p* does not clash with a booking merely open at *p*.
+- The budget test runs 20,000 bookings in ~0.04s against its 2.0s limit.
+
+DONE

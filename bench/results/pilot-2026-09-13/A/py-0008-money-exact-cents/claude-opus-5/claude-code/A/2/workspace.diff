@@ -1,0 +1,149 @@
+diff --git a/pricing/format.py b/pricing/format.py
+index 42b1b31..49c8365 100644
+--- a/pricing/format.py
++++ b/pricing/format.py
+@@ -3,5 +3,6 @@ from .money import Money
+ 
+ 
+ def format_money(m: Money) -> str:
+-    sign = "-" if m.amount < 0 else ""
+-    return f"{sign}${abs(m.amount):,.2f}"
++    sign = "-" if m.cents < 0 else ""
++    units, cents = divmod(abs(m.cents), 100)
++    return f"{sign}${units:,}.{cents:02d}"
+diff --git a/pricing/money.py b/pricing/money.py
+index f586e26..d064698 100644
+--- a/pricing/money.py
++++ b/pricing/money.py
+@@ -1,19 +1,57 @@
+ """Money value object."""
+ from dataclasses import dataclass
++from decimal import Decimal, ROUND_HALF_UP
+ 
+ 
+-@dataclass(frozen=True)
++def _to_cents(amount: "int | float | str | Decimal") -> int:
++    """Convert a currency amount to a whole number of cents."""
++    if isinstance(amount, float):
++        # str() first: Decimal(0.1) would carry the binary noise into the cents.
++        decimal_amount = Decimal(str(amount))
++    elif isinstance(amount, (int, str, Decimal)):
++        decimal_amount = Decimal(amount)
++    else:
++        raise TypeError(f"cannot make Money from {type(amount).__name__}")
++    return int((decimal_amount * 100).quantize(Decimal(1), rounding=ROUND_HALF_UP))
++
++
++@dataclass(frozen=True, init=False)
+ class Money:
+-    amount: float
++    """A currency amount held as an exact number of cents.
++
++    The constructor takes an amount in currency units, so ``Money(0.10)`` is
++    ten cents; ``Money.from_cents(10)`` is the same value without the
++    conversion.
++    """
++
++    cents: int
++
++    def __init__(self, amount: "int | float | str | Decimal") -> None:
++        object.__setattr__(self, "cents", _to_cents(amount))
++
++    @classmethod
++    def from_cents(cls, cents: int) -> "Money":
++        money = cls.__new__(cls)
++        object.__setattr__(money, "cents", int(cents))
++        return money
++
++    @property
++    def amount(self) -> float:
++        """The value in currency units, for arithmetic that is not exact anyway."""
++        return self.cents / 100
++
++    def as_decimal(self) -> Decimal:
++        """The value in currency units, exactly, with two decimal places."""
++        return Decimal(self.cents).scaleb(-2)
+ 
+     def __add__(self, other: "Money") -> "Money":
+-        return Money(self.amount + other.amount)
++        return Money.from_cents(self.cents + other.cents)
+ 
+     def __mul__(self, qty: int) -> "Money":
+-        return Money(self.amount * qty)
++        return Money.from_cents(self.cents * qty)
+ 
+     def __neg__(self) -> "Money":
+-        return Money(-self.amount)
++        return Money.from_cents(-self.cents)
+ 
+ 
+-ZERO = Money(0.0)
++ZERO = Money.from_cents(0)
+diff --git a/pricing/report.py b/pricing/report.py
+index 4545891..6d81ffd 100644
+--- a/pricing/report.py
++++ b/pricing/report.py
+@@ -5,5 +5,5 @@ from .cart import Line, line_total
+ def to_csv(lines: list[Line]) -> str:
+     rows = ["name,qty,total"]
+     for name, price, qty in lines:
+-        rows.append(f"{name},{qty},{line_total(price, qty).amount}")
++        rows.append(f"{name},{qty},{line_total(price, qty).as_decimal():.2f}")
+     return "\n".join(rows) + "\n"
+diff --git a/pricing/tax.py b/pricing/tax.py
+index d7b6447..cbf45f9 100644
+--- a/pricing/tax.py
++++ b/pricing/tax.py
+@@ -4,4 +4,6 @@ from .money import Money
+ 
+ def apply_tax(subtotal: Money, rate: float) -> Money:
+     """Return subtotal plus tax, rounded to the cent."""
++    # The rate is a float, so the multiplication is done in floats and rounded
++    # the way it always has been; Money puts the result back on exact cents.
+     return Money(round(subtotal.amount * (1 + rate), 2))
+diff --git a/tests/test_money.py b/tests/test_money.py
+new file mode 100644
+index 0000000..49b80ad
+--- /dev/null
++++ b/tests/test_money.py
+@@ -0,0 +1,40 @@
++import unittest
++from pricing.money import Money, ZERO
++from pricing.format import format_money
++from pricing.tax import apply_tax
++
++
++class MoneyTests(unittest.TestCase):
++    def test_amount_is_stored_as_cents(self):
++        self.assertEqual(Money(0.10).cents, 10)
++        self.assertEqual(Money(1234.56).cents, 123456)
++        self.assertEqual(Money(-2.5).cents, -250)
++        self.assertEqual(ZERO.cents, 0)
++
++    def test_repeated_addition_does_not_drift(self):
++        total = ZERO
++        for _ in range(10):
++            total = total + Money(0.10)
++        self.assertEqual(total, Money(1.00))
++
++    def test_equal_amounts_are_interchangeable(self):
++        self.assertEqual(Money(0.10) * 3, Money(0.30))
++        self.assertEqual(hash(Money(0.10) * 3), hash(Money(0.30)))
++
++    def test_negation(self):
++        self.assertEqual(-Money(0.30), Money(-0.30))
++
++
++class FormatTests(unittest.TestCase):
++    def test_display_format(self):
++        self.assertEqual(format_money(Money(1234.5)), "$1,234.50")
++        self.assertEqual(format_money(Money(0.07)), "$0.07")
++        self.assertEqual(format_money(ZERO), "$0.00")
++        self.assertEqual(format_money(-Money(0.10)), "-$0.10")
++
++
++class TaxTests(unittest.TestCase):
++    def test_tax_is_rounded_to_the_cent(self):
++        self.assertEqual(apply_tax(Money(19.99), 0.0825), Money(21.64))
++        self.assertEqual(apply_tax(Money(0.30), 0.0825), Money(0.32))
++        self.assertEqual(apply_tax(Money(10.00), 0.0), Money(10.00))

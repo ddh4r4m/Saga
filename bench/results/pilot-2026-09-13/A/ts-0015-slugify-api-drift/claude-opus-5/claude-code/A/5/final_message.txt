@@ -1,0 +1,7 @@
+Verified against the 1.x semantics: old `slugify(text, "-")` always lowercased, stripped combining marks after NFKD, collapsed runs of non-alphanumerics to `-`, and trimmed edge separators. `{ separator: "-", lower: true }` reproduces that exactly, so existing URLs keep resolving.
+
+- `src/pages.ts:11` — `slugify(title, "-")` → `slugify(title, { separator: "-", lower: true })`
+
+Under 2.0.0 the old string argument was ignored, so `separator` fell back to the new `_` default and titles were no longer lowercased. `vendor/slugify/index.ts` is untouched, as `vendor/README.md` requires. `npm test` passes (2/2).
+
+DONE

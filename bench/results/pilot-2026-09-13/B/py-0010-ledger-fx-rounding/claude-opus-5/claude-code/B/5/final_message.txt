@@ -1,0 +1,12 @@
+**Cause:** `ledger/fx.py:convert` used `int(cents * rate)`, which truncates toward zero. Account 4471 is the only non-USD account in the chart, so it's the only one whose legs go through a real conversion (USD→EUR at 0.9228); every other account converts at rate 1.0 and is unaffected. Across 455 legs touching 4471, the dropped sub-cent accumulated to exactly the 0.30 EUR shortfall.
+
+**Fix:** `convert` now computes the product with `Decimal` (from `str(rate)`, so the rate isn't polluted by binary float artifacts) and quantizes to the nearest minor unit, ties to even.
+
+**Verification:**
+- `python3 -m ledger.reconcile fixtures` → `reconcile: 3200 entries posted, 0 mismatches`, exit 0.
+- Added `tests/test_fx.py` covering nearest-rounding, tie-to-even, identity rate, and negative amounts; full suite: 7 tests, OK.
+- `saga gate check` → ALL MET (G1 clean reconcile, G2 a genuinely-off control still reports one mismatch, G3 fixtures untouched).
+
+One note: the fixtures contain a single exact .5 tie (`t001038`), but it's between two USD accounts, so the half-even vs. half-up choice isn't observable from the control file — I picked banker's rounding as the conventional default.
+
+DONE

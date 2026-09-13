@@ -1,0 +1,15 @@
+Added `tests/test_intervals.py` with 28 unittest cases; `intervals.py` is unchanged (only the new test file and `__pycache__` dirs are new).
+
+Coverage, by docstring clause:
+- **Ordering** — unsorted input sorted by start, and unsorted input that also needs merging.
+- **Overlap and touch** — plain overlap, touching endpoints `(1,3)+(3,5) → (1,5)`, a chain merging into one, plus the negative cases: disjoint intervals and a gap of exactly one (`(1,3)+(4,6)` stays split).
+- **Containment** — contained interval doesn't shrink the outer one, in both input orders, with several nested intervals, and with a later disjoint interval following.
+- **Empty / single** — empty gives empty; single returned as is.
+- **New list, input untouched** — result is a distinct `list` of `tuple`s, input list equal to its prior contents after the call, and mutating the result doesn't affect the input.
+- **ValueError** — `start > end` alone and among valid intervals, message names the bad interval, and validation happens before merging (input unchanged after the raise).
+
+Extra edge cases: duplicates, shared start (widest end wins), shared end, degenerate `start == end` intervals (alone, touching, and contained), and negative bounds.
+
+I checked the suite has teeth by running it against six mutated throwaway copies in `/tmp/regcheck` (dropped sort; `<` instead of `<=`; overwriting the end instead of `max`; `min` instead of `max`; validation removed; `merged` aliasing the input list). Each failed 3–19 tests. My cleanup of `/tmp/regcheck` was blocked by a sandbox guard, so that scratch directory is still there — safe to delete.
+
+DONE

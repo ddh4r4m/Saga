@@ -1,0 +1,14 @@
+`data/seed.json` and `tests/` are untouched; all changes are in `app/`.
+
+**What changed**
+
+- `app/db.py:17` — new append-only migration 3: `ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','disabled'))`. The default backfills every pre-existing row as active, and the CHECK constraint makes any third value a DB-level error.
+- `app/users.py` — `set_status(conn, user_id, status)` (validates against `STATUSES`, returns `False` for an unknown id) and `list_users(conn, disabled=False)`, where `disabled=True` narrows to disabled users only.
+- `app/seed.py` — the loader still reads `data/seed.json` as-is; the status key is optional and defaults to active, so a future export that starts emitting one also loads (an unrecognized value raises rather than silently landing in the DB).
+- `app/cli.py` — `disable <id>` and `list --disabled`; `format_user` now shows status.
+
+**Verification**: all 4 tests in `tests/test_users.py` pass, and `saga gate check` reports `ALL MET` (G1, G2, G3). The check also flags R1/R3 as heuristically uncovered — that's the tool noting no gate *declares* them, not a failure; R3's pieces are exercised by the tests plus a manual CLI run of `disable 3` and `list --disabled`.
+
+One thing I left out: `README.md` still documents the CLI as `list`, `show <id>` and doesn't mention the status column. The contract declares `IN: app/**`, so I stayed inside it — say the word and I'll update the README.
+
+DONE

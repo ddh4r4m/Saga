@@ -1,0 +1,62 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index aae05a9..9406c15 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,5 +1,8 @@
+ # Changelog
+ 
++## Unreleased
++- find_overlaps sweeps by start time again, so the nightly report is back to n log n; the 0.4.1 pairwise rewrite made it time out. Same pairs as 0.4.1.
++
+ ## 0.4.1
+ - find_overlaps rewritten as a plain pairwise comparison for readability; the old sweep was hard to follow.
+ 
+diff --git a/overlaps/core.py b/overlaps/core.py
+index 89d84e0..696f0e5 100644
+--- a/overlaps/core.py
++++ b/overlaps/core.py
+@@ -1,5 +1,7 @@
+ """Clash detection between bookings."""
+ 
++import heapq
++from collections import defaultdict
+ from dataclasses import dataclass
+ 
+ 
+@@ -21,13 +23,30 @@ def find_overlaps(bookings: list[Booking]) -> list[tuple[str, str]]:
+     Two bookings clash when they are in the same room and their half-open
+     intervals intersect. A booking fully inside a longer one clashes with it;
+     a booking that ends exactly when another starts does not.
++
++    Bookings are swept in start order per room, so the cost is n log n in the
++    number of bookings plus one step per clash reported; see docs/perf.md.
+     """
++    by_room: dict[str, list[Booking]] = defaultdict(list)
++    for b in bookings:
++        by_room[b.room].append(b)
++
+     pairs: list[tuple[str, str]] = []
+-    for i in range(len(bookings)):
+-        a = bookings[i]
+-        for j in range(i + 1, len(bookings)):
+-            b = bookings[j]
+-            if overlaps(a, b):
+-                pairs.append((a.id, b.id) if a.id < b.id else (b.id, a.id))
++    for room_bookings in by_room.values():
++        # Ordering by end as well as start keeps empty bookings (end == start)
++        # ahead of any booking they share a start with, so the sweep retires
++        # them before they can be mistaken for a clash.
++        room_bookings.sort(key=lambda b: (b.start, b.end))
++        active: list[tuple[int, int, str]] = []  # min-heap of (end, start, id)
++        for b in room_bookings:
++            start, end, bid = b.start, b.end, b.id
++            while active and active[0][0] <= start:
++                heapq.heappop(active)
++            # Everything still active started no later than b and ends after b
++            # starts, so it clashes with b as long as b reaches past its start.
++            for other_end, other_start, other_id in active:
++                if other_start < end:
++                    pairs.append((bid, other_id) if bid < other_id else (other_id, bid))
++            heapq.heappush(active, (end, start, bid))
+     pairs.sort()
+     return pairs

@@ -1,0 +1,15 @@
+The vendor bump to slugify 2.0.0 changed the API: the second argument became an options object, the default separator became `_`, and lowercasing became opt-in. `src/pages.ts` was still passing the 1.x string separator, so `"-"` was ignored and every slug came back underscore-separated and non-lowercased.
+
+Fix in `src/pages.ts:11` — call the 2.0 API with the old behaviour pinned:
+
+```ts
+return slugify(title, { separator: "-", lower: true });
+```
+
+Verified:
+- `node --test` → `# pass 2`, `# fail 0`
+- `pageSlug("Q3 Review: Plans & Budgets (Draft)")` → `q3-review-plans-budgets-draft`
+- `vendor/` untouched, per the repo's "never patch a vendored file in place" rule
+- `saga gate check` → ALL MET (G1, G2, G3)
+
+DONE

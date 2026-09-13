@@ -1,0 +1,24 @@
+Config loading works again with zero dependencies.
+
+**What changed**
+- `src/config.ts:4` — swapped the phantom `envfile-parse-strict` import for `parseEnv` from `node:util`, Node's built-in env-file parser. It's the only call-site change; the rest of `loadConfig` is untouched.
+- `package.json` — dropped the `dependencies` block entirely. There's no lockfile and no `node_modules`, so `npm test` on a fresh clone needs no install and no network. CI (`.github/workflows/ci.yml`) only runs `npm test`, so it's unaffected.
+- `test/config.test.ts` — added four tests, including one that reads the real `.env.example` off disk rather than a copy of its contents, so the quoting requirements stay pinned to the file you actually ship.
+
+**Quoting behaviour, verified**
+`parseEnv` strips surrounding quotes and only honours `#` as a comment when it's outside quotes, so `APP_NAME="Order Service"` → `Order Service` and `MOTD='hello # not a comment'` → `hello # not a comment`, hash intact. Unquoted values still get trailing comments and whitespace trimmed (`PORT=9090 # the port` → `9090`).
+
+All 5 tests pass:
+
+```
+✔ loads a basic env file
+✔ parses .env.example, keeping quoted values intact
+✔ strips comments and surrounding whitespace outside quotes
+✔ applies defaults when keys are absent
+✔ rejects a non-numeric PORT
+ℹ pass 5  ℹ fail 0
+```
+
+**One thing to flag:** `util.parseEnv` is still marked experimental in Node's docs (stability 1.1, active development), so its behaviour could shift in a future major. I judged that a better trade than hand-rolling a quote-aware parser, since your `engines` field already pins `node >=24` and the tests above will catch any drift on upgrade. Say the word if you'd rather have a ~20-line local parser with no experimental surface.
+
+DONE

@@ -1,0 +1,143 @@
+diff --git a/tests/test_intervals.py b/tests/test_intervals.py
+new file mode 100644
+index 0000000..9ef58d8
+--- /dev/null
++++ b/tests/test_intervals.py
+@@ -0,0 +1,137 @@
++"""Tests for the behaviour documented on merge_intervals."""
++
++import unittest
++
++from intervals import merge_intervals
++
++
++class MergeIntervalsTests(unittest.TestCase):
++    def test_empty_input_gives_empty_list(self):
++        self.assertEqual(merge_intervals([]), [])
++
++    def test_single_interval_is_returned_as_is(self):
++        self.assertEqual(merge_intervals([(1, 2)]), [(1, 2)])
++
++    def test_disjoint_intervals_are_left_alone(self):
++        self.assertEqual(
++            merge_intervals([(1, 2), (5, 6), (10, 12)]),
++            [(1, 2), (5, 6), (10, 12)],
++        )
++
++    def test_overlapping_intervals_merge(self):
++        self.assertEqual(merge_intervals([(1, 4), (3, 6)]), [(1, 6)])
++
++    def test_touching_intervals_merge(self):
++        self.assertEqual(merge_intervals([(1, 3), (3, 5)]), [(1, 5)])
++
++    def test_gap_of_one_does_not_merge(self):
++        # (1, 3) and (4, 6) do not touch: 3 and 4 are distinct endpoints.
++        self.assertEqual(merge_intervals([(1, 3), (4, 6)]), [(1, 3), (4, 6)])
++
++    def test_input_may_be_in_any_order(self):
++        self.assertEqual(
++            merge_intervals([(10, 12), (1, 3), (5, 6)]),
++            [(1, 3), (5, 6), (10, 12)],
++        )
++
++    def test_unsorted_overlapping_intervals_merge(self):
++        self.assertEqual(merge_intervals([(8, 10), (1, 5), (4, 9)]), [(1, 10)])
++
++    def test_contained_interval_does_not_shrink_outer_one(self):
++        self.assertEqual(merge_intervals([(1, 10), (3, 4)]), [(1, 10)])
++
++    def test_contained_interval_given_first_does_not_shrink_outer_one(self):
++        self.assertEqual(merge_intervals([(3, 4), (1, 10)]), [(1, 10)])
++
++    def test_several_contained_intervals_do_not_shrink_outer_one(self):
++        self.assertEqual(
++            merge_intervals([(1, 10), (2, 3), (4, 5), (9, 9)]),
++            [(1, 10)],
++        )
++
++    def test_contained_interval_shares_start_with_outer_one(self):
++        self.assertEqual(merge_intervals([(1, 10), (1, 4)]), [(1, 10)])
++
++    def test_contained_interval_shares_end_with_outer_one(self):
++        self.assertEqual(merge_intervals([(1, 10), (7, 10)]), [(1, 10)])
++
++    def test_chain_of_overlaps_collapses_into_one(self):
++        self.assertEqual(
++            merge_intervals([(1, 3), (2, 5), (5, 8), (7, 11)]),
++            [(1, 11)],
++        )
++
++    def test_identical_intervals_collapse(self):
++        self.assertEqual(merge_intervals([(2, 4), (2, 4), (2, 4)]), [(2, 4)])
++
++    def test_degenerate_interval_is_allowed(self):
++        self.assertEqual(merge_intervals([(5, 5)]), [(5, 5)])
++
++    def test_degenerate_interval_touching_another_merges(self):
++        self.assertEqual(merge_intervals([(5, 5), (5, 8)]), [(5, 8)])
++
++    def test_adjacent_degenerate_intervals_stay_separate(self):
++        self.assertEqual(merge_intervals([(2, 2), (1, 1)]), [(1, 1), (2, 2)])
++
++    def test_negative_bounds_are_handled(self):
++        # (-10, -5) and (-6, -2) overlap; (-1, 2) is a gap away from -2.
++        self.assertEqual(
++            merge_intervals([(-1, 2), (-10, -5), (-6, -2)]),
++            [(-10, -2), (-1, 2)],
++        )
++
++    def test_intervals_spanning_zero_merge(self):
++        self.assertEqual(merge_intervals([(-4, 0), (0, 3)]), [(-4, 3)])
++
++    def test_mixed_case_merges_and_sorts(self):
++        self.assertEqual(
++            merge_intervals([(15, 18), (1, 3), (8, 10), (2, 6), (17, 20)]),
++            [(1, 6), (8, 10), (15, 20)],
++        )
++
++    def test_result_is_a_list_of_tuples(self):
++        result = merge_intervals([(3, 4), (1, 2)])
++        self.assertIsInstance(result, list)
++        for interval in result:
++            self.assertIsInstance(interval, tuple)
++
++    def test_input_list_is_not_modified(self):
++        intervals = [(5, 8), (1, 3), (2, 6)]
++        merge_intervals(intervals)
++        self.assertEqual(intervals, [(5, 8), (1, 3), (2, 6)])
++
++    def test_result_is_a_new_list(self):
++        intervals = [(1, 2)]
++        result = merge_intervals(intervals)
++        self.assertIsNot(result, intervals)
++        result.append((9, 9))
++        self.assertEqual(intervals, [(1, 2)])
++
++    def test_start_after_end_raises_value_error(self):
++        with self.assertRaises(ValueError):
++            merge_intervals([(4, 1)])
++
++    def test_invalid_interval_among_valid_ones_raises_value_error(self):
++        with self.assertRaises(ValueError):
++            merge_intervals([(1, 3), (9, 2), (4, 6)])
++
++    def test_invalid_interval_last_raises_value_error(self):
++        # Validation covers the whole input, not just the intervals seen so far.
++        with self.assertRaises(ValueError):
++            merge_intervals([(1, 3), (4, 6), (9, 8)])
++
++    def test_value_error_mentions_the_offending_interval(self):
++        with self.assertRaises(ValueError) as ctx:
++            merge_intervals([(1, 3), (9, 2)])
++        self.assertIn("9", str(ctx.exception))
++        self.assertIn("2", str(ctx.exception))
++
++    def test_invalid_input_is_not_partially_merged(self):
++        intervals = [(1, 3), (2, 5), (9, 2)]
++        with self.assertRaises(ValueError):
++            merge_intervals(intervals)
++        self.assertEqual(intervals, [(1, 3), (2, 5), (9, 2)])
++
++
++if __name__ == "__main__":
++    unittest.main()

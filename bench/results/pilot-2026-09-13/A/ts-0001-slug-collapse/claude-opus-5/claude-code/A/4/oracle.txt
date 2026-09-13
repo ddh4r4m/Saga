@@ -1,0 +1,11 @@
+slug-collapse-run PASS
+slug-trim-leading PASS
+slug-trim-trailing PASS
+slug-fold-diacritics PASS
+slug-fold-mixed PASS
+slug-only-separators PASS
+slug-empty PASS
+slug-digits-kept PASS
+slug-lowercases PASS
+--- exit 0
+--- integrity ok

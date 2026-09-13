@@ -1,0 +1,9 @@
+Done. `Money` now stores an integer `cents`:
+
+- **`pricing/money.py`**: replaced the float dataclass with a `__slots__` class whose canonical state is `cents: int`. The constructor still takes a dollar amount and converts via `Decimal(str(amount)) * 100`, so `Money(0.10)` is exactly 10 cents. `from_cents` builds directly from an integer; `__add__`/`__mul__`/`__neg__` do integer arithmetic; `__eq__`/`__hash__` compare cents, so `cart_total(...) == Money(0.30)` is True. An `amount` float property (`cents / 100`) is kept as a view, plus `as_decimal()` for a plain two-decimal string.
+- **`pricing/report.py`**: the total column now uses `as_decimal()` instead of the raw float repr, so it reads `0.30` rather than `0.30000000000000004`. Header and column order untouched.
+- **`pricing/format.py`, `pricing/tax.py`, `pricing/cart.py`**: unchanged — they work through `amount`, so display formatting and the tax rounding rule (`round(amount * (1 + rate), 2)`) behave exactly as before.
+
+Verification: `python3 -m unittest discover -v -s tests -t .` → `OK` (2 tests), and `saga gate check` reports G1, G2, G3 all MET (G3 noted as UNPROVEN because the contract declares `RED: none`).
+
+DONE
