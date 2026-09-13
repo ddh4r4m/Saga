@@ -98,6 +98,7 @@ saga trace ledger                           # per-call cost ledger of the latest
 | 09 | [Proposal and roadmap](docs/09-proposal-and-roadmap.md) | Architecture direction and milestones, as written before the cut |
 | 11 | [Red-team review](docs/11-red-team-review.md) | Five failure arguments, overstated claims, the scope cut |
 | 12 | [Experiment protocol](docs/12-experiment-protocol.md) | Pre-registration: hypotheses, arms, budget, kill rule, timeline |
+| 15 | [Scope hints](docs/15-scope-hints.md) | Exploratory read of the pilot archive on scope violations; not a result, not pre-registered |
 
 | ADR | Decision |
 |---|---|
