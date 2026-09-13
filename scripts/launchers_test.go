@@ -292,3 +292,63 @@ func TestTaskGlobsPartitionTheCorpus(t *testing.T) {
 		}
 	}
 }
+
+// TestExploreHeadNamesItsPurpose: an exploration cell is not the
+// pre-registered experiment, and the provenance head is the block
+// people paste, so it has to say so there. It also names the model and
+// the tier, because the tier is what caps the spend.
+func TestExploreHeadNamesItsPurpose(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short: builds the binary")
+	}
+	needTools(t)
+	out, _ := runLauncher(t, "bench-explore.sh", []string{"BUDGET_USD=20"})
+	for _, want := range []string{
+		"purpose:   exploration, not pre-registered",
+		"tier:      user",
+		"model claude-haiku-4-5-20251001",
+		"k=5",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the explore head has no %q line:\n%s", want, tail(out))
+		}
+	}
+	// The default batch has to be one the cap admits, or the launcher
+	// cannot run its own default: the estimate is model-blind, so a
+	// Haiku cell is priced as the Opus run the cost hints came from.
+	if !strings.Contains(out, "estimate:  19.00 usd") {
+		t.Errorf("the default batch no longer estimates 19.00:\n%s", tail(out))
+	}
+	if strings.Contains(out, "the user tier caps at 20 usd") {
+		t.Errorf("the default batch is refused by the cap:\n%s", tail(out))
+	}
+}
+
+// TestExploreRefusesAboveTheUserCap: tier `user` is the point of this
+// launcher, so a budget above the cap is refused before anything is
+// spent, and so is a batch whose estimate exceeds it.
+func TestExploreRefusesAboveTheUserCap(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short: builds the binary")
+	}
+	needTools(t)
+	out, code := runLauncher(t, "bench-explore.sh", []string{"BUDGET_USD=25"})
+	if !strings.Contains(out, "the user tier caps at 20 usd") {
+		t.Errorf("a 25 usd budget was not refused:\n%s", tail(out))
+	}
+	if code == 0 {
+		t.Error("a budget above the cap must refuse")
+	}
+	if !strings.Contains(out, "nothing has been spent") {
+		t.Errorf("output:\n%s", tail(out))
+	}
+	// A batch too large for the cap is refused on the estimate, with the
+	// number in front of the operator.
+	big, code := runLauncher(t, "bench-explore.sh", []string{"BUDGET_USD=20"}, "1-20")
+	if !strings.Contains(big, "BUDGET_USD=20 is below the estimate 48.50") {
+		t.Errorf("a 20-task batch was not refused on its estimate:\n%s", tail(big))
+	}
+	if code == 0 {
+		t.Error("a batch above the cap must refuse")
+	}
+}

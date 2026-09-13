@@ -22,7 +22,7 @@ task_globs() {
 # on every problem it finds rather than on the first: an operator who
 # has both an unapproved corpus and no budget should learn both in one
 # go, not one per attempt. Nothing is spent by any of it. Sets SAGA and
-# ESTIMATE. TIER is read, defaulted to user, and checked against the
+# ESTIMATE. PURPOSE, when set, is printed on the head. TIER is read, defaulted to user, and checked against the
 # runner's own cap, because a guard the launcher does not apply is one
 # the operator meets separately and later: the first pilot launch of
 # 2026-09-13 passed both checks here and was then refused inside
@@ -56,6 +56,9 @@ preflight() {  # label tasks k arms
     echo "prereg:    sha256:$(shasum -a 256 "$ROOT/docs/12-experiment-protocol.md" | cut -c1-64)"
     echo "path:      $(printf '%s\n' "$approval" | sed -n 's/^path: //p')"
     echo "tier:      $TIER"
+    # An exploration cell says so on the head, so a pasted provenance
+    # block can never be mistaken for a pre-registered run.
+    [ -n "${PURPOSE:-}" ] && echo "purpose:   $PURPOSE"
     echo "on_limit:  $ON_LIMIT"
     echo "estimate:  $ESTIMATE usd (k=$k, $arms arms, model $MODEL)"
     echo "budget:    ${BUDGET_USD:-<unset>} usd"
