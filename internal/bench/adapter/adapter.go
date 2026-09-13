@@ -88,6 +88,12 @@ type PrepareOutput struct {
 	PromptHash string
 	ToolsHash  string
 	Disclosure Disclosure
+	// CorpusStore is the approval store this arm's Prepare resolved,
+	// empty for a bare arm. It is returned rather than kept on the
+	// adapter: one `*ClaudeCode` is shared across arms, so adapter state
+	// set by a gate arm's Prepare leaked into the next bare arm's
+	// environment for every run of 2026-09-13 (bench-spec 4.2).
+	CorpusStore string
 }
 
 // RunInput starts the harness.
@@ -100,6 +106,12 @@ type RunInput struct {
 	// Index is the run number i within the cell, from 1.
 	Index  int
 	Limits Limits
+	// CorpusStore is the approval store the agent's own gate invocations
+	// read, from this arm's PrepareOutput. Empty for a bare arm, which
+	// must carry no gate variable at all; a gate arm needs it, or the
+	// gate inside the agent's shell would fall back to the operator's
+	// personal ~/.saga/approved (ADR 0010).
+	CorpusStore string
 	// Log receives the harness's stderr when non-nil.
 	Log io.Writer
 }

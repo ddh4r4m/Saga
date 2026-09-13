@@ -45,7 +45,7 @@ func TestClaudeArgsAndEnv(t *testing.T) {
 	if len(id) != 36 || id[14] != '4' || id != SessionID(in.Seed) {
 		t.Errorf("session id %q", id)
 	}
-	env := c.Env("/cfg")
+	env := c.Env("/cfg", "")
 	joined := strings.Join(env, "\n")
 	for _, must := range []string{"HOME=/cfg/home", "CLAUDE_CONFIG_DIR=/cfg/claude-config", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1"} {
 		if !strings.Contains(joined, must) {
@@ -307,7 +307,7 @@ func TestClaudeArmStaging(t *testing.T) {
 	if err := c.stageShim(cfg); err != nil {
 		t.Fatal(err)
 	}
-	env := strings.Join(c.Env(cfg), "\n")
+	env := strings.Join(c.Env(cfg, ""), "\n")
 	if !strings.Contains(env, "PATH="+filepath.Join(cfg, shimDir)+string(os.PathListSeparator)) {
 		t.Errorf("shim dir not first on PATH:\n%s", env)
 	}
@@ -378,8 +378,8 @@ func TestBenchBinDirIsStablePerBinary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	c := &ClaudeCode{SagaBinary: a, CorpusStore: corpus}
-	env := strings.Join(c.Env(t.TempDir()), "\n")
+	c := &ClaudeCode{SagaBinary: a}
+	env := strings.Join(c.Env(t.TempDir(), corpus), "\n")
 	if !strings.Contains(env, "PATH="+da1+string(os.PathListSeparator)) {
 		t.Errorf("PATH does not lead with the stable dir:\n%s", env)
 	}
@@ -388,7 +388,7 @@ func TestBenchBinDirIsStablePerBinary(t *testing.T) {
 	}
 	// Two Prepare-shaped calls with the same binary give the same PATH,
 	// which is the property the approval identity depends on.
-	if p1, p2 := c.Env(t.TempDir()), c.Env(t.TempDir()); pathOf(p1) != pathOf(p2) {
+	if p1, p2 := c.Env(t.TempDir(), corpus), c.Env(t.TempDir(), corpus); pathOf(p1) != pathOf(p2) {
 		t.Errorf("PATH varies per run:\n%s\n%s", pathOf(p1), pathOf(p2))
 	}
 }

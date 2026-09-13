@@ -16,6 +16,7 @@ import (
 
 	"github.com/ddh4r4m/saga/internal/bench/adapter"
 	"github.com/ddh4r4m/saga/internal/bench/task"
+	"github.com/ddh4r4m/saga/internal/gate"
 	"github.com/ddh4r4m/saga/internal/guard"
 )
 
@@ -98,7 +99,7 @@ func runAgent(t *testing.T, c *adapter.ClaudeCode, ws, cfg string) string {
 	}
 	cmd := exec.Command("/bin/sh", script)
 	cmd.Dir = ws
-	cmd.Env = c.Env(cfg)
+	cmd.Env = c.Env(cfg, "")
 	var buf bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &buf, &buf
 	if err := cmd.Run(); err != nil {
@@ -133,6 +134,18 @@ func TestControlArmBlocking(t *testing.T) {
 	}
 	if got[0] != 127 || got[1] != 127 {
 		t.Errorf("the shim must exit 127, got %v", got[:2])
+	}
+	// The whole bare environment against the allowlist of bench-spec 4.2,
+	// here as well as in TestBareArmEnvHasNoGateVariables, so the arm the
+	// blocking test drives is the one the assertion covers.
+	for _, kv := range c.Env(cfg, prep.CorpusStore) {
+		k, _, _ := strings.Cut(kv, "=")
+		if strings.HasPrefix(k, "ANTHROPIC_") || strings.HasPrefix(k, "CLAUDE_CODE_") || strings.HasPrefix(k, "LC_") {
+			continue
+		}
+		if !bareEnvAllowed[k] {
+			t.Errorf("the bare arm's environment carries %s, which bench-spec 4.2 does not allow", k)
+		}
 	}
 	// The two CLI reaches are logged, and nothing was created under .saga.
 	log, err := os.ReadFile(filepath.Join(cfg, "blocked.log"))
@@ -318,7 +331,7 @@ func fireSafetyHook(t *testing.T, c *adapter.ClaudeCode, cfg, ws, command string
 	}
 	cmd := exec.Command("/bin/sh", "-c", hookCmd)
 	cmd.Dir = ws
-	cmd.Env = c.Env(cfg)
+	cmd.Env = c.Env(cfg, "")
 	cmd.Stdin = bytes.NewReader(payload)
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
@@ -431,4 +444,69 @@ func collectBare(t *testing.T, c *adapter.ClaudeCode, tk *task.Task, ws, cfg str
 		t.Errorf("hooks surface: %v (guard_denies %d)", hooksSurface, col.GuardDenies)
 	}
 	return col
+}
+
+// bareEnvAllowed is every variable the bare arm's environment may carry
+// (bench-spec 4.2): the private HOME and config dir, the harness's own
+// switches, the safety hook's log, the operator's passthrough set and
+// the credentials. Nothing named for a Saga component belongs here.
+var bareEnvAllowed = map[string]bool{
+	"HOME": true, "CLAUDE_CONFIG_DIR": true, "PATH": true,
+	"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": true, "DISABLE_AUTOUPDATER": true,
+	"DISABLE_TELEMETRY": true, "DISABLE_ERROR_REPORTING": true, "CI": true,
+	// The deny-only safety hook of docs/12 row 6 runs in both arms and
+	// writes its decisions here, so it is not a treatment surface.
+	"SAGA_GUARD_LOG": true,
+	"TMPDIR":         true, "LANG": true, "SHELL": true, "USER": true, "LOGNAME": true,
+	"TERM": true, "SSL_CERT_FILE": true, "HTTPS_PROXY": true, "HTTP_PROXY": true,
+	"NO_PROXY": true, "https_proxy": true, "http_proxy": true, "no_proxy": true,
+	"NODE_OPTIONS": true, "NODE_EXTRA_CA_CERTS": true,
+}
+
+// TestBareArmEnvHasNoGateVariables (bench-spec 4.2): a gate arm's
+// Prepare must leave nothing behind that reaches the next bare arm.
+// `RunArms` shares one *ClaudeCode across arms, and until 2026-09-13 the
+// corpus store was a field on it, so `SAGA_APPROVAL_DIR` appeared in
+// every arm A environment after the first arm B Prepare: absent on the
+// first task of the pilot and present on the other nineteen. The store
+// is now a value carried from Prepare to Run, so the order of the arms
+// cannot change what the bare arm sees.
+func TestBareArmEnvHasNoGateVariables(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
+	needRunners(t)
+	tk := loadTasks(t, "ts-0001-slug-collapse")[0]
+	c := &adapter.ClaudeCode{Binary: "/nonexistent/claude", Version: "test", SagaBinary: fakeSaga(t)}
+
+	// The gate arm first, which is the order that used to poison the next
+	// bare arm, and the same adapter for both.
+	_, _, gatePrep := prepArm(t, tk, c, []string{"gate"})
+	if gatePrep.CorpusStore == "" {
+		t.Fatal("the gate arm resolved no corpus store, so this test proves nothing")
+	}
+	_, bareCfg, barePrep := prepArm(t, tk, c, nil)
+	if barePrep.CorpusStore != "" {
+		t.Errorf("the bare arm carries a corpus store: %q", barePrep.CorpusStore)
+	}
+
+	env := c.Env(bareCfg, barePrep.CorpusStore)
+	for _, kv := range env {
+		k, v, _ := strings.Cut(kv, "=")
+		if k == gate.ApprovalEnv {
+			t.Errorf("the bare arm's environment names an approval store: %s=%s", k, v)
+		}
+		if strings.HasPrefix(k, "ANTHROPIC_") || strings.HasPrefix(k, "CLAUDE_CODE_") || strings.HasPrefix(k, "LC_") {
+			continue
+		}
+		if !bareEnvAllowed[k] {
+			t.Errorf("the bare arm's environment carries %s, which bench-spec 4.2 does not allow", k)
+		}
+	}
+	// And the gate arm still has its own store, so the fix did not simply
+	// remove the variable from both arms.
+	gateEnv := strings.Join(c.Env(bareCfg, gatePrep.CorpusStore), "\n")
+	if !strings.Contains(gateEnv, gate.ApprovalEnv+"="+gatePrep.CorpusStore) {
+		t.Error("the gate arm's environment does not name its corpus store")
+	}
 }

@@ -128,8 +128,8 @@ func TestCorpusStoreIsOutsideEveryWorkspaceAnd0700(t *testing.T) {
 	}
 	// The env a gate arm runs with names this store and not the
 	// operator's own ~/.saga/approved.
-	c := &adapter.ClaudeCode{SagaBinary: "/nonexistent/saga", CorpusStore: dir}
-	env := strings.Join(c.Env(t.TempDir()), "\n")
+	c := &adapter.ClaudeCode{SagaBinary: "/nonexistent/saga"}
+	env := strings.Join(c.Env(t.TempDir(), dir), "\n")
 	if strings.Contains(env, gate.ApprovalEnv+"="+filepath.Join(home, ".saga", "approved")) {
 		t.Errorf("a run pointed at the operator's personal approval store:\n%s", env)
 	}

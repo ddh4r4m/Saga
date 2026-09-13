@@ -60,10 +60,6 @@ type ClaudeCode struct {
 	Tools []string
 	// Version, when set, skips executing `claude --version`.
 	Version string
-	// CorpusStore is the corpus approval store a gate arm consumes
-	// (ADR 0010). Empty leaves SAGA_APPROVAL_DIR unset, which is the
-	// bare arm and every non-gate use.
-	CorpusStore string
 }
 
 // BenchHome is the root of the bench's own state outside any workspace:
@@ -262,7 +258,7 @@ var passthrough = []string{"PATH", "TMPDIR", "LANG", "SHELL", "USER", "LOGNAME",
 // arm's shim directory or the treatment arm's bin directory is put first
 // on PATH when Prepare created it, and the treatment arm names its
 // approval store. Sorted so the disclosure block is stable.
-func (c *ClaudeCode) Env(configDir string) []string {
+func (c *ClaudeCode) Env(configDir, corpusStore string) []string {
 	env := map[string]string{
 		"HOME":              filepath.Join(configDir, "home"),
 		"CLAUDE_CONFIG_DIR": filepath.Join(configDir, "claude-config"),
@@ -304,9 +300,13 @@ func (c *ClaudeCode) Env(configDir string) []string {
 	delete(env, "CLAUDE_CODE_ENTRYPOINT")
 	env["PATH"] = strings.Join(c.BenchPath(configDir), string(os.PathListSeparator))
 	// The corpus approval store a gate arm consumes; a run never writes
-	// one (ADR 0010 decision 3).
-	if c.CorpusStore != "" {
-		env[gate.ApprovalEnv] = c.CorpusStore
+	// one (ADR 0010 decision 3). It is a parameter, never adapter state:
+	// one `*ClaudeCode` is shared across arms, so a field set by a gate
+	// arm's Prepare put SAGA_APPROVAL_DIR into every later bare-arm
+	// environment, which bench-spec 4.2 forbids (pilot of 2026-09-13,
+	// fixed 2026-09-13 after the experiment closed).
+	if corpusStore != "" {
+		env[gate.ApprovalEnv] = corpusStore
 	}
 	keys := make([]string, 0, len(env))
 	for k := range env {
@@ -373,10 +373,13 @@ func (c *ClaudeCode) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOut
 	}
 	blocks := append([]string{}, in.Blocks...)
 	withGate := HasComponent(in.Components, "gate")
+	var corpusStore string
 	if withGate {
-		if err := c.stageGate(ctx, in); err != nil {
+		store, err := c.stageGate(ctx, in)
+		if err != nil {
 			return nil, err
 		}
+		corpusStore = store
 	} else {
 		if err := c.stageShim(in.ConfigDir); err != nil {
 			return nil, err
@@ -466,7 +469,7 @@ func (c *ClaudeCode) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOut
 	})
 	d["hooks"] = hooks
 	envMap := map[string]string{}
-	for _, kv := range c.Env(in.ConfigDir) {
+	for _, kv := range c.Env(in.ConfigDir, corpusStore) {
 		k, v, _ := strings.Cut(kv, "=")
 		if strings.HasPrefix(k, "ANTHROPIC_") || strings.HasPrefix(k, "CLAUDE_CODE_OAUTH") || k == "PATH" {
 			v = "<redacted>"
@@ -487,7 +490,7 @@ func (c *ClaudeCode) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOut
 		// The corpus approval store this arm consumed, and who approved
 		// each gate: a report can then say that no run approved anything
 		// (ADR 0010 decision 5).
-		d["approval_store"] = c.approvalStoreBlock(in.FrozenSetSHA256, in.RunTaskSetSHA256)
+		d["approval_store"] = approvalStoreBlock(corpusStore, in.FrozenSetSHA256, in.RunTaskSetSHA256)
 		sha, present := GateConfigAtBase(ctx, in.Workspace)
 		d["gate_config_present"] = present
 		if present {
@@ -506,7 +509,7 @@ func (c *ClaudeCode) Prepare(ctx context.Context, in *PrepareInput) (*PrepareOut
 	}
 	d["config_hash"] = BytesSHA256(settings)
 	d["prompt_hash"] = BytesSHA256([]byte(in.PromptOf()))
-	return &PrepareOutput{ConfigHash: BytesSHA256(settings), PromptHash: BytesSHA256([]byte(in.PromptOf())), ToolsHash: canon.SHA256(toolsCanon), Disclosure: d}, nil
+	return &PrepareOutput{ConfigHash: BytesSHA256(settings), PromptHash: BytesSHA256([]byte(in.PromptOf())), ToolsHash: canon.SHA256(toolsCanon), Disclosure: d, CorpusStore: corpusStore}, nil
 }
 
 // ControlBlocks are the bench-spec 4.2 blocks applied in a bare arm, one
@@ -642,11 +645,12 @@ func (c *ClaudeCode) stageShim(configDir string) error {
 // check --approve` so the reds are recorded and the CHECK: lines are
 // approved before the agent starts (gate-spec 3.2; the approval is a
 // human act and is refused inside an agent shell).
-func (c *ClaudeCode) stageGate(ctx context.Context, in *PrepareInput) error {
-	if err := c.stageGateFiles(ctx, in); err != nil {
-		return err
+func (c *ClaudeCode) stageGate(ctx context.Context, in *PrepareInput) (string, error) {
+	store, err := c.stageGateFiles(ctx, in, "")
+	if err != nil {
+		return "", err
 	}
-	return c.baselineCheck(ctx, in)
+	return store, c.baselineCheck(ctx, in, store)
 }
 
 // stageGateFiles is everything a gate arm needs before the baseline
@@ -654,13 +658,13 @@ func (c *ClaudeCode) stageGate(ctx context.Context, in *PrepareInput) error {
 // config, the request and the contract, all in the base commit. It is
 // shared with `approve-corpus`, so the approval identity the owner
 // records is exactly the one a run will present (ADR 0010).
-func (c *ClaudeCode) stageGateFiles(ctx context.Context, in *PrepareInput) error {
+func (c *ClaudeCode) stageGateFiles(ctx context.Context, in *PrepareInput, corpusStore string) (string, error) {
 	if c.SagaBinary == "" {
-		return fmt.Errorf("gate arm: no saga binary")
+		return "", fmt.Errorf("gate arm: no saga binary")
 	}
 	sagaAbs, err := filepath.Abs(c.SagaBinary)
 	if err != nil {
-		return err
+		return "", err
 	}
 	// The corpus approval store this run consumes. It is never the
 	// operator's own ~/.saga/approved: without a task-set hash there is
@@ -670,33 +674,33 @@ func (c *ClaudeCode) stageGateFiles(ctx context.Context, in *PrepareInput) error
 	// task-set hash from the freeze file; a run derives it from the
 	// manifest. Either way it is never empty for a gate arm, and never
 	// the operator's own ~/.saga/approved.
-	if c.CorpusStore == "" {
+	if corpusStore == "" {
 		if in.FrozenSetSHA256 == "" {
-			return fmt.Errorf("gate arm: no task-set hash, so no corpus approval store (ADR 0010)")
+			return "", fmt.Errorf("gate arm: no task-set hash, so no corpus approval store (ADR 0010)")
 		}
 		corpus, err := CorpusStoreDir(in.FrozenSetSHA256)
 		if err != nil {
-			return err
+			return "", err
 		}
-		c.CorpusStore = corpus
+		corpusStore = corpus
 	}
 	// A run never creates the store. `approve-corpus` does, because it is
 	// the thing that approves; Prepare creating it turned a wrong key
 	// into an empty directory that looked like a legitimate store with
 	// nothing in it, which is how the 2026-09-13 dev run spent an arm
 	// before anyone saw that the key was wrong at all.
-	if fi, err := os.Stat(c.CorpusStore); err != nil || !fi.IsDir() {
-		return &NotPreApproved{Store: c.CorpusStore, Key: in.FrozenSetSHA256, MissingStore: true}
+	if fi, err := os.Stat(corpusStore); err != nil || !fi.IsDir() {
+		return "", &NotPreApproved{Store: corpusStore, Key: in.FrozenSetSHA256, MissingStore: true}
 	}
 
 	// The stable directory of ADR 0010 decision 1, not a per-run one: the
 	// approval identity hashes PATH, so a per-run directory made every
 	// run's identity different and forced a human act into every run.
 	if _, err := LinkBenchBinary(sagaAbs); err != nil {
-		return err
+		return "", err
 	}
 	if _, err := store.Init(in.Workspace); err != nil {
-		return fmt.Errorf("saga init in workspace: %w", err)
+		return "", fmt.Errorf("saga init in workspace: %w", err)
 	}
 	st := store.Open(in.Workspace)
 	// docs/12 section 4 arm table: arm B runs the task's contract with
@@ -704,12 +708,12 @@ func (c *ClaudeCode) stageGateFiles(ctx context.Context, in *PrepareInput) error
 	// otherwise hold Stop at exit 5 for the whole run.
 	cfgToml, err := os.ReadFile(st.Path("config.toml"))
 	if err != nil {
-		return fmt.Errorf("config.toml: %w", err)
+		return "", fmt.Errorf("config.toml: %w", err)
 	}
 	if !bytes.Contains(cfgToml, []byte("require_red")) {
 		cfgToml = bytes.Replace(cfgToml, []byte("[gate]\n"), []byte("[gate]\nrequire_red = false\n"), 1)
 		if err := store.WriteFileAtomic(st.Path("config.toml"), cfgToml, 0o644); err != nil {
-			return fmt.Errorf("config.toml: %w", err)
+			return "", fmt.Errorf("config.toml: %w", err)
 		}
 	}
 	man, _, _ := st.ReadManifest()
@@ -719,21 +723,21 @@ func (c *ClaudeCode) stageGateFiles(ctx context.Context, in *PrepareInput) error
 		}
 	}
 	if err := st.WriteManifest(man); err != nil {
-		return fmt.Errorf("manifest: %w", err)
+		return "", fmt.Errorf("manifest: %w", err)
 	}
 	// request.md is the bare prompt.md: the contract's REQUEST: hash and
 	// FROM: spans trace to the task author's request, not to the bench's
 	// staged sentences (which prompt_hash records). Staging the composed
 	// prompt here detached every arm B contract at row 12 (smoke 2026-09-06).
 	if err := store.WriteFileAtomic(st.Path("request.md"), []byte(in.Task.Prompt()), 0o644); err != nil {
-		return fmt.Errorf("request: %w", err)
+		return "", fmt.Errorf("request: %w", err)
 	}
 	contract, err := os.ReadFile(filepath.Join(in.Task.Dir, "contract.md"))
 	if err != nil {
-		return fmt.Errorf("task contract: %w", err)
+		return "", fmt.Errorf("task contract: %w", err)
 	}
 	if err := store.WriteFileAtomic(st.Path("contract.md"), contract, 0o644); err != nil {
-		return fmt.Errorf("contract: %w", err)
+		return "", fmt.Errorf("contract: %w", err)
 	}
 	// The gate reads its config and contract from the base commit, not
 	// from the working tree: `gate.Load` calls `LoadConfig(root, base)`,
@@ -747,15 +751,15 @@ func (c *ClaudeCode) stageGateFiles(ctx context.Context, in *PrepareInput) error
 	// cannot loosen its own gate mid-run, so the fix is here: put the two
 	// files in the base commit before the agent starts.
 	if err := commitStore(ctx, in.Workspace); err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return corpusStore, nil
 }
 
 // baselineCheck runs the task's contract at the base tree: it must be
 // red, and every gate must already carry a corpus approval.
-func (c *ClaudeCode) baselineCheck(ctx context.Context, in *PrepareInput) error {
+func (c *ClaudeCode) baselineCheck(ctx context.Context, in *PrepareInput, corpusStore string) error {
 	sagaAbs, err := filepath.Abs(c.SagaBinary)
 	if err != nil {
 		return err
@@ -768,7 +772,7 @@ func (c *ClaudeCode) baselineCheck(ctx context.Context, in *PrepareInput) error 
 	// the treatment the manifest names.
 	cmd := exec.CommandContext(ctx, sagaAbs, "gate", "check", "--json")
 	cmd.Dir = in.Workspace
-	cmd.Env = c.Env(in.ConfigDir)
+	cmd.Env = c.Env(in.ConfigDir, corpusStore)
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
 	err = cmd.Run()
@@ -788,7 +792,7 @@ func (c *ClaudeCode) baselineCheck(ctx context.Context, in *PrepareInput) error 
 	case 1, 5:
 		return nil
 	case int(cli.ExitApproval):
-		return &NotPreApproved{Gates: approvalMissing(out.Bytes()), Store: c.CorpusStore, Key: in.FrozenSetSHA256}
+		return &NotPreApproved{Gates: approvalMissing(out.Bytes()), Store: corpusStore, Key: in.FrozenSetSHA256}
 	default:
 		return fmt.Errorf("baseline check exited %d: %s", code, strings.TrimSpace(errb.String()))
 	}
@@ -875,7 +879,11 @@ func (c *ClaudeCode) Run(ctx context.Context, in *RunInput) (*RunOutput, error) 
 	defer out.Close()
 	cmd := exec.CommandContext(ctx, c.binary(), c.Args(in, settingsPath, sessionID)...)
 	cmd.Dir = in.Workspace
-	cmd.Env = c.Env(in.ConfigDir)
+	// in.CorpusStore is this arm's own, from its PrepareOutput: a gate
+	// arm's hooks run the gate inside the agent's shell and must read the
+	// corpus store rather than the operator's personal ~/.saga/approved,
+	// and a bare arm must carry no gate variable at all.
+	cmd.Env = c.Env(in.ConfigDir, in.CorpusStore)
 	cmd.Stdin = bytes.NewReader(prompt)
 	cmd.Stdout = out
 	if in.Log != nil {
@@ -1329,12 +1337,11 @@ func (c *ClaudeCode) ApproveCorpus(ctx context.Context, in *ApproveCorpusInput) 
 	// The same staging a run gets, so the identity is the same one a run
 	// will present: the contract and config in the base commit, the
 	// stable binary directory on PATH, the corpus store named.
-	c.CorpusStore = in.CorpusStore
 	prep := &PrepareInput{
 		Task: in.Task, Workspace: in.Workspace, ConfigDir: in.ConfigDir,
 		Components: []string{"gate"}, SagaBinary: c.SagaBinary,
 	}
-	if err := c.stageGateFiles(ctx, prep); err != nil {
+	if _, err := c.stageGateFiles(ctx, prep, in.CorpusStore); err != nil {
 		return nil, err
 	}
 	args := []string{"gate", "check", "--json"}
@@ -1347,7 +1354,7 @@ func (c *ClaudeCode) ApproveCorpus(ctx context.Context, in *ApproveCorpusInput) 
 	}
 	cmd := exec.CommandContext(ctx, sagaAbs, args...)
 	cmd.Dir = in.Workspace
-	cmd.Env = c.Env(in.ConfigDir)
+	cmd.Env = c.Env(in.ConfigDir, in.CorpusStore)
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
 	err = cmd.Run()
@@ -1380,7 +1387,7 @@ func (c *ClaudeCode) ApproveCorpus(ctx context.Context, in *ApproveCorpusInput) 
 // which frozen task set it belongs to, a hash of the directory path
 // (never the path, which names the operator's home), and the approvals
 // found there, by whom and when. A run writes none of these.
-func (c *ClaudeCode) approvalStoreBlock(frozenSet, runSet string) map[string]any {
+func approvalStoreBlock(corpusStore, frozenSet, runSet string) map[string]any {
 	// Both hashes, side by side. They differ whenever the run takes a
 	// subset of the frozen corpus, which is legitimate; the approvals
 	// belong to the corpus, not to the selection. Keying the store on the
@@ -1390,13 +1397,13 @@ func (c *ClaudeCode) approvalStoreBlock(frozenSet, runSet string) map[string]any
 		"kind": "corpus", "taskset_sha256": frozenSet, "created_by_run": false,
 		"run_taskset_sha256": runSet,
 	}
-	if c.CorpusStore == "" {
+	if corpusStore == "" {
 		out["dir_sha256"] = nil
 		out["dir_sha256_reason"] = "no corpus store for this arm"
 		return out
 	}
-	out["dir_sha256"] = BytesSHA256([]byte(c.CorpusStore))
-	entries, err := os.ReadDir(c.CorpusStore)
+	out["dir_sha256"] = BytesSHA256([]byte(corpusStore))
+	entries, err := os.ReadDir(corpusStore)
 	if err != nil {
 		out["approvals"] = []any{}
 		out["approvals_reason"] = "store unreadable: " + err.Error()
@@ -1407,7 +1414,7 @@ func (c *ClaudeCode) approvalStoreBlock(frozenSet, runSet string) map[string]any
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
 			continue
 		}
-		raw, err := os.ReadFile(filepath.Join(c.CorpusStore, e.Name()))
+		raw, err := os.ReadFile(filepath.Join(corpusStore, e.Name()))
 		if err != nil {
 			continue
 		}

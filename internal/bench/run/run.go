@@ -736,7 +736,7 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 
 	runCtx, cancel := context.WithTimeout(ctx, wall)
 	start := time.Now()
-	ro, err := opts.Adapter.Run(runCtx, &adapter.RunInput{Task: t, Workspace: ws, ConfigDir: cfg, PromptPath: promptPath, Seed: seed, Index: i, Limits: limits, Log: opts.Log})
+	ro, err := opts.Adapter.Run(runCtx, &adapter.RunInput{Task: t, Workspace: ws, ConfigDir: cfg, PromptPath: promptPath, Seed: seed, Index: i, Limits: limits, CorpusStore: prep.CorpusStore, Log: opts.Log})
 	row.WallS = time.Since(start).Seconds()
 	cancel()
 	if err != nil {
