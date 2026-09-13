@@ -6,9 +6,9 @@
 
 ## The result, at a glance
 
-![The pilot at a glance: the pre-registered primary was a null; the exploratory scan rows say the gated agent stayed in scope](bench/results/pilot-2026-09-13/figure.png)
+![The pilot at a glance: the pre-registered primary was a null; the exploratory scan rows say the gated agent stayed in scope](bench/results/pilot-2026-09-13/figure.svg)
 
-Every number on the figure is the runner-generated report's own (`scripts/pilot-figure.py` reads `compare.json`). The first three rows are pre-registered and read by the rule in docs/12; the last two are exploratory scan outputs and are not evidence for anything until a differently registered experiment tests them.
+Every number on the figure is the runner-generated report's own; `saga bench figure bench/results/pilot-2026-09-13` reads that archive's `compare.json` and nothing else, and regenerates the file byte for byte. The first three rows are pre-registered and read by the rule in docs/12; the last two are exploratory scan outputs and are not evidence for anything until a differently registered experiment tests them.
 
 
 ## Why

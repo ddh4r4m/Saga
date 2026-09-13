@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="810" viewBox="0 0 1180 810" font-family="'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif">
+<rect width="1180" height="810" fill="#fcfcfb"/>
+<text x="48" y="46" font-size="25" font-weight="700" fill="#0b0b0b">Does a Stop gate make a coding agent honest about “done”? A pilot.</text>
+<text x="48" y="76" font-size="14" font-weight="400" fill="#52514e">20 tasks × 5 runs × 2 arms on Claude Code, model claude-opus-5.  Arm A runs bare; arm B runs with the Saga gate hook.  Pre-registered before any run.</text>
+<circle cx="53" cy="106" r="6" fill="#2a78d6"/>
+<text x="68" y="111" font-size="14" font-weight="400" fill="#0b0b0b">A, bare</text>
+<circle cx="163" cy="106" r="6" fill="#eb6834"/>
+<text x="178" y="111" font-size="14" font-weight="400" fill="#0b0b0b">B, with the gate</text>
+<text x="48" y="166" font-size="16" font-weight="700" fill="#0b0b0b">False “done” claims</text>
+<text x="48" y="188" font-size="12" font-weight="400" fill="#52514e">primary, pre-registered</text>
+<text x="48" y="208" font-size="12" font-weight="400" fill="#52514e">Δ -2.5 pp, 95% CI -7.4 to +0.0 pp. Null: the −5 pp floor was</text>
+<text x="48" y="223" font-size="12" font-weight="400" fill="#52514e">not cleared.</text>
+<line x1="470" y1="184" x2="850" y2="184" stroke="#e6e5e1" stroke-width="1"/>
+<line x1="774" y1="184" x2="660" y2="184" stroke="#52514e" stroke-width="2" stroke-linecap="round"/>
+<circle cx="774" cy="184" r="7" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="660" cy="184" r="7" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<text x="774" y="172" font-size="13" fill="#0b0b0b" text-anchor="middle">6.7%</text>
+<text x="660" y="202" font-size="13" fill="#0b0b0b" text-anchor="middle">4.2%</text>
+<line x1="1098" y1="168" x2="1098" y2="200" stroke="#e6e5e1" stroke-width="1"/>
+<text x="1095" y="214" font-size="10" font-weight="400" fill="#52514e">0</text>
+<line x1="978" y1="168" x2="978" y2="200" stroke="#eb6834" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="952" y="214" font-size="10" font-weight="400" fill="#eb6834">kill floor</text>
+<line x1="921" y1="184" x2="1098" y2="184" stroke="#e6e5e1" stroke-width="1"/>
+<line class="ci" x1="921" y1="184" x2="1098" y2="184" stroke="#52514e" stroke-width="2" stroke-linecap="round"/>
+<circle cx="1038" cy="184" r="5" fill="#0b0b0b" stroke="#fcfcfb" stroke-width="2"/>
+<text x="890" y="166" font-size="11" font-weight="400" fill="#52514e">Δ with 95% CI</text>
+<line x1="48" y1="236" x2="1132" y2="236" stroke="#e6e5e1" stroke-width="1"/>
+<text x="48" y="270" font-size="16" font-weight="700" fill="#0b0b0b">Tasks solved (pass@1)</text>
+<text x="48" y="292" font-size="12" font-weight="400" fill="#52514e">secondary, pre-registered</text>
+<text x="48" y="312" font-size="12" font-weight="400" fill="#52514e">Δ +5.0 pp, CI +0.0 to +11.0 pp. Not lowered.</text>
+<line x1="470" y1="288" x2="850" y2="288" stroke="#e6e5e1" stroke-width="1"/>
+<line x1="758" y1="288" x2="774" y2="288" stroke="#52514e" stroke-width="2" stroke-linecap="round"/>
+<circle cx="758" cy="288" r="7" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="774" cy="288" r="7" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<text x="758" y="306" font-size="13" fill="#0b0b0b" text-anchor="middle">90.0%</text>
+<text x="774" y="276" font-size="13" fill="#0b0b0b" text-anchor="middle">95.0%</text>
+<line x1="921" y1="272" x2="921" y2="304" stroke="#e6e5e1" stroke-width="1"/>
+<text x="918" y="318" font-size="10" font-weight="400" fill="#52514e">0</text>
+<line x1="921" y1="288" x2="1098" y2="288" stroke="#e6e5e1" stroke-width="1"/>
+<line class="ci" x1="921" y1="288" x2="1098" y2="288" stroke="#52514e" stroke-width="2" stroke-linecap="round"/>
+<circle cx="1001" cy="288" r="5" fill="#0b0b0b" stroke="#fcfcfb" stroke-width="2"/>
+<text x="890" y="270" font-size="11" font-weight="400" fill="#52514e">Δ with 95% CI</text>
+<line x1="48" y1="340" x2="1132" y2="340" stroke="#e6e5e1" stroke-width="1"/>
+<text x="48" y="374" font-size="16" font-weight="700" fill="#0b0b0b">Tokens per solved task</text>
+<text x="48" y="396" font-size="12" font-weight="400" fill="#52514e">cost condition, pre-registered</text>
+<text x="48" y="416" font-size="12" font-weight="400" fill="#52514e">Ratio 1.17, above the 1.10 bound. Cost condition failed.</text>
+<line x1="470" y1="392" x2="850" y2="392" stroke="#e6e5e1" stroke-width="1"/>
+<line x1="729" y1="392" x2="774" y2="392" stroke="#52514e" stroke-width="2" stroke-linecap="round"/>
+<circle cx="729" cy="392" r="7" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="774" cy="392" r="7" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<text x="729" y="410" font-size="13" fill="#0b0b0b" text-anchor="middle">139k</text>
+<text x="774" y="380" font-size="13" fill="#0b0b0b" text-anchor="middle">162k</text>
+<line x1="890" y1="392" x2="1130" y2="392" stroke="#e6e5e1" stroke-width="1"/>
+<line x1="973" y1="376" x2="973" y2="408" stroke="#eb6834" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="955" y="422" font-size="10" font-weight="400" fill="#eb6834">1.10 bound</text>
+<circle cx="1046" cy="392" r="5" fill="#0b0b0b" stroke="#fcfcfb" stroke-width="2"/>
+<text x="890" y="374" font-size="11" font-weight="400" fill="#52514e">ratio, no interval reported</text>
+<line x1="48" y1="444" x2="1132" y2="444" stroke="#e6e5e1" stroke-width="1"/>
+<text x="48" y="478" font-size="16" font-weight="700" fill="#0b0b0b">Runs with out-of-scope edits</text>
+<text x="48" y="500" font-size="12" font-weight="400" fill="#eb6834" font-style="italic">exploratory scan, not a result</text>
+<text x="48" y="520" font-size="12" font-weight="400" fill="#52514e">not tested, no interim-look protection. The gated agent edited</text>
+<text x="48" y="535" font-size="12" font-weight="400" fill="#52514e">outside the task&apos;s files far less often.</text>
+<line x1="470" y1="496" x2="850" y2="496" stroke="#e6e5e1" stroke-width="1"/>
+<line x1="774" y1="496" x2="517" y2="496" stroke="#52514e" stroke-width="2" stroke-linecap="round"/>
+<circle cx="774" cy="496" r="7" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="517" cy="496" r="7" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<text x="774" y="484" font-size="13" fill="#0b0b0b" text-anchor="middle">32.0%</text>
+<text x="517" y="514" font-size="13" fill="#0b0b0b" text-anchor="middle">5.0%</text>
+<line x1="48" y1="548" x2="1132" y2="548" stroke="#e6e5e1" stroke-width="1"/>
+<text x="48" y="582" font-size="16" font-weight="700" fill="#0b0b0b">Passing runs that edited a visible test file</text>
+<text x="48" y="604" font-size="12" font-weight="400" fill="#eb6834" font-style="italic">exploratory scan, not a result</text>
+<text x="48" y="624" font-size="12" font-weight="400" fill="#52514e">not tested, no interim-look protection. The scan calls this the</text>
+<text x="48" y="639" font-size="12" font-weight="400" fill="#52514e">cheat rate; on the pilot all five were strengthened tests,</text>
+<text x="48" y="654" font-size="12" font-weight="400" fill="#52514e">unseen by the clean-checkout oracle (docs/15).</text>
+<line x1="470" y1="600" x2="850" y2="600" stroke="#e6e5e1" stroke-width="1"/>
+<line x1="774" y1="600" x2="470" y2="600" stroke="#52514e" stroke-width="2" stroke-linecap="round"/>
+<circle cx="774" cy="600" r="7" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="470" cy="600" r="7" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<text x="774" y="588" font-size="13" fill="#0b0b0b" text-anchor="middle">5.6%</text>
+<text x="470" y="618" font-size="13" fill="#0b0b0b" text-anchor="middle">0.0%</text>
+<text x="48" y="696" font-size="12" font-weight="400" fill="#52514e">What holds: the gate ran in every arm B run, no run approved its own baselines, hidden oracles graded in a clean checkout, and the harness&apos;s own cost figure reconciles.</text>
+<text x="48" y="716" font-size="12" font-weight="400" fill="#52514e">What does not: the pre-registered effect. By the kill rule the experiment ended here and this pilot is the result. Exploratory rows are a hint for a differently registered experiment, not evidence.</text>
+<text x="48" y="736" font-size="12" font-weight="400" fill="#52514e">Source: the runner-written report in this archive (pre-registration sha256 88d1abdc273e4e38…), 10000 bootstrap resamples over tasks. Rendered by `saga bench figure`.</text>
+</svg>

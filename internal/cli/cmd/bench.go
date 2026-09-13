@@ -29,6 +29,8 @@ const benchUsage = `usage: saga bench <verify-task|run|report|reconcile|compare|
   estimate <tasks-glob>... [--k <n>] [--arms <n>]
                                             the runner's own cost estimate, in usd, before spending it
   badge   <run-dir> --metric <m>             refused below tier publish (docs/12 commitment 4)
+  figure  <archive-dir> [--out <file>] [--per-task]
+                                            the archive's own one-glance SVG, drawn from its compare.json
 `
 
 func (a *App) cmdBench(args []string) error {
@@ -55,6 +57,8 @@ func (a *App) cmdBench(args []string) error {
 		return a.benchEstimate(args[1:])
 	case "badge":
 		return a.benchBadge(args[1:])
+	case "figure":
+		return a.benchFigure(args[1:])
 	case "-h", "--help", "help":
 		fmt.Fprint(a.Stdout, benchUsage)
 		return nil
