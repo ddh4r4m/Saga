@@ -223,3 +223,72 @@ func TestPreflightAppliesTheTierCap(t *testing.T) {
 		t.Errorf("the dev-tier pilot was refused by the user cap:\n%s", tail(pilot))
 	}
 }
+
+// TestTaskGlobsPartitionTheCorpus: `1-20` and `21-40` must select
+// twenty tasks each, share none, and together be the whole frozen
+// corpus. `*-002?-*` also matches `0020`, so until 2026-09-13 the
+// second batch carried py-0020 as well and selected 21 tasks; the dev
+// launcher's own output said "covered 0 of 21 tasks" and nobody read
+// it. Fixed after the experiment closed, so the archives that ran the
+// old globs are unaffected and record the set they ran.
+func TestTaskGlobsPartitionTheCorpus(t *testing.T) {
+	needTools(t)
+	root, err := filepath.Abs("..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sel := func(selector string) map[string]bool {
+		t.Helper()
+		cmd := exec.Command("bash", "-c",
+			`ROOT="$1"; . "$ROOT/scripts/bench-common.sh"; task_globs "$2"`, "bash", root, selector)
+		out, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("task_globs %s: %v", selector, err)
+		}
+		got := map[string]bool{}
+		for _, pattern := range strings.Split(strings.TrimSpace(string(out)), ",") {
+			matches, err := filepath.Glob(pattern)
+			if err != nil {
+				t.Fatalf("glob %q: %v", pattern, err)
+			}
+			for _, m := range matches {
+				// Only real tasks: bench/tasks also holds helper dirs.
+				if _, err := os.Stat(filepath.Join(m, "task.toml")); err == nil {
+					got[filepath.Base(m)] = true
+				}
+			}
+		}
+		return got
+	}
+
+	first, second := sel("1-20"), sel("21-40")
+	if len(first) != 20 {
+		t.Errorf("1-20 selects %d tasks, want 20", len(first))
+	}
+	if len(second) != 20 {
+		t.Errorf("21-40 selects %d tasks, want 20", len(second))
+	}
+	for id := range first {
+		if second[id] {
+			t.Errorf("%s is in both batches", id)
+		}
+	}
+	// Together they are the whole corpus `all` selects, so no task can
+	// be run twice or missed by running both batches.
+	all := sel("all")
+	union := map[string]bool{}
+	for id := range first {
+		union[id] = true
+	}
+	for id := range second {
+		union[id] = true
+	}
+	if len(union) != len(all) {
+		t.Errorf("the two batches cover %d tasks, `all` selects %d", len(union), len(all))
+	}
+	for id := range all {
+		if !union[id] {
+			t.Errorf("%s is in neither batch", id)
+		}
+	}
+}

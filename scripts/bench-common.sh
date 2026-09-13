@@ -8,7 +8,11 @@
 task_globs() {
   case "${1:-1-20}" in
     1-20)  echo "$ROOT/bench/tasks/*-000?-*,$ROOT/bench/tasks/*-001?-*,$ROOT/bench/tasks/*-0020-*" ;;
-    21-40) echo "$ROOT/bench/tasks/*-002?-*,$ROOT/bench/tasks/*-003?-*,$ROOT/bench/tasks/*-0040-*" ;;
+    # 0021 to 0029, not 002?: `*-002?-*` also matches 0020, so the two
+    # batches overlapped on py-0020 and `21-40` selected 21 tasks. Found
+    # in the dev run of 2026-09-13, fixed after the experiment closed;
+    # the archives that used the old globs record the set they ran.
+    21-40) echo "$ROOT/bench/tasks/*-002[1-9]-*,$ROOT/bench/tasks/*-003?-*,$ROOT/bench/tasks/*-0040-*" ;;
     all)   echo "$ROOT/bench/tasks/*" ;;
     *)     echo "$1" ;;
   esac
