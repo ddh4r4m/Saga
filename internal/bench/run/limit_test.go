@@ -3,8 +3,11 @@ package run
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -12,6 +15,7 @@ import (
 
 	"github.com/ddh4r4m/saga/internal/bench/adapter"
 	"github.com/ddh4r4m/saga/internal/cli"
+	"github.com/ddh4r4m/saga/internal/trace"
 )
 
 // The line the harness returned 132 times in the pilot of 2026-09-13,
@@ -233,3 +237,77 @@ func TestOnLimitWithoutAReadableResetTakesTheShortWait(t *testing.T) {
 }
 
 const limitNoReset = "You've hit your session limit"
+
+// TestEstimateScalesByTheModelPriceRatio: the cost hints in the corpus
+// were measured on Opus (docs/12 §6), so an estimate for another model
+// has to be scaled or it prices every cell as an Opus one. That is not
+// cosmetic: the estimate is the only guard between an operator and a
+// spend, and a Haiku cell over the pilot's twenty tasks estimated 48.50
+// usd, which the user tier's 20 usd cap refused although the run costs
+// about a tenth of that.
+//
+// The pilot's own figure is pinned: 48.50 for claude-opus-5 over the
+// frozen tasks 1-20 at K=5 across two arms, which is what
+// bench/results/pilot-2026-09-13/provenance.txt records.
+func TestEstimateScalesByTheModelPriceRatio(t *testing.T) {
+	tasks := loadTasks(t, pilotBatch(t)...)
+	if len(tasks) != 20 {
+		t.Fatalf("the pilot batch is %d tasks, want 20", len(tasks))
+	}
+	prices := trace.DefaultPrices()
+	if prices.CalibrationModel != "claude-opus-5" {
+		t.Fatalf("the calibration model moved to %q; the pinned figures below were measured against claude-opus-5", prices.CalibrationModel)
+	}
+
+	arms := 2.0
+	for _, tc := range []struct {
+		model string
+		total float64
+		ratio float64
+		known bool
+	}{
+		{"claude-opus-5", 48.50, 1.0, true},
+		{"claude-haiku-4-5-20251001", 9.70, 0.2, true},
+		// A model the pinned table does not carry keeps the calibration
+		// model's price rather than guessing, and says so to the caller.
+		{"sonnet", 48.50, 1.0, false},
+		{"", 48.50, 1.0, false},
+	} {
+		per, ratio := EstimateFor(tasks, 5, tc.model, prices)
+		if got := per * arms; math.Abs(got-tc.total) > 0.005 {
+			t.Errorf("%q: %.2f usd over %d tasks, want %.2f", tc.model, got, len(tasks), tc.total)
+		}
+		if math.Abs(ratio-tc.ratio) > 1e-9 {
+			t.Errorf("%q: ratio %v, want %v", tc.model, ratio, tc.ratio)
+		}
+		if _, ok := prices.CostRatio(tc.model); ok != tc.known {
+			t.Errorf("%q: known %v, want %v", tc.model, ok, tc.known)
+		}
+	}
+	// The Haiku cell has to fit the user tier's cap, which is the whole
+	// point of the change.
+	haiku, _ := EstimateFor(tasks, 5, "claude-haiku-4-5-20251001", prices)
+	if haiku*arms > 20 {
+		t.Errorf("the Haiku cell estimates %.2f usd and the user tier caps at 20", haiku*arms)
+	}
+	// And Estimate without a model is the old figure exactly, so nothing
+	// that did not ask for a model moved.
+	if got := Estimate(tasks, 5) * arms; math.Abs(got-48.50) > 0.005 {
+		t.Errorf("the model-less estimate moved to %.2f", got)
+	}
+}
+
+// pilotBatch is the twenty tasks of the pilot, read from the corpus so
+// the test follows a re-freeze rather than pinning names twice.
+func pilotBatch(t *testing.T) []string {
+	t.Helper()
+	var ids []string
+	for _, id := range corpusIDs(t) {
+		if m := regexp.MustCompile(`-(\d{4})-`).FindStringSubmatch(id); m != nil {
+			if n, _ := strconv.Atoi(m[1]); n >= 1 && n <= 20 {
+				ids = append(ids, id)
+			}
+		}
+	}
+	return ids
+}

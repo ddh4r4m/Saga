@@ -46,7 +46,12 @@ preflight() {  # label tasks k arms
 
   # The runner's own estimate, so the number in front of the operator is
   # the number the runner will refuse on.
-  ESTIMATE=$("$SAGA" bench estimate "$tasks" --k "$k" --arms "$arms" 2>/dev/null)
+  # The model is passed so the estimate is priced for the model actually
+  # being run: the cost hints were calibrated on Opus (docs/12 §6), and
+  # without the ratio a Haiku cell was priced as an Opus one and refused
+  # by the user tier's cap (2026-09-13).
+  ESTIMATE=$("$SAGA" bench estimate "$tasks" --k "$k" --arms "$arms" --model "${MODEL:-}" 2>"$OUT/estimate.log")
+  RATIO=$(sed -n 's/^ratio //p' "$OUT/estimate.log")
 
   {
     echo "$label $(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -60,7 +65,7 @@ preflight() {  # label tasks k arms
     # block can never be mistaken for a pre-registered run.
     [ -n "${PURPOSE:-}" ] && echo "purpose:   $PURPOSE"
     echo "on_limit:  $ON_LIMIT"
-    echo "estimate:  $ESTIMATE usd (k=$k, $arms arms, model $MODEL)"
+    echo "estimate:  $ESTIMATE usd (k=$k, $arms arms, model $MODEL, model ratio ${RATIO:-1.0000})"
     echo "budget:    ${BUDGET_USD:-<unset>} usd"
     echo "out:       $OUT"
   } | tee "$OUT/provenance.txt"

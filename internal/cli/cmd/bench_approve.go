@@ -11,6 +11,7 @@ import (
 	"github.com/ddh4r4m/saga/internal/bench/task"
 	"github.com/ddh4r4m/saga/internal/cli"
 	"github.com/ddh4r4m/saga/internal/gate"
+	"github.com/ddh4r4m/saga/internal/trace"
 )
 
 // benchApproveCorpus is `saga bench approve-corpus <tasks-glob>`
@@ -184,7 +185,8 @@ func short16(h string) string {
 	return "sha256:" + h
 }
 
-// benchEstimate is `saga bench estimate <glob> --k <n> [--arms <n>]`:
+// benchEstimate is `saga bench estimate <glob> --k <n> [--arms <n>]
+// [--model <id>]`:
 // the runner's own cost estimate for a cell, printed before anything is
 // spent. It reads task.toml and runs nothing, so a launcher can put the
 // number in front of the operator and refuse below it.
@@ -192,12 +194,13 @@ func (a *App) benchEstimate(args []string) error {
 	fs := a.flags("bench estimate")
 	k := fs.Int("k", 1, "runs per task")
 	arms := fs.Int("arms", 2, "arms in the invocation; the estimate is per arm times this")
+	model := fs.String("model", "", "model id; the cost hints are scaled by its price ratio to the table's calibration_model")
 	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	globs := positionals[fs]
 	if len(globs) == 0 {
-		return cli.Errorf(cli.ExitUsage, "usage: saga bench estimate <tasks-glob>... [--k <n>] [--arms <n>]")
+		return cli.Errorf(cli.ExitUsage, "usage: saga bench estimate <tasks-glob>... [--k <n>] [--arms <n>] [--model <id>]")
 	}
 	tasks, err := a.loadTasks(globs)
 	if err != nil {
@@ -206,9 +209,22 @@ func (a *App) benchEstimate(args []string) error {
 	if *k < 1 || *arms < 1 {
 		return cli.Errorf(cli.ExitUsage, "estimate: k and arms must be at least 1")
 	}
-	per := run.Estimate(tasks, *k)
+	prices := trace.DefaultPrices()
+	per, ratio := run.EstimateFor(tasks, *k, *model, prices)
 	fmt.Fprintf(a.Stdout, "%.2f\n", per*float64(*arms))
-	fmt.Fprintf(a.Stderr, "estimate: %d tasks, k=%d, %d arms: %.2f usd per arm, %.2f usd total (bench-spec 4.5; the runner caps at 1.5x)\n",
-		len(tasks), *k, *arms, per, per*float64(*arms))
+	// The ratio is printed whichever way it went, so an operator can see
+	// that a cheap model was priced cheaply, and can see when it was not
+	// because the table does not carry it.
+	how := fmt.Sprintf("model ratio %.2f to %s", ratio, prices.CalibrationModel)
+	if *model == "" {
+		how = "no model named, " + prices.CalibrationModel + "-calibrated hints"
+	} else if _, ok := prices.CostRatio(*model); !ok {
+		how = "unpriced model, " + prices.CalibrationModel + "-calibrated hints"
+	}
+	// stdout stays one number, which is what a launcher captures; the
+	// ratio goes to stderr on its own line for the same reason.
+	fmt.Fprintf(a.Stderr, "estimate: %d tasks, k=%d, %d arms: %.2f usd per arm, %.2f usd total (%s; bench-spec 4.5, the runner caps at 1.5x)\n",
+		len(tasks), *k, *arms, per, per*float64(*arms), how)
+	fmt.Fprintf(a.Stderr, "ratio %.4f\n", ratio)
 	return nil
 }

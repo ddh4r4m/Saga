@@ -24,6 +24,10 @@ type PriceTable struct {
 	Schema   string       `toml:"schema"`
 	Observed string       `toml:"observed"`
 	Models   []ModelPrice `toml:"model"`
+	// CalibrationModel is the model the bench corpus's `cost_hint_usd`
+	// values were measured on (docs/12 section 6). A bench estimate for
+	// another model scales each hint by the price ratio to this one.
+	CalibrationModel string `toml:"calibration_model"`
 	// Hash is sha256 of the file bytes; pinned into every ledger row.
 	Hash string `toml:"-"`
 	raw  []byte
@@ -89,6 +93,44 @@ func (t *PriceTable) Lookup(model string) *ModelPrice {
 		}
 	}
 	return nil
+}
+
+// perMTok is the headline price of a model, input plus output per
+// million tokens. It is the figure a cost hint scales with: the cache
+// components move with it and a bench estimate is an order-of-magnitude
+// guard, not an invoice.
+func (m *ModelPrice) perMTok() (float64, bool) {
+	if m == nil || m.In == nil || m.Out == nil {
+		return 0, false
+	}
+	return *m.In + *m.Out, true
+}
+
+// CostRatio is how much a run on model costs relative to the model the
+// corpus's cost hints were calibrated on. It returns 1.0 and false when
+// either model is absent from the table or carries no price, which the
+// caller reports rather than hides: an unpriced model keeps the
+// Opus-calibrated hint.
+//
+// The bench needed this because its estimate is the only thing standing
+// between an operator and a spend, and it was model-blind: a Haiku cell
+// over the twenty pilot tasks at K=5 priced at 48.50 usd, the Opus
+// figure, and the user tier's 20 usd cap refused a run that would have
+// cost about a tenth of that (2026-09-13).
+func (t *PriceTable) CostRatio(model string) (float64, bool) {
+	if t == nil || model == "" {
+		return 1, false
+	}
+	cal := t.CalibrationModel
+	if cal == "" || model == cal {
+		return 1, cal != "" && model == cal
+	}
+	m, ok := t.Lookup(model).perMTok()
+	c, okc := t.Lookup(cal).perMTok()
+	if !ok || !okc || c == 0 {
+		return 1, false
+	}
+	return m / c, true
 }
 
 // Persist writes the table to .saga/trace/prices/<sha256 hex>.toml if it is

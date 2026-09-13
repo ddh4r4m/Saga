@@ -4,6 +4,14 @@
 # this table costs null, never 0. Replace with `saga trace prices use <file>`.
 schema = "saga.trace.prices/1"
 observed = "2026-09-02"
+# The model the corpus's `cost_hint_usd` values were calibrated on.
+# docs/12 section 6 sets the pilot's per-run estimate from doc 05
+# section 1.2's measured $2.30 per solve for Opus 4.7 and runs the cell
+# on Opus 5, so every cost hint in bench/tasks is an Opus figure. The
+# bench scales a hint by the price ratio of the model actually being run
+# to this one (bench-spec section 4.5); a model absent from the table
+# keeps ratio 1.0 and says so.
+calibration_model = "claude-opus-5"
 
 [[model]]
 id = "claude-fable-5.1"

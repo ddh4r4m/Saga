@@ -21,14 +21,15 @@
 # (bench-spec §4.4) and no exploration can grow into a pilot-sized
 # spend by accident.
 #
-# The default batch is the first nine tasks, because that is what fits.
-# The runner's estimate is `Σ K × cost_hint_usd × arms` and knows
-# nothing about the model, so it prices a Haiku run as if it were the
-# Opus run the hints were calibrated on: at K=5 over two arms, tasks
-# 1-9 estimate 19.00 usd and tasks 1-20 estimate 48.50, which the tier
-# cap refuses. Ask for a larger batch and the launcher will say so
-# before spending anything; that refusal is the cap working, not a
-# fault. Selectors: 1-9 (the default), 1-20, 21-40, all, or a literal
+# The default batch is tasks 1-20, the pilot's own set, which fits
+# because the estimate is priced for the model being run: the cost
+# hints were calibrated on Opus (docs/12 §6, the price table's
+# `calibration_model`) and are scaled by the price ratio of the model
+# named, so a Haiku cell over those twenty at K=5 estimates 9.70 usd
+# against Opus's 48.50. A model the pinned table does not carry keeps
+# ratio 1.0 and the head says so, which will read as an Opus price and
+# will usually be refused by the cap; that refusal is the cap working.
+# Selectors: 1-20 (the default), 21-40, all, 1-9, or a literal
 # comma-separated glob.
 #
 # Knobs: BUDGET_USD (required, at most 20), OUT, MODEL, K.
@@ -41,10 +42,11 @@ mkdir -p "$OUT/bin"
 # shellcheck source=scripts/bench-common.sh
 . "$ROOT/scripts/bench-common.sh"
 
-SELECTOR=${1:-1-9}
+SELECTOR=${1:-1-20}
 case "$SELECTOR" in
-  # The first nine tasks, one decade of the corpus: the largest batch
-  # whose estimate fits the user tier's cap at K=5.
+  # Kept for the record: before the estimate learned the model's price
+  # ratio, a Haiku cell was priced as the Opus run the cost hints came
+  # from and only nine tasks fitted the cap.
   1-9) TASKS="$ROOT/bench/tasks/*-000?-*" ;;
   *)   TASKS=$(task_globs "$SELECTOR") ;;
 esac

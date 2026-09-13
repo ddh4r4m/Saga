@@ -172,6 +172,9 @@ func TestLaunchersNameTheirTier(t *testing.T) {
 	}
 	needTools(t)
 	pilot, _ := runLauncher(t, "bench-pilot.sh", []string{"BUDGET_USD=65"})
+	if !strings.Contains(pilot, "estimate:  48.50 usd") || !strings.Contains(pilot, "model ratio 1.0000") {
+		t.Errorf("the pilot's own estimate moved:\n%s", tail(pilot))
+	}
 	if !strings.Contains(pilot, "tier:      dev") {
 		t.Errorf("the pilot head does not name the pre-registered tier:\n%s", tail(pilot))
 	}
@@ -313,11 +316,13 @@ func TestExploreHeadNamesItsPurpose(t *testing.T) {
 			t.Errorf("the explore head has no %q line:\n%s", want, tail(out))
 		}
 	}
-	// The default batch has to be one the cap admits, or the launcher
-	// cannot run its own default: the estimate is model-blind, so a
-	// Haiku cell is priced as the Opus run the cost hints came from.
-	if !strings.Contains(out, "estimate:  19.00 usd") {
-		t.Errorf("the default batch no longer estimates 19.00:\n%s", tail(out))
+	// The default batch is the pilot's own twenty tasks, and it fits
+	// because the estimate is priced for the model being run: the cost
+	// hints were calibrated on Opus, so a Haiku cell is a fifth of the
+	// Opus figure. Before the ratio the same cell estimated 48.50 and
+	// the user tier's cap refused it.
+	if !strings.Contains(out, "estimate:  9.70 usd") || !strings.Contains(out, "model ratio 0.2000") {
+		t.Errorf("the default batch does not estimate 9.70 at ratio 0.2000:\n%s", tail(out))
 	}
 	if strings.Contains(out, "the user tier caps at 20 usd") {
 		t.Errorf("the default batch is refused by the cap:\n%s", tail(out))
@@ -342,11 +347,16 @@ func TestExploreRefusesAboveTheUserCap(t *testing.T) {
 	if !strings.Contains(out, "nothing has been spent") {
 		t.Errorf("output:\n%s", tail(out))
 	}
-	// A batch too large for the cap is refused on the estimate, with the
-	// number in front of the operator.
-	big, code := runLauncher(t, "bench-explore.sh", []string{"BUDGET_USD=20"}, "1-20")
+	// A model the pinned table does not carry keeps the calibration
+	// model's price rather than guessing, so the same batch reads as an
+	// Opus cell and the cap refuses it. That is the safe direction: an
+	// unpriced model is never assumed cheap.
+	big, code := runLauncher(t, "bench-explore.sh", []string{"BUDGET_USD=20", "MODEL=not-in-the-table"}, "1-20")
 	if !strings.Contains(big, "BUDGET_USD=20 is below the estimate 48.50") {
-		t.Errorf("a 20-task batch was not refused on its estimate:\n%s", tail(big))
+		t.Errorf("an unpriced model was not priced as the calibration model:\n%s", tail(big))
+	}
+	if !strings.Contains(big, "model ratio 1.0000") {
+		t.Errorf("the head does not show the ratio of an unpriced model:\n%s", tail(big))
 	}
 	if code == 0 {
 		t.Error("a batch above the cap must refuse")

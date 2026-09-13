@@ -16,6 +16,7 @@
 | 12 | [Experiment protocol](12-experiment-protocol.md) | Pre-registration of the eight-week experiment: hypotheses, arms, task set, budget, kill rule, analysis plan, readiness checklist, timeline |
 | 13 | [Week 1 status](13-week1-status.md) | Night of 2026-09-06: what is established, the numbers that exist, what is the owner's to do, and the process record |
 | 14 | [Pilot morning](14-pilot-morning.md) | 2026-09-13: the void pilot, the defects fixed live, the completed pilot and its pre-registered null reading, what is the owner's to decide |
+| 15 | [Scope hints](15-scope-hints.md) | 2026-09-13, exploratory: a read-only look at the pilot archive on scope violations, cheat flags and safety denies, with a sketch of a second experiment. Not a result and not pre-registered |
 
 ## Layer specifications
 

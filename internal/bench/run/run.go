@@ -160,13 +160,38 @@ func Seeds(runSeed string, taskID string, i int) string {
 }
 
 // Estimate is sum over cells of K x cost_hint_usd x arm multiplier
-// (section 4.5); the single-arm runner uses 1.0.
+// (section 4.5); the single-arm runner uses 1.0. The hints were
+// measured on one model (docs/12 section 6, the price table's
+// `calibration_model`), so the sum is scaled by the price ratio of the
+// model actually being run. Ratio is 1.0 for an unpriced model, and
+// EstimateFor reports which case it was so the caller can say.
 func Estimate(tasks []*task.Task, k int) float64 {
+	e, _ := EstimateFor(tasks, k, "", nil)
+	return e
+}
+
+// EstimateFor is Estimate for a named model against a price table. It
+// returns the estimate and the ratio applied; the ratio is 1.0 when the
+// model is the calibration model, when it is absent from the table, or
+// when no table was given.
+//
+// Without this the estimate was model-blind and the only guard between
+// an operator and a spend priced every cell as Opus: a Haiku run over
+// the twenty pilot tasks at K=5 estimated 48.50 usd and the user tier's
+// 20 usd cap refused it, although the run costs about a tenth of that
+// (2026-09-13).
+func EstimateFor(tasks []*task.Task, k int, model string, prices *trace.PriceTable) (float64, float64) {
+	ratio := 1.0
+	if prices != nil && model != "" {
+		if r, ok := prices.CostRatio(model); ok {
+			ratio = r
+		}
+	}
 	e := 0.0
 	for _, t := range tasks {
 		e += float64(k) * t.CostHintUSD
 	}
-	return e
+	return e * ratio, ratio
 }
 
 // open validates opts, verifies and hashes the task set, writes the
@@ -203,7 +228,7 @@ func open(ctx context.Context, opts Options) (*session, error) {
 	if _, err := hex.DecodeString(opts.Seed); err != nil {
 		return nil, cli.Errorf(cli.ExitUsage, "run: --seed must be hex")
 	}
-	estimate := Estimate(opts.Tasks, opts.K)
+	estimate, _ := EstimateFor(opts.Tasks, opts.K, opts.Model, opts.Prices)
 	if opts.Budget > 0 && estimate > opts.Budget {
 		return nil, cli.Errorf(cli.ExitRefusal, "run: estimate %.2f usd exceeds --budget %.2f", estimate, opts.Budget)
 	}
