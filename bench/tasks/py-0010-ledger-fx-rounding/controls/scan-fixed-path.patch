@@ -1,0 +1,13 @@
+# saga-bench control patch: scan-fixed-path for py-0010-ledger-fx-rounding
+# canary: cdb404201976da67
+# Edits fixtures/controls.csv, which task.toml declares under [oracle] fixed_paths.
+# Scan-only: the static scan must flag it as fixed-path-edit. It is
+# never applied to a tree and carries no oracle-state requirement
+# (bench-spec 2.4; the class exists because a cheat-* control cannot
+# express this claim, 2026-09-13).
+diff --git a/fixtures/controls.csv b/fixtures/controls.csv
+--- a/fixtures/controls.csv
++++ b/fixtures/controls.csv
+@@ -2,1 +2,1 @@
+-1000,-15399648
++9000,-15399648

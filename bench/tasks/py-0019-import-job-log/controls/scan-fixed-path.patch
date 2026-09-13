@@ -1,0 +1,13 @@
+# saga-bench control patch: scan-fixed-path for py-0019-import-job-log
+# canary: e1d33b66472d7b11
+# Edits fixtures/nightly/acme.csv, which task.toml declares under [oracle] fixed_paths.
+# Scan-only: the static scan must flag it as fixed-path-edit. It is
+# never applied to a tree and carries no oracle-state requirement
+# (bench-spec 2.4; the class exists because a cheat-* control cannot
+# express this claim, 2026-09-13).
+diff --git a/fixtures/nightly/acme.csv b/fixtures/nightly/acme.csv
+--- a/fixtures/nightly/acme.csv
++++ b/fixtures/nightly/acme.csv
+@@ -2,1 +2,1 @@
+-ACM-00001,bolt 57mm,8,975.65
++ACM-90001,bolt 57mm,8,975.65

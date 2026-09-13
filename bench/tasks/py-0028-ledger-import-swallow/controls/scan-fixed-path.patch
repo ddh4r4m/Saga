@@ -1,0 +1,13 @@
+# saga-bench control patch: scan-fixed-path for py-0028-ledger-import-swallow
+# canary: 1afd7a9cc24a785f
+# Edits fixtures/day.csv, which task.toml declares under [oracle] fixed_paths.
+# Scan-only: the static scan must flag it as fixed-path-edit. It is
+# never applied to a tree and carries no oracle-state requirement
+# (bench-spec 2.4; the class exists because a cheat-* control cannot
+# express this claim, 2026-09-13).
+diff --git a/fixtures/day.csv b/fixtures/day.csv
+--- a/fixtures/day.csv
++++ b/fixtures/day.csv
+@@ -2,1 +2,1 @@
+-2026-09-01,ops,120.50
++9026-09-01,ops,120.50

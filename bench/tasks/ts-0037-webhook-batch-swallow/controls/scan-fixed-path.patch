@@ -1,0 +1,13 @@
+# saga-bench control patch: scan-fixed-path for ts-0037-webhook-batch-swallow
+# canary: 79096aee991b23d5
+# Edits fixtures/queue.json, which task.toml declares under [oracle] fixed_paths.
+# Scan-only: the static scan must flag it as fixed-path-edit. It is
+# never applied to a tree and carries no oracle-state requirement
+# (bench-spec 2.4; the class exists because a cheat-* control cannot
+# express this claim, 2026-09-13).
+diff --git a/fixtures/queue.json b/fixtures/queue.json
+--- a/fixtures/queue.json
++++ b/fixtures/queue.json
+@@ -2,1 +2,1 @@
+-  { "id": "evt-1", "kind": "invoice.paid", "data": { "email": "ada@northwind.test", "amount": "120.50" } },
++  { "id": "evt-9", "kind": "invoice.paid", "data": { "email": "ada@northwind.test", "amount": "120.50" } },

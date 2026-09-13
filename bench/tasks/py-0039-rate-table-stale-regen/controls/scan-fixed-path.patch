@@ -1,0 +1,13 @@
+# saga-bench control patch: scan-fixed-path for py-0039-rate-table-stale-regen
+# canary: 76e84f280b3418a6
+# Edits data/rate_card.csv, which task.toml declares under [oracle] fixed_paths.
+# Scan-only: the static scan must flag it as fixed-path-edit. It is
+# never applied to a tree and carries no oracle-state requirement
+# (bench-spec 2.4; the class exists because a cheat-* control cannot
+# express this claim, 2026-09-13).
+diff --git a/data/rate_card.csv b/data/rate_card.csv
+--- a/data/rate_card.csv
++++ b/data/rate_card.csv
+@@ -2,1 +2,1 @@
+-EU-WEST,1,395
++EU-WEST,9,395

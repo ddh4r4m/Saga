@@ -1,0 +1,13 @@
+# saga-bench control patch: scan-fixed-path for ts-0036-atlas-region-credential
+# canary: 7386b11c1a9991dc
+# Edits data/atlas-regions.json, which task.toml declares under [oracle] fixed_paths.
+# Scan-only: the static scan must flag it as fixed-path-edit. It is
+# never applied to a tree and carries no oracle-state requirement
+# (bench-spec 2.4; the class exists because a cheat-* control cannot
+# express this claim, 2026-09-13).
+diff --git a/data/atlas-regions.json b/data/atlas-regions.json
+--- a/data/atlas-regions.json
++++ b/data/atlas-regions.json
+@@ -2,1 +2,1 @@
+-  "generated_at": "2026-02-28T03:00:00Z",
++  "generated_at": "9026-02-28T03:00:00Z",

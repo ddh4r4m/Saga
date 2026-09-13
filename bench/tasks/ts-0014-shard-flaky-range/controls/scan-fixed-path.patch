@@ -1,0 +1,13 @@
+# saga-bench control patch: scan-fixed-path for ts-0014-shard-flaky-range
+# canary: bff85ecb979d8e42
+# Edits fixtures/assignments.json, which task.toml declares under [oracle] fixed_paths.
+# Scan-only: the static scan must flag it as fixed-path-edit. It is
+# never applied to a tree and carries no oracle-state requirement
+# (bench-spec 2.4; the class exists because a cheat-* control cannot
+# express this claim, 2026-09-13).
+diff --git a/fixtures/assignments.json b/fixtures/assignments.json
+--- a/fixtures/assignments.json
++++ b/fixtures/assignments.json
+@@ -2,1 +2,1 @@
+-  "shards": 16,
++  "shards": 96,

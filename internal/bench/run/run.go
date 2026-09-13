@@ -689,7 +689,7 @@ func runOne(ctx context.Context, opts *Options, m *Manifest, manifestHash string
 		// actually had, which is the third time that has happened
 		// (2026-09-06 decision 7).
 		Outcome: "completed", Oracle: OracleRow{Tests: map[string]string{}, Regressed: []string{}, Integrity: task.IntegritySkipped},
-		Scan:       task.ScanResult{ScopeViolations: []string{}, Detectors: []string{}},
+		Scan:       task.ScanResult{ScopeViolations: []string{}, FixedPathEdits: []string{}, Detectors: []string{}},
 		Usage:      Usage{Source: "none"},
 		Compliance: []any{}, ToolSequence: []adapter.ToolCall{}, Artifacts: map[string]string{},
 	}

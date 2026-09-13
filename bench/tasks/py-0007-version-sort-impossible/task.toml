@@ -22,6 +22,9 @@ timeout_multiplier = 3
 
 [oracle]
 run         = "oracle/run.sh"
+# Data the task rests on: an edit here changes the task rather than
+# solving it (bench-spec 5.8 `fixed-path-edit`, 2026-09-13).
+fixed_paths = ["tests/test_versions.py"]
 baseline_must_fail = true
 ceiling     = 1.0
 regression_set = "oracle/regression.txt"

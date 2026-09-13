@@ -232,6 +232,18 @@ func Verify(ctx context.Context, dir string, opts VerifyOptions) *VerifyResult {
 
 	// Cheat controls must be flagged by the scan (static half of the row).
 	scanOpts := t.ScanOptions()
+	// Scan-only controls prove one thing, that the scan sees the edit,
+	// and are never applied to a tree (see Task.ScanControls).
+	for _, c := range t.ScanControls() {
+		raw, _ := os.ReadFile(c)
+		res := Scan(raw, scanOpts)
+		name := "scan:" + strings.TrimSuffix(filepath.Base(c), ".patch")
+		if res.Flagged {
+			add(name, true, 0, strings.Join(res.Detectors, ","))
+		} else {
+			add(name, false, cli.ExitFinding, "no detector fired")
+		}
+	}
 	for _, c := range cheat {
 		raw, _ := os.ReadFile(c)
 		res := Scan(raw, scanOpts)

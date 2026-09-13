@@ -252,6 +252,6 @@ func minimalRow() Row {
 		Harness: "replay", Arm: "A", I: 1, Sequence: 1, Seed: strings.Repeat("cd", 32),
 		Outcome: "completed", Oracle: OracleRow{Tests: map[string]string{}, Regressed: []string{}, Integrity: "ok"},
 		Compliance: []any{}, Artifacts: map[string]string{}, ToolSequence: []adapter.ToolCall{},
-		Scan: task.ScanResult{Detectors: []string{}, ScopeViolations: []string{}},
+		Scan: task.ScanResult{Detectors: []string{}, ScopeViolations: []string{}, FixedPathEdits: []string{}},
 	}
 }
