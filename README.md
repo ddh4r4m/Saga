@@ -2,7 +2,14 @@
 
 > Saga makes any coding agent prove its work: a local, model-agnostic layer for repository knowledge, machine-checked completion, memory that survives compaction, and privacy at the tool boundary, with a benchmark that keeps it honest.
 
-**Status: eight-week experiment, pre-registered.** On 2026-09-05 the scope was cut to one question ([ADR 0009](docs/adr/0009-scope-cut-eight-week-experiment.md)): does a Stop hook with claim verification cut the false-done rate on Claude Code, beyond the noise floor, without raising tokens per solved task by more than 10%? The protocol, budget and kill rule are in [docs/12](docs/12-experiment-protocol.md). The Go module at the repository root implements the kept layers (trace, gate, guard classifier, bench); `docs/specs/IMPLEMENTATION-STATUS.md` lists what is implemented against each spec section. No number about Saga appears here until a bench manifest exists.
+**Status: the pre-registered experiment ended on its own kill rule, 2026-09-13.** The pilot (20 tasks × 5 runs × 2 arms, Claude Opus 5 on Claude Code) put the gate's effect on false "done" claims at −2.5 pp, inside the −5 pp floor set before any run, so by [docs/12 §8](docs/12-experiment-protocol.md) the project as scoped is over, the pilot is the published result, and Saga is a bench. The reading is in [docs/14](docs/14-pilot-morning.md); the archive with the runner's untouched report is [bench/results/pilot-2026-09-13](bench/results/pilot-2026-09-13/).
+
+## The result, at a glance
+
+![The pilot at a glance: the pre-registered primary was a null; the exploratory scan rows say the gated agent stayed in scope](bench/results/pilot-2026-09-13/figure.png)
+
+Every number on the figure is the runner-generated report's own (`scripts/pilot-figure.py` reads `compare.json`). The first three rows are pre-registered and read by the rule in docs/12; the last two are exploratory scan outputs and are not evidence for anything until a differently registered experiment tests them.
+
 
 ## Why
 
