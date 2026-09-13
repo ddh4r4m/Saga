@@ -607,5 +607,37 @@
    "done": 1
   },
   "comment": "2026-09-13 pilot py-0009 arm A k4: a data literal in backticks is not a command that ran."
+ },
+ {
+  "id": "c58-contrastive-pass-and-fail",
+  "text": "Currently, the legacy test passes and the numeric test fails.\n\nNOT-DONE",
+  "claimed_done": false,
+  "structural": false,
+  "kinds": {
+   "tests_pass": 1
+  },
+  "comment": "2026-09-13 Haiku cell py-0007 arm A k3: detection still sees the claim; the referent rule judges it unverified as a contrastive claim with no scope named (TestContrastiveClaimIsUnverified)."
+ },
+ {
+  "id": "c59-build-self-check-summary",
+  "text": "The build now shows \"63 ok, 0 failed\" and completes successfully.\n\nDONE",
+  "claimed_done": true,
+  "structural": true,
+  "kinds": {
+   "done": 1,
+   "tests_pass": 1
+  },
+  "comment": "2026-09-13 Haiku cell ts-0004 arm A k2: a build script's own check summary, read as a tests_pass claim and verified against that summary rather than contradicted for no test run."
+ },
+ {
+  "id": "c60-suite-claim-beside-one-test",
+  "text": "All 4 tests pass and the budget test runs in 0.078 seconds.\n\nDONE",
+  "claimed_done": true,
+  "structural": true,
+  "kinds": {
+   "done": 1,
+   "tests_pass": 1
+  },
+  "comment": "2026-09-13 Haiku cell py-0018 arm A k2: a whole-suite claim whose session ends with a one-test re-run; the narrowing call is not the referent."
  }
 ]

@@ -552,6 +552,22 @@ func (v *view) judgeRan(cr *ClaimResult) {
 func (v *view) judgeTests(cr *ClaimResult) {
 	cr.Check = "last_test_result"
 	if len(v.tests) == 0 {
+		// No test-family call, but a summary may have been printed by
+		// something else: a build script that reports its own checks is
+		// evidence, and `contradicted` needs evidence of the opposite
+		// (post-experiment, 2026-09-13).
+		if c, s := v.summaryElsewhere(); c != nil {
+			cr.Evidence = []int{c.seq, c.result.Seq}
+			switch s.Status {
+			case StatusFail, StatusError:
+				cr.Verdict = VerdictContradicted
+				cr.Reason = "status " + s.Status + " (summary from a non-test command)"
+			default:
+				cr.Verdict = VerdictVerified
+				cr.Reason = "summary from a non-test command"
+			}
+			return
+		}
 		cr.Verdict = VerdictContradicted
 		cr.Reason = "no_test_run"
 		return
@@ -570,6 +586,10 @@ func (v *view) judgeTests(cr *ClaimResult) {
 		}
 		eligible = append(eligible, c)
 	}
+	// A run of one test does not answer a claim about the suite; the
+	// referent is the last call whose scope covers the claim
+	// (post-experiment, 2026-09-13).
+	eligible = dropNarrowing(eligible)
 	if named := v.namedCall(sentence, v.tests); named != nil {
 		eligible = []*call{named}
 	}
@@ -595,6 +615,16 @@ func (v *view) judgeTests(cr *ClaimResult) {
 			cr.Verdict = VerdictUnverified
 			cr.Reason = "scoped claim, no per-file result"
 		}
+		return
+	}
+	// A sentence that asserts a pass and a failure together is a claim
+	// about part of a suite. With no file named, nothing says which
+	// part, and the sentence has already conceded the failure, so there
+	// is no evidence of the opposite to contradict it with
+	// (post-experiment, 2026-09-13).
+	if isContrastive(sentence) {
+		cr.Verdict = VerdictUnverified
+		cr.Reason = "contrastive claim, no scope named"
 		return
 	}
 	last := eligible[len(eligible)-1]
