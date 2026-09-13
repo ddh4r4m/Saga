@@ -11,7 +11,7 @@ Mirror `bench/results/dev-2026-09-06-1/` (A, B, compare.md, NOTES.md, run-log.tx
 
 NOTES.md for each: status line as in the 2026-09-06 notes (who launched, from where, commit, binary, model, K, wall cap = task's own, cost per arm, provenance head verbatim); the results table in the same columns; findings numbered, each with the row ids and the transcript lines that show it; nothing speculative. For dev-3, table anything that differs from dev-2 arm A on the same task (same model, same day, K=1: differences are noise unless the transcript says otherwise, say so). Say plainly for each arm B row whether gate_config_present is true and the config sha matches the staged one; that is the first live run where it should.
 
-Transcripts: copy final_message.txt and trace.jsonl per run as before. Scans: secrets (sk-ant, OAUTH, TOKEN, api key shapes) and home paths (`/Users/dharamdhurandhar`) across every ingested file; mask a home path as SAGA_MASK_HOME as in probes-2026-09-06 and list every masking in NOTES.
+Transcripts: copy final_message.txt and trace.jsonl per run as before. Scans: secrets (sk-ant, OAUTH, TOKEN, api key shapes) and home paths (the owner's home directory) across every ingested file; mask a home path as SAGA_MASK_HOME as in probes-2026-09-06 and list every masking in NOTES.
 
 ## 2. Report
 

@@ -1,5 +1,5 @@
 import pathlib, re, sys
-T = pathlib.Path('/Users/dharamdhurandhar/Developer/OpenSource/Saga/bench/tasks')
+T = pathlib.Path(__file__).resolve().parents[1]
 for d in sorted(T.iterdir()):
     if not d.is_dir() or not (d/'task.toml').exists(): continue
     c = (d/'CANARY').read_text().strip()
